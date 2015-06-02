@@ -37,6 +37,7 @@ INCLUDE_DIRECTORIES( ${INCLUDE_PATHS}
                      ${TEXTURE_STREAM_INCLUDE_DIRS}
 )
 
+
 ADD_LIBRARY( guacamole-PLOD SHARED
     ${GUA_PLOD_NODE_SRC}
     ${GUA_PLOD_NODE_INC}
@@ -52,6 +53,9 @@ ADD_DEPENDENCIES(guacamole-PLOD guacamole)
 LIST(APPEND LIB_PATHS ${PROTOBUF_LIBRARY_DIRS})
 LIST(APPEND INCLUDE_PATHS ${PROTOBUF_INCLUDE_DIRS})
 
+LIST(APPEND LIB_PATHS ${TEXTURE_STREAM_LIBRARY_DIRS})
+LIST(APPEND INCLUDE_PATHS ${TEXTURE_STREAM_INCLUDE_DIRS})
+
 include(find_protobuf)
 #set(PLOD_ROOT "/opt/pbr/gualod/trunk/pbr" CACHE PATH "Set to your PLOD install path.")
 
@@ -61,6 +65,12 @@ message(STATUS " protobuf:" )
 message(STATUS "   library: ${PROTOBUF_LIBRARIES}" )
 message(STATUS "   library path: ${PROTOBUF_LIBRARY_DIRS}" )
 message(STATUS "   include: ${PROTOBUF_INCLUDE_DIRS}" )
+message(STATUS "" )
+
+message(STATUS " texture_stream:" )
+message(STATUS "   library: ${TEXTURE_STREAM_LIBRARIES}" )
+message(STATUS "   library path: ${TEXTURE_STREAM_LIBRARY_DIRS}" )
+message(STATUS "   include: ${TEXTURE_STREAM_INCLUDE_DIRS}" )
 message(STATUS "" )
 
 ###############################################################################

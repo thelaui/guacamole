@@ -57,9 +57,9 @@ bool rotate_light = false;
 //    -> 'k' to decrease error threshold
 
 //    lens effects
-//    -> 'y' toggle lens vis_mode 
+//    -> 'y' toggle lens vis_mode
 //        0 = off
-//        1 = distance to lens plane 
+//        1 = distance to lens plane
 //        2 = normal in object space
 //    -> 't' to increase lens radius
 //    -> 'g' to decrease lens radius
@@ -98,7 +98,7 @@ bool rotate_light = false;
 
 struct LensConfig {
     enum LensVisMode{ off = 0x0,
-                    distance, 
+                    distance,
                     normals,
                     first_derivation,
                     second_derivation,
@@ -137,14 +137,14 @@ gua::math::vec3 compute_ray(std::shared_ptr<gua::node::ScreenNode> const& screen
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void mouse_button(gua::utils::Trackball& trackball, 
-                  gua::SceneGraph& graph, 
-                  std::shared_ptr<gua::node::ScreenNode> const& screen, 
-                  std::shared_ptr<gua::node::CameraNode> const& camera, 
-                  gua::math::vec2ui const& resolution, 
+void mouse_button(gua::utils::Trackball& trackball,
+                  gua::SceneGraph& graph,
+                  std::shared_ptr<gua::node::ScreenNode> const& screen,
+                  std::shared_ptr<gua::node::CameraNode> const& camera,
+                  gua::math::vec2ui const& resolution,
                   LensConfig& lens,
-                  int mousebutton, 
-                  int action, 
+                  int mousebutton,
+                  int action,
                   int mods)
 {
   gua::utils::Trackball::button_type button;
@@ -180,14 +180,14 @@ void mouse_button(gua::utils::Trackball& trackball,
 
       for (auto const& r : picks)
       //for (auto const& r : picks_interpol)
-      {          
+      {
         auto frustrum = camera->get_rendering_frustum(graph, gua::CameraMode::CENTER);
         auto pick_centre_ss = frustrum.get_projection() * frustrum.get_view() * gua::math::vec4(r.world_position, 1.0f);
         auto pick_centre_ss_norm = (gua::math::vec2(pick_centre_ss.x, pick_centre_ss.y) / pick_centre_ss.w) * 0.5f + gua::math::vec2(0.5f);
-      
+
         lens.screen_position = pick_centre_ss_norm;
         lens.world_position = r.world_position;
-        lens.world_normal = r.normal;        
+        lens.world_normal = r.normal;
         lens.dirty_flag = true;
 
         lens.square_ss_min = lens.screen_position - gua::math::vec2(lens.radius);
@@ -304,15 +304,15 @@ void key_press(gua::PipelineDescription& pipe, gua::SceneGraph& graph, LensConfi
       std::cout << "Set lens step_size_ss to " << lens.step_size_ss;
       std::cout << " Set lens step_size_os to " << lens.step_size_os << std::endl;
     break;
-  case 'p':      
+  case 'p':
       lens.depth_range.x -= 0.0001;
       std::cout << "Set lens lens.depth_range.min to " << lens.depth_range.x << std::endl;
       break;
   case '[':
-      lens.depth_range.x += 0.0001;      
+      lens.depth_range.x += 0.0001;
       std::cout << "Set lens lens.depth_range.min to " << lens.depth_range.x << std::endl;
       break;
-  case ']':      
+  case ']':
       lens.depth_range.y -= 0.0001;
       std::cout << "Set lens lens.depth_range.max to " << lens.depth_range.y << std::endl;
       break;
@@ -565,7 +565,7 @@ int main(int argc, char** argv) {
   plod_geometrys.push_back(plodLoader.load_geometry("hunter9", "data/objects/Area-1_Warrior-scene_P03-3_knn.kdn", plod_rough, gua::PLODLoader::DEFAULTS | gua::PLODLoader::MAKE_PICKABLE));
   plod_geometrys.push_back(plodLoader.load_geometry("hunter10", "data/objects/Area-1_Warrior-scene_P03-4_knn.kdn", plod_rough, gua::PLODLoader::DEFAULTS | gua::PLODLoader::MAKE_PICKABLE));
   plod_geometrys.push_back(plodLoader.load_geometry("hunter11", "data/objects/TLS_Seradina_Rock-12C_knn.kdn", plod_rough, gua::PLODLoader::DEFAULTS | gua::PLODLoader::MAKE_PICKABLE));
-  
+
 #else
 
   plod_geometrys.push_back(plodLoader.load_geometry("hunter1",   "/mnt/pitoti/3d_pitoti/seradina_12c/areas/Area-1_Warrior-scene_P01-1_knn.kdn", plod_rough, gua::PLODLoader::DEFAULTS | gua::PLODLoader::MAKE_PICKABLE ));
@@ -593,7 +593,7 @@ int main(int argc, char** argv) {
   }
 
 
-    
+
   model_xf->translate(-plod_geometrys[0]->get_bounding_box().center());
 
 #else
@@ -605,7 +605,7 @@ int main(int argc, char** argv) {
   graph.add_node("/transform/model_xf", teapot);
   teapot->translate(0.6, 0.0, 0.0);
 
-#endif 
+#endif
 
   auto bb = plod_geometrys[0]->get_bounding_box();
 
@@ -787,14 +787,14 @@ int main(int argc, char** argv) {
     std::ref(graph),
     std::cref(screen),
     std::cref(camera),
-    std::cref(window->config.get_left_resolution()), 
+    std::cref(window->config.get_left_resolution()),
     std::ref(lens_config),
     std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-  window->on_key_press.connect(std::bind(key_press, 
-                               std::ref(*(camera->get_pipeline_description())), 
-                               std::ref(graph), 
-                               std::ref(lens_config), 
+  window->on_key_press.connect(std::bind(key_press,
+                               std::ref(*(camera->get_pipeline_description())),
+                               std::ref(graph),
+                               std::ref(lens_config),
                                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 
   window->open();
@@ -828,7 +828,7 @@ int main(int argc, char** argv) {
       pick_transform->set_transform(scm::math::inverse(model_xf->get_world_transform()) * scm::math::make_translation(lens_config.world_position));
       lens_config.dirty_flag = false;
     }
-    
+
     plod_rough->set_uniform("lens_center", pick_transform->get_world_position());
     plod_rough->set_uniform("lens_center_ss", lens_config.screen_position);
     plod_rough->set_uniform("lens_world_normal", lens_config.world_normal);
@@ -838,20 +838,20 @@ int main(int argc, char** argv) {
     plod_rough->set_uniform("lens_square_ss_min", lens_config.square_ss_min);
     plod_rough->set_uniform("lens_square_ss_max", lens_config.square_ss_max);
     plod_rough->set_uniform("step_size_in_os", lens_config.step_size_os);
-    plod_rough->set_uniform("step_size_in_ss", lens_config.step_size_ss);    
+    plod_rough->set_uniform("step_size_in_ss", lens_config.step_size_ss);
     plod_rough->set_uniform("ref_plane_v", lens_config.vis_plane_v);
     plod_rough->set_uniform("ref_plane_n", lens_config.vis_plane_n);
     plod_rough->set_uniform("depth_range", lens_config.depth_range);
 
     if (rotate_light) {
       // modify scene
-      
+
       if (milliseconds > 0.0 ) {
         double time_per_rotation = 15;
         light->translate(-0.3, -1.0, -1.0);
         light->rotate((360 * milliseconds) / (time_per_rotation * 1000.0), 0.0, 0.0, 1.0);
         light->translate(0.3, 1.0, 1.0);
-      }  
+      }
     }
     last_frame_time = current_time;
 
@@ -860,7 +860,7 @@ int main(int argc, char** argv) {
       std::cout << "Frame time: " << 1000.f / window->get_rendering_fps() << " ms, fps: "
         << window->get_rendering_fps() << ", app fps: "
         << camera->get_application_fps() << std::endl;
-      std::cout << lens_config.screen_position << " , " << lens_config.world_position << " , " << lens_config.world_normal << " , " << lens_config.radius << std::endl;      
+      std::cout << lens_config.screen_position << " , " << lens_config.world_position << " , " << lens_config.world_normal << " , " << lens_config.radius << std::endl;
     }
 #endif
 
