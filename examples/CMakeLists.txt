@@ -58,6 +58,7 @@ IF (GUACAMOLE_EXAMPLES)
   # plod example requires plod-plugin
   IF (${PLUGIN_guacamole-plod} AND ${GUACAMOLE_GLFW3})
     add_subdirectory(plod)
+    add_subdirectory(plod-textured)
   ENDIF (${PLUGIN_guacamole-plod} AND ${GUACAMOLE_GLFW3})
 
   IF (${PLUGIN_guacamole-video3d})

@@ -10,7 +10,6 @@ link_directories(${LIB_PATHS})
 include_directories( ${INCLUDE_PATHS}
                      ${PROJECT_SOURCE_DIR}/include
                      ${GUACAMOLE_PLOD_INCLUDE_DIR}
-                     ${TEXTURE_STREAM_INCLUDE_DIRS}
                      )
 
 add_executable( ${_EXE_NAME} main.cpp)
