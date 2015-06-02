@@ -105,6 +105,7 @@ int main(int argc, char** argv) {
   // load frustum files
   /////////////////////////////////////////////////////////////////////////////
 
+  std::set<std::string> frustum_files;
   std::vector<texstr::Frustum> frusta;
 
   boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
@@ -115,17 +116,22 @@ int main(int argc, char** argv) {
       auto frustum_file_name = entry.path();
 
       if (frustum_file_name.has_extension() && frustum_file_name.extension() == ".frustum") {
-        auto frustum = texstr::FrustumFactory::from_frustum_file(frustum_file_name.string());
-        auto new_cam_trans = offset_transform * frustum.get_camera_transform();
-        auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
-        frusta.push_back(texstr::Frustum::perspective(
-          new_cam_trans,
-          new_cam_trans * orig_screen_trans,
-          frustum.get_clip_near(),
-          frustum.get_clip_far()
-        ));
+        frustum_files.insert(frustum_file_name.string());
       }
     }
+  }
+
+  for (auto file : frustum_files){
+
+    auto frustum = texstr::FrustumFactory::from_frustum_file(file);
+    auto new_cam_trans = offset_transform * frustum.get_camera_transform();
+    auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
+    frusta.push_back(texstr::Frustum::perspective(
+      new_cam_trans,
+      new_cam_trans * orig_screen_trans,
+      frustum.get_clip_near(),
+      frustum.get_clip_far()
+    ));
   }
 
   texstr::FrustumManagement::register_frusta(frusta);
@@ -171,7 +177,7 @@ int main(int argc, char** argv) {
 
   Navigator navigator;
 
-  navigator.set_transform(scm::math::mat4f::identity());
+  navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
 
   /////////////////////////////////////////////////////////////////////////////
   // create window and callback setup

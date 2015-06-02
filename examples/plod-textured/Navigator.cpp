@@ -16,6 +16,7 @@ Navigator::Navigator()
   , a_pressed_(false)
   , d_pressed_(false)
   , mlb_pressed_(false)
+  , rotation_locked_(false)
   , frame_time_(-1.0)
 {}
 
@@ -30,12 +31,15 @@ void Navigator::update() {
     const float rotation_speed = 0.25f;
     const float motion_speed = 1.f;
 
-    if (mlb_pressed_) {
+    auto y_rot(scm::math::mat4f::identity());
+    auto x_rot(scm::math::mat4f::identity());
+
+    if (mlb_pressed_ && !rotation_locked_) {
       current_rotation_ -= mouse_movement_;
     }
 
-    auto y_rot(scm::math::make_rotation(current_rotation_.x * rotation_speed, 0.f, 1.f, 0.f));
-    auto x_rot(scm::math::make_rotation(-current_rotation_.y * rotation_speed, 1.f, 0.f, 0.f));
+    y_rot = scm::math::make_rotation(current_rotation_.x * rotation_speed, 0.f, 1.f, 0.f);
+    x_rot = scm::math::make_rotation(-current_rotation_.y * rotation_speed, 1.f, 0.f, 0.f);
 
     auto rotation = y_rot * x_rot;
 
@@ -84,11 +88,6 @@ void Navigator::set_transform(scm::math::mat4f const& transform) {
   transform_ = transform;
   current_location_ = scm::math::vec4f(transform_[12], transform_[13], transform_[14], 1.0f);
 
-  auto rot_quat = scm::math::quat<float>::from_matrix(transform_);
-  float angle;
-  scm::math::vec3f axis;
-  rot_quat.retrieve_axis_angle(angle, axis);
-  current_rotation_ = scm::math::vec2f(angle * axis.z, angle * axis.y);
 }
 
 scm::math::mat4f const& Navigator::get_transform() const {
@@ -129,4 +128,8 @@ void Navigator::set_mouse_button(int button, int state) {
 void Navigator::set_mouse_position(scm::math::vec2i const& new_position) {
   mouse_movement_ = new_position - mouse_position_;
   mouse_position_ = new_position;
+}
+
+void Navigator::set_rotation_locked(bool locked) {
+  rotation_locked_ = locked;
 }

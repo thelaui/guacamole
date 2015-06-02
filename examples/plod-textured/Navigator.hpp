@@ -21,6 +21,8 @@ class Navigator {
 
     void set_mouse_position(scm::math::vec2i const& new_position);
 
+    void set_rotation_locked(bool locked);
+
   private:
 
     scm::math::mat4f transform_;
@@ -36,6 +38,7 @@ class Navigator {
     bool a_pressed_;
     bool d_pressed_;
     bool mlb_pressed_;
+    bool rotation_locked_;
 
     gua::Timer timer_;
     double frame_time_;
