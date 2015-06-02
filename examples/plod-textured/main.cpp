@@ -34,6 +34,11 @@
 
 #include <gua/renderer/BBoxPass.hpp>
 #include <gua/renderer/DebugViewPass.hpp>
+#include <gua/renderer/FrustumVisualizationPass.hpp>
+
+#include <boost/filesystem.hpp>
+
+#include <texture_stream/texture_stream.hpp>
 
 #include "Navigator.hpp"
 
@@ -65,34 +70,65 @@ int main(int argc, char** argv) {
   auto model_offset = graph.add_node<gua::node::TransformNode>("/transform", "model_offset");
 
   auto setup_plod_node = [](std::shared_ptr<gua::node::PLODNode> const& node) {
-    node->set_radius_scale(1.0f);
+    node->set_radius_scale(0.8f);
     node->set_enable_backface_culling_by_normal(false);
     // node->set_draw_bounding_box(true);
   };
 
+  std::set<std::string> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
 
-  std::string const model_path("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz_new/");
-  plod_geometrys.push_back(plodLoader.load_geometry(model_path + "out_0.kdn", gua::PLODLoader::DEFAULTS));
+  boost::filesystem::path model_path("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz_new/");
 
+  if (is_directory(model_path)) {
 
-  for (auto p : plod_geometrys){
-    setup_plod_node(p);
-    graph.add_node("/transform/model_offset", p);
+    for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(model_path), {})) {
+      auto model_filename = entry.path();
+
+      if (model_filename.has_extension() && model_filename.extension() == ".kdn") {
+        model_files.insert(model_filename.string());
+      }
+    }
   }
 
-  std::cout << plod_geometrys[0]->get_bounding_box().center() << std::endl;
+  for (auto file : model_files){
+    auto node = plodLoader.load_geometry(file, gua::PLODLoader::DEFAULTS);
+    plod_geometrys.push_back(node);
+    setup_plod_node(node);
+    graph.add_node("/transform/model_offset", node);
+  }
+
   model_offset->translate(-plod_geometrys[0]->get_bounding_box().center());
+  auto offset_transform = model_offset->get_world_transform();
 
   /////////////////////////////////////////////////////////////////////////////
-  // create lighting
+  // load frustum files
   /////////////////////////////////////////////////////////////////////////////
-  // auto light = graph.add_node<gua::node::LightNode>("/transform/model_offset", "light");
-  // light->data.set_type(gua::node::LightNode::Type::POINT);
-  // light->data.set_enable_shadows(true);
-  // light->data.set_brightness(30.f);
-  // light->scale(3.f);
-  // light->translate(0.5, 0.3, 1.3);
+
+  std::vector<texstr::Frustum> frusta;
+
+  boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
+
+  if (is_directory(frusta_path)) {
+
+    for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(frusta_path), {})) {
+      auto frustum_file_name = entry.path();
+
+      if (frustum_file_name.has_extension() && frustum_file_name.extension() == ".frustum") {
+        auto frustum = texstr::FrustumFactory::from_frustum_file(frustum_file_name.string());
+        auto new_cam_trans = offset_transform * frustum.get_camera_transform();
+        auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
+        frusta.push_back(texstr::Frustum::perspective(
+          new_cam_trans,
+          new_cam_trans * orig_screen_trans,
+          frustum.get_clip_near(),
+          frustum.get_clip_far()
+        ));
+      }
+    }
+  }
+
+  texstr::FrustumManagement::register_frusta(frusta);
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
@@ -103,13 +139,10 @@ int main(int argc, char** argv) {
   auto camera = graph.add_node<gua::node::CameraNode>("/", "cam");
   camera->config.set_resolution(resolution);
   camera->config.set_screen_path("/cam/screen");
-  camera->config.set_eye_dist(0.06f);
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
-  camera->config.set_enable_stereo(false);
-  camera->config.set_far_clip(100.0f);
+  camera->config.set_far_clip(100000.0f);
   camera->config.set_near_clip(0.01f);
- //camera->set_pre_render_cameras({portal_camera});
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
   screen->data.set_size(gua::math::vec2(1.92f, 1.08f));
@@ -121,6 +154,7 @@ int main(int argc, char** argv) {
   // pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   //pipe->add_pass(std::make_shared<gua::BBoxPassDescription>());
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
+  pipe->add_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
   pipe->add_pass(std::make_shared<gua::SSAAPassDescription>());
@@ -137,9 +171,7 @@ int main(int argc, char** argv) {
 
   Navigator navigator;
 
-  auto start_transform(model_offset->get_world_transform());
-  std::cout << start_transform << std::endl;
-  // navigator.set_transform(scm::math::mat4f(start_transform));
+  navigator.set_transform(scm::math::mat4f::identity());
 
   /////////////////////////////////////////////////////////////////////////////
   // create window and callback setup
