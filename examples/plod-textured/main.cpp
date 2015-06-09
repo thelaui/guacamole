@@ -136,11 +136,14 @@ int main(int argc, char** argv) {
 
   texstr::FrustumManagement::register_frusta(frusta);
 
+  int current_frustum(0);
+
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
   /////////////////////////////////////////////////////////////////////////////
 
-  auto resolution = gua::math::vec2ui(1920, 1080);
+  // auto resolution = gua::math::vec2ui(1920, 1080);
+  auto resolution = gua::math::vec2ui(1280, 960);
 
   auto camera = graph.add_node<gua::node::CameraNode>("/", "cam");
   camera->config.set_resolution(resolution);
@@ -151,8 +154,11 @@ int main(int argc, char** argv) {
   camera->config.set_near_clip(0.01f);
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
-  screen->data.set_size(gua::math::vec2(1.92f, 1.08f));
-  screen->translate(0.0, 0.0, -2.0);
+  // screen->data.set_size(gua::math::vec2(1.92f, 1.08f));
+  // screen->translate(0.0, 0.0, -2.0);
+  screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
+  screen->translate(0.0, 0.0, -0.0061637285428946);
+
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
@@ -176,7 +182,7 @@ int main(int argc, char** argv) {
   /////////////////////////////////////////////////////////////////////////////
 
   Navigator navigator;
-
+  bool navigator_active(true);
   navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
 
   /////////////////////////////////////////////////////////////////////////////
@@ -200,12 +206,33 @@ int main(int argc, char** argv) {
     navigator.set_mouse_position(gua::math::vec2i(pos));
   });
 
-  window->on_button_press.connect([&navigator](int button, int action, int mods){
+  window->on_button_press.connect([&navigator, &navigator_active](int button, int action, int mods){
+    navigator_active = true;
     navigator.set_mouse_button(button, action);
   });
 
-  window->on_char.connect([&navigator](unsigned key){
+  window->on_char.connect([&navigator, &navigator_active](unsigned key){
+    if (key == 'w' || key == 'a' || key == 's' || key == 'd') {
+      navigator_active = true;
+    }
     navigator.set_key_press(key);
+  });
+
+  window->on_key_press.connect([&navigator, &current_frustum, &frusta, &navigator_active](int key, int scancode, int action, int mods){
+    // check if key pressed
+    if (action == 1) {
+      // arrow right
+      if (key == 262) {
+        current_frustum = std::min(current_frustum + 1, int(frusta.size()));
+        navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
+        navigator_active = false;
+      // arrow left
+      } else if (key == 263) {
+        current_frustum = std::max(current_frustum - 1, 0);
+        navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
+        navigator_active = false;
+      }
+    }
   });
 
   window->open();
@@ -223,7 +250,11 @@ int main(int argc, char** argv) {
   ticker.on_tick.connect([&]() {
     navigator.update();
 
-    camera->set_transform(gua::math::mat4(navigator.get_transform()));
+    if (navigator_active) {
+      camera->set_transform(gua::math::mat4(navigator.get_transform()));
+    } else {
+      camera->set_transform(gua::math::mat4(frusta[current_frustum].get_camera_transform()));
+    }
 
     static unsigned framecounter = 0;
     ++framecounter;

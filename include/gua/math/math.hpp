@@ -138,6 +138,13 @@ inline math::mat4 get_rotation(math::mat4 const& m) {
   return q.to_matrix();
 }
 
+inline math::vec3 get_euler_angles(math::mat4 const& m) {
+  auto rot_x(scm::math::rad2deg(std::atan2(m[6], m[10])));
+  auto rot_y(scm::math::rad2deg(std::atan2(-m[2], std::sqrt(m[6] * m[6] + m[10] * m[10]))));
+  auto rot_z(scm::math::rad2deg(std::atan2(m[1], m[0])));
+  return math::vec3(rot_x, rot_y, rot_z);
+}
+
 std::tuple<float_t, float_t, float_t> GUA_DLL barycentric(math::vec3 const& a,
                                                           math::vec3 const& b,
                                                           math::vec3 const& c,
