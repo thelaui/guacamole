@@ -35,6 +35,7 @@
 #include <gua/renderer/BBoxPass.hpp>
 #include <gua/renderer/DebugViewPass.hpp>
 #include <gua/renderer/FrustumVisualizationPass.hpp>
+#include <gua/renderer/TextureProjectionUpdatePass.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -75,6 +76,17 @@ int main(int argc, char** argv) {
     // node->set_draw_bounding_box(true);
   };
 
+  auto projective_texturing_material_desc(std::make_shared<gua::MaterialShaderDescription>(
+                                            "data/materials/ProjectiveTextureMaterial.gmd"));
+
+  auto projective_texturing_material_shader(std::make_shared<gua::MaterialShader>(
+                                            "ProjectiveTextureMaterial",
+                                            projective_texturing_material_desc));
+
+  gua::MaterialShaderDatabase::instance()->add(projective_texturing_material_shader);
+
+  auto projective_texturing_material(projective_texturing_material_shader->make_new_material());
+
   std::set<std::string> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
 
@@ -92,7 +104,7 @@ int main(int argc, char** argv) {
   }
 
   for (auto file : model_files){
-    auto node = plodLoader.load_geometry(file, gua::PLODLoader::DEFAULTS);
+    auto node = plodLoader.load_geometry(file + "_node", file, projective_texturing_material, gua::PLODLoader::DEFAULTS);
     plod_geometrys.push_back(node);
     setup_plod_node(node);
     graph.add_node("/transform/model_offset", node);
@@ -109,6 +121,7 @@ int main(int argc, char** argv) {
   std::vector<texstr::Frustum> frusta;
 
   boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
+  // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
 
   if (is_directory(frusta_path)) {
 
@@ -126,17 +139,22 @@ int main(int argc, char** argv) {
     auto frustum = texstr::FrustumFactory::from_frustum_file(file);
     auto new_cam_trans = offset_transform * frustum.get_camera_transform();
     auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
-    frusta.push_back(texstr::Frustum::perspective(
+    auto new_frustum = texstr::Frustum::perspective(
       new_cam_trans,
       new_cam_trans * orig_screen_trans,
       frustum.get_clip_near(),
       frustum.get_clip_far()
-    ));
+    );
+
+    new_frustum.set_image_file_name(frustum.get_image_file_name());
+
+    frusta.push_back(new_frustum);
   }
 
   texstr::FrustumManagement::register_frusta(frusta);
 
   int current_frustum(0);
+  int current_blending_range(0);
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
@@ -151,6 +169,7 @@ int main(int argc, char** argv) {
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
   camera->config.set_far_clip(100000.0f);
+  // camera->config.set_far_clip(0.0061637285428946);
   camera->config.set_near_clip(0.01f);
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
@@ -167,13 +186,15 @@ int main(int argc, char** argv) {
   //pipe->add_pass(std::make_shared<gua::BBoxPassDescription>());
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   pipe->add_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
+  pipe->add_pass(std::make_shared<gua::TextureProjectionUpdatePassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
   pipe->add_pass(std::make_shared<gua::SSAAPassDescription>());
   //pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
   pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
-  pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/water_painted_noon.jpg");
+  // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/water_painted_noon.jpg");
+  pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/field.jpg");
 
   camera->set_pipeline_description(pipe);
 
@@ -182,7 +203,7 @@ int main(int argc, char** argv) {
   /////////////////////////////////////////////////////////////////////////////
 
   Navigator navigator;
-  bool navigator_active(true);
+  bool navigator_active(false);
   navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
 
   /////////////////////////////////////////////////////////////////////////////
@@ -211,11 +232,25 @@ int main(int argc, char** argv) {
     navigator.set_mouse_button(button, action);
   });
 
-  window->on_char.connect([&navigator, &navigator_active](unsigned key){
+  window->on_scroll.connect([&current_blending_range](gua::math::vec2 const& scroll){
+    if (scroll.y > 0.0) {
+      current_blending_range = std::min(current_blending_range + 1, 5);
+    } else if (scroll.y < 0.0) {
+      current_blending_range = std::max(current_blending_range - 1, 0);
+    }
+  });
+
+  window->on_char.connect([&navigator, &navigator_active, &current_frustum, &frusta](unsigned key){
     if (key == 'w' || key == 'a' || key == 's' || key == 'd') {
       navigator_active = true;
+      navigator.set_key_press(key);
+    } else if (key == 'e') {
+      current_frustum = std::min(current_frustum + 1, int(frusta.size()));
+      navigator_active = true;
+    } else if (key == 'q') {
+      current_frustum = std::max(current_frustum - 1, 0);
+      navigator_active = true;
     }
-    navigator.set_key_press(key);
   });
 
   window->on_key_press.connect([&navigator, &current_frustum, &frusta, &navigator_active](int key, int scancode, int action, int mods){
@@ -243,27 +278,21 @@ int main(int argc, char** argv) {
   gua::events::MainLoop loop;
   gua::events::Ticker ticker(loop, 1.0/500.0);
 
-  std::size_t ctr = 0;
-
-  auto last_frame_time = std::chrono::steady_clock::now();
-
   ticker.on_tick.connect([&]() {
     navigator.update();
 
     if (navigator_active) {
       camera->set_transform(gua::math::mat4(navigator.get_transform()));
+      // screen->set_transform(scm::math::make_translation(0.0, 0.0, -0.0061637285428946));
+      // screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
     } else {
       camera->set_transform(gua::math::mat4(frusta[current_frustum].get_camera_transform()));
+      screen->set_world_transform(frusta[current_frustum].get_screen_transform());
+      screen->data.set_size(gua::math::vec2(1.0, 1.0));;
     }
 
-    static unsigned framecounter = 0;
-    ++framecounter;
-
-    auto current_time = std::chrono::steady_clock::now();
-    double milliseconds = std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_frame_time).count() / 1000.0;
-
-    last_frame_time = current_time;
-
+    projective_texturing_material->set_uniform("current_frustum", current_frustum);
+    projective_texturing_material->set_uniform("blending_range", current_blending_range);
 
     window->process_events();
     if (window->should_close()) {

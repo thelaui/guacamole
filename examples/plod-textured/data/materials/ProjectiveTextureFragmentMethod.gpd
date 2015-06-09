@@ -1,0 +1,62 @@
+{
+  "name" : "ProjectiveTextureFragmentMethod",
+  "source" : "
+    layout (std430, binding=2) uniform projective_texure_block {
+      mat4  projection_view_mats[100];
+      uvec2 projection_textures[100];
+      int   frustum_count;
+    };
+
+    vec3 sample_color(int position, int range) {
+      vec3 result = vec3(0.0);
+
+      const int min_pos = max(position - range, 0);
+      const int max_pos = min(position + range, frustum_count - 1);
+      const float real_range = max_pos - min_pos + 1.0;
+
+      for (int pos = min_pos; pos <= max_pos; ++pos) {
+
+        // project fragment position into the projective texture
+        vec4 proj_tex_space_pos = projection_view_mats[pos] * vec4(gua_world_position, 1.0);
+
+        // projective normalization
+        proj_tex_space_pos /= proj_tex_space_pos.w;
+
+        if ((abs(proj_tex_space_pos.x) < 1.0) &&
+            (abs(proj_tex_space_pos.y) < 1.0)) {
+
+          vec2 proj_texcoord = proj_tex_space_pos.xy;
+          proj_texcoord = 0.5 * proj_texcoord + 0.5;
+          result += texture(sampler2D(projection_textures[pos]), proj_texcoord.xy).rgb / real_range;
+        }
+      }
+
+      return result;
+    }
+
+    void ProjectiveTextureFragmentMethod() {
+
+      int frustum_id = max(0, min(current_frustum, frustum_count - 1));
+
+      gua_color = sample_color(frustum_id, blending_range);
+      gua_roughness = 1.0;
+      gua_metalness = 1.0;
+      gua_emissivity = 1.0;
+      gua_flags_passthrough = false;
+      gua_alpha = 1.0;
+    }
+  ",
+  "uniforms" :
+  [
+    {
+      "name" : "current_frustum",
+      "type" : "int",
+      "value": "0"
+    },
+    {
+      "name" : "blending_range",
+      "type" : "int",
+      "value": "0"
+    }
+  ]
+}

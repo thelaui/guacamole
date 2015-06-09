@@ -30,6 +30,7 @@ void Navigator::update() {
 
     const float rotation_speed = 0.25f;
     const float motion_speed = 1.f;
+    // const float motion_speed = 0.01f;
 
     auto y_rot(scm::math::mat4f::identity());
     auto x_rot(scm::math::mat4f::identity());
