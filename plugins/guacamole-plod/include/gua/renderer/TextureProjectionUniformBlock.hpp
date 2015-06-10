@@ -7,7 +7,7 @@
 #include <scm/gl_core/render_device/render_device_fwd.h>
 #include <scm/gl_core/buffer_objects/uniform_buffer_adaptor.h>
 
-#define MAX_PROJECTIVE_TEXTURE_COUNT 100
+#define MAX_PROJECTIVE_TEXTURE_COUNT 300
 
 namespace gua {
 

@@ -2,8 +2,8 @@
   "name" : "ProjectiveTextureFragmentMethod",
   "source" : "
     layout (std430, binding=2) uniform projective_texure_block {
-      mat4  projection_view_mats[100];
-      uvec2 projection_textures[100];
+      mat4  projection_view_mats[300];
+      uvec2 projection_textures[300];
       int   frustum_count;
     };
 

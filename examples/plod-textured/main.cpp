@@ -256,7 +256,7 @@ int main(int argc, char** argv) {
 
   window->on_key_press.connect([&navigator, &current_frustum, &frusta, &navigator_active](int key, int scancode, int action, int mods){
     // check if key pressed
-    if (action == 1) {
+    if (action == 1 || action == 2) {
       // arrow right
       if (key == 262) {
         current_frustum = std::min(current_frustum + 1, int(frusta.size()));
