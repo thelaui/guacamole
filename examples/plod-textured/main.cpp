@@ -36,6 +36,9 @@
 #include <gua/renderer/DebugViewPass.hpp>
 #include <gua/renderer/FrustumVisualizationPass.hpp>
 #include <gua/renderer/TextureProjectionUpdatePass.hpp>
+#include <gua/renderer/TexturedScreenSpaceQuadPass.hpp>
+
+#include <gua/gui.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -155,6 +158,7 @@ int main(int argc, char** argv) {
 
   int current_frustum(0);
   int current_blending_range(0);
+  int current_blending_mode(0);
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
@@ -189,7 +193,7 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::TextureProjectionUpdatePassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
-  pipe->add_pass(std::make_shared<gua::SSAAPassDescription>());
+  pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
   //pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
   pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
@@ -198,6 +202,42 @@ int main(int argc, char** argv) {
   pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/field.jpg");
 
   camera->set_pipeline_description(pipe);
+
+
+  /////////////////////////////////////////////////////////////////////////////
+  // setup gui
+  /////////////////////////////////////////////////////////////////////////////
+
+  auto gui = std::make_shared<gua::GuiResource>();
+  gui->init("gui", "asset://gua/data/gui/gui.html", gua::math::vec2(330, 760));
+
+  auto gui_quad = std::make_shared<gua::node::TexturedScreenSpaceQuadNode>("gui_quad");
+  gui_quad->data.texture() = "gui";
+  gui_quad->data.size() = gua::math::vec2ui(330, 760);
+  gui_quad->data.anchor() = gua::math::vec2(1.f, 0.f);
+
+  graph.add_node("/", gui_quad);
+
+  gui->on_loaded.connect([&]() {
+    // gui->add_javascript_getter("get_depth_layers", [&](){ return std::to_string(warp_pass->max_layers());});
+
+    gui->add_javascript_callback("set_blending_mode_average");
+    gui->add_javascript_callback("set_blending_mode_median");
+
+    gui->call_javascript("init");
+  });
+
+  gui->on_javascript_callback.connect([&](std::string const& callback, std::vector<std::string> const& params) {
+    if (callback == "set_blending_mode_average"
+     || callback == "set_blending_mode_median") {
+      std::stringstream str(params[0]);
+      bool checked;
+      str >> checked;
+
+      if (callback == "set_blending_mode_average") current_blending_mode = 0;
+      if (callback == "set_blending_mode_median") current_blending_mode = 1;
+    }
+  });
 
   /////////////////////////////////////////////////////////////////////////////
   // create navigation
@@ -224,13 +264,19 @@ int main(int argc, char** argv) {
     screen->data.set_size(gua::math::vec2(0.001f * new_size.x, 0.001f * new_size.y));
   });
 
-  window->on_move_cursor.connect([&navigator](gua::math::vec2 const& pos) {
-    navigator.set_mouse_position(gua::math::vec2i(pos));
+  window->on_move_cursor.connect([&](gua::math::vec2 const& pos) {
+    gua::math::vec2 hit_pos;
+    if (gui_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
+      gui->inject_mouse_position_relative(hit_pos);
+    } else {
+      navigator.set_mouse_position(gua::math::vec2i(pos));
+    }
   });
 
-  window->on_button_press.connect([&navigator, &navigator_active](int button, int action, int mods){
+  window->on_button_press.connect([&](int button, int action, int mods){
     navigator_active = true;
     navigator.set_mouse_button(button, action);
+    gui->inject_mouse_button(gua::Button(button), action, mods);
   });
 
   window->on_scroll.connect([&current_blending_range](gua::math::vec2 const& scroll){
@@ -281,6 +327,7 @@ int main(int argc, char** argv) {
 
   ticker.on_tick.connect([&]() {
     navigator.update();
+    gua::Interface::instance()->update();
 
     if (navigator_active) {
       camera->set_transform(gua::math::mat4(navigator.get_transform()));
@@ -293,7 +340,8 @@ int main(int argc, char** argv) {
     }
 
     projective_texturing_material->set_uniform("current_frustum", current_frustum);
-    projective_texturing_material->set_uniform("blending_range", current_blending_range);
+    projective_texturing_material->set_uniform("blending_range",  current_blending_range);
+    projective_texturing_material->set_uniform("blending_mode",   current_blending_mode);
 
     window->process_events();
     if (window->should_close()) {

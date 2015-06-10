@@ -2,8 +2,8 @@
   "name" : "ProjectiveTextureFragmentMethod",
   "source" : "
     layout (std430, binding=2) uniform projective_texure_block {
-      mat4  projection_view_mats[300];
-      uvec2 projection_textures[300];
+      mat4  projection_view_mats[100];
+      uvec2 projection_textures[100];
       int   frustum_count;
     };
 
@@ -73,8 +73,11 @@
 
       int frustum_id = max(0, min(current_frustum, frustum_count - 1));
 
-      //gua_color = sample_color_average(frustum_id, blending_range);
-      gua_color = sample_color_median(frustum_id, blending_range);
+      if (blending_mode == 0) {
+        gua_color = sample_color_average(frustum_id, blending_range);
+      } else if (blending_mode == 1) {
+        gua_color = sample_color_median(frustum_id, blending_range);
+      }
       gua_roughness = 1.0;
       gua_metalness = 1.0;
       gua_emissivity = 1.0;
@@ -91,6 +94,11 @@
     },
     {
       "name" : "blending_range",
+      "type" : "int",
+      "value": "0"
+    },
+    {
+      "name" : "blending_mode",
       "type" : "int",
       "value": "0"
     }

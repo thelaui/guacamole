@@ -33,9 +33,9 @@
 namespace gua {
 
 FrustumVisualizationPassDescription::FrustumVisualizationPassDescription() : PipelinePassDescription() {
-  vertex_shader_ = "resources/shaders/gbuffer/plod/frustum_visualization.vert";
-  geometry_shader_ = "resources/shaders/gbuffer/plod/frustum_visualization.geom";
-  fragment_shader_ = "resources/shaders/gbuffer/plod/frustum_visualization.frag";
+  vertex_shader_ = "resources/shaders/projective_texturing/frustum_visualization.vert";
+  geometry_shader_ = "resources/shaders/projective_texturing/frustum_visualization.geom";
+  fragment_shader_ = "resources/shaders/projective_texturing/frustum_visualization.frag";
   name_ = "FrustumVisualizationPass";
 
   writes_only_color_buffer_ = false;

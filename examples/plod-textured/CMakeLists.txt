@@ -11,6 +11,8 @@ include_directories( ${INCLUDE_PATHS}
                      ${PROJECT_SOURCE_DIR}/include
                      ${GUACAMOLE_PLOD_INCLUDE_DIR}
                      ${TEXTURE_STREAM_INCLUDE_DIRS}
+                     ${AWESOMIUM_INCLUDE_DIR}
+                     ${GUACAMOLE_GUI_INCLUDE_DIR}
                      )
 
 file(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
@@ -18,9 +20,9 @@ file(GLOB SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 add_executable( ${_EXE_NAME} ${SRC_FILES} ${HEADER_FILES})
 
-add_dependencies(${_EXE_NAME} guacamole guacamole-PLOD)
+add_dependencies(${_EXE_NAME} guacamole guacamole-PLOD guacamole-gui)
 
-list(APPEND LIBS guacamole)
+list(APPEND LIBS guacamole-gui guacamole udev)
 
 target_link_libraries( ${_EXE_NAME} ${LIBS} guacamole-PLOD)
 
