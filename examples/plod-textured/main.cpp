@@ -194,6 +194,7 @@ int main(int argc, char** argv) {
 
   pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/water_painted_noon.jpg");
+  // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/bath.jpg");
   pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/field.jpg");
 
   camera->set_pipeline_description(pipe);
