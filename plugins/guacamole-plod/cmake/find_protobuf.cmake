@@ -1,11 +1,13 @@
 SET(PROTOBUF_INCLUDE_SEARCH_DIRS
     /opt/protobuf/current/src
-	${GLOBAL_EXT_DIR}/inc/protobuf
+    ${GLOBAL_EXT_DIR}/inc/protobuf
+    /usr/include
 )
 
 SET(PROTOBUF_LIBRARY_SEARCH_DIRS
     /opt/protobuf/current/src/.libs
 	${GLOBAL_EXT_DIR}/lib
+    /usr/lib/x86_64-linux-gnu
 )
 
 # message("-- checking for protobuf")
