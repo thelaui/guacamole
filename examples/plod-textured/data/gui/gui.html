@@ -164,7 +164,7 @@
       }
 
       var init_checkbox = function(selector, func) {
-        $(selector).prop('checked', !(typeof(gua) === "undefined") && gua["get_" + func]() == "1").change(function() {
+        $(selector).change(function() {
           gua["set_" + func](this.checked ? 1 : 0);
         });
       }
@@ -179,6 +179,7 @@
 
         init_radio("#blending_mode_average", "blending_mode_average");
         init_radio("#blending_mode_median", "blending_mode_median");
+        init_checkbox("#enableFrustumVis", "frustum_vis_pass_enable");
         // init_radio("#manipulation_object", "manipulation_object");
 
         // init_radio("#scene_one_oilrig", "scene_one_oilrig");
@@ -217,7 +218,7 @@
         // init_radio("#grid_depth_threshold", "grid_depth_threshold");
 
 
-        // init_slider("#preview-panel .depth_layers", "depth_layers");
+        init_slider("#control-panel .query_radius", "query_radius");
         // init_slider("#preview-panel .split_threshold", "split_threshold");
         // init_slider("#preview-panel .cell_size", "cell_size");
 
@@ -281,7 +282,29 @@
                   <span>Median</span>
                 </label>
               </div>
+            </div>
+          </div>
 
+          <div class="row">
+            <div class="col-xs-5">
+            Frustum Vis:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableFrustumVis" type="checkbox" value="" checked>
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+              Query Radius:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider query_radius" data-slider-tooltip="hide" data-slider-id="query_radius" type="text" data-slider-min="0" data-slider-max="1000" data-slider-step="1" handle="custom"/>
             </div>
           </div>
 

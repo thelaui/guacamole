@@ -32,7 +32,10 @@
 
 namespace gua {
 
-FrustumVisualizationPassDescription::FrustumVisualizationPassDescription() : PipelinePassDescription() {
+FrustumVisualizationPassDescription::FrustumVisualizationPassDescription()
+  : PipelinePassDescription()
+  , enabled_(true)
+  , query_radius_(0.0) {
   vertex_shader_ = "resources/shaders/projective_texturing/frustum_visualization.vert";
   geometry_shader_ = "resources/shaders/projective_texturing/frustum_visualization.geom";
   fragment_shader_ = "resources/shaders/projective_texturing/frustum_visualization.frag";
@@ -66,62 +69,121 @@ std::shared_ptr<PipelinePassDescription> FrustumVisualizationPassDescription::ma
   return std::make_shared<FrustumVisualizationPassDescription>(*this);
 }
 
+void FrustumVisualizationPassDescription::set_enabled(bool enabled) {
+  enabled_ = enabled;
+  touch();
+}
+
+void FrustumVisualizationPassDescription::set_query_radius(double query_radius) {
+  query_radius_ = query_radius;
+  touch();
+}
+
 PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const& ctx, SubstitutionMap& substitution_map)
 {
   PipelinePass pass{*this, ctx, substitution_map};
 
-  auto frustum_vbo_ = ctx.render_device->create_buffer(
-      scm::gl::BIND_VERTEX_BUFFER,
-      scm::gl::USAGE_DYNAMIC_DRAW,
-      1,
-      0);
+  if (enabled_) {
+    auto frustum_vbo_ = ctx.render_device->create_buffer(
+        scm::gl::BIND_VERTEX_BUFFER,
+        scm::gl::USAGE_DYNAMIC_DRAW,
+        1,
+        0);
 
-  auto format = scm::gl::vertex_format({
-    scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-    scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-    scm::gl::vertex_format::element(0, 2, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-    scm::gl::vertex_format::element(0, 3, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-    scm::gl::vertex_format::element(0, 4, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-    scm::gl::vertex_format::element(0, 5, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-    scm::gl::vertex_format::element(0, 6, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-    scm::gl::vertex_format::element(0, 7, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8)
-  });
+    auto format = scm::gl::vertex_format({
+      scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
+      scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
+      scm::gl::vertex_format::element(0, 2, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
+      scm::gl::vertex_format::element(0, 3, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
+      scm::gl::vertex_format::element(0, 4, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
+      scm::gl::vertex_format::element(0, 5, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
+      scm::gl::vertex_format::element(0, 6, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
+      scm::gl::vertex_format::element(0, 7, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8)
+    });
 
-  auto frustum_vao_ = ctx.render_device->create_vertex_array(format, {frustum_vbo_});
-  auto frusta_ = texstr::FrustumManagement::fetch_frusta();
+    auto frustum_vao_ = ctx.render_device->create_vertex_array(format, {frustum_vbo_});
+    auto query_radius = query_radius_;
 
-  pass.process_ = [frustum_vbo_, frustum_vao_, frusta_](
-      PipelinePass &, PipelinePassDescription const&, Pipeline & pipe) {
+    pass.process_ = [frustum_vbo_, frustum_vao_, query_radius](
+        PipelinePass &, PipelinePassDescription const&, Pipeline & pipe) {
 
-    RenderContext const& ctx(pipe.get_context());
+      RenderContext const& ctx(pipe.get_context());
+      auto gua_frustum(pipe.current_viewstate().frustum);
+      auto texstr_frustum(texstr::Frustum::perspective(
+        gua_frustum.get_camera_transform(),
+        gua_frustum.get_screen_transform(),
+        gua_frustum.get_clip_near(),
+        gua_frustum.get_clip_far()
+      ));
 
-    if (frusta_.size() > 0) {
+      texstr::QueryOptions options;
+      options.mode = texstr::QueryOptions::RADIUS;
+      options.radius = query_radius;
 
-      ctx.render_device->resize_buffer(frustum_vbo_, frusta_.size() * 8 * sizeof(scm::math::vec3d));
+      texstr::FrustumManagement::instance()->send_query(texstr_frustum, options);
 
-      {
-        auto vbo_mem = static_cast<scm::math::vec3d*>(
-                                    ctx.render_context->map_buffer(
-                                        frustum_vbo_,
-                                        scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
+      auto frusta = texstr::FrustumManagement::instance()->fetch_cached_frusta();
+      // auto frusta = texstr::FrustumManagement::get_all_frusta();
 
-        for (int i(0); i < frusta_.size(); ++i) {
-          auto corners(frusta_[i].get_corners());
-          for (int c(0); c < corners.size(); ++c) {
-            vbo_mem[i * 8 + c] = corners[c];
+      if (frusta.size() > 0) {
+
+        ctx.render_device->resize_buffer(frustum_vbo_, frusta.size() * 8 * sizeof(scm::math::vec3d));
+
+        {
+          auto vbo_mem = static_cast<scm::math::vec3d*>(
+                                      ctx.render_context->map_buffer(
+                                          frustum_vbo_,
+                                          scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
+
+          for (int i(0); i < frusta.size(); ++i) {
+            auto corners(frusta[i].get_corners());
+            for (int c(0); c < corners.size(); ++c) {
+              vbo_mem[i * 8 + c] = corners[c];
+            }
           }
+
+          ctx.render_context->unmap_buffer(frustum_vbo_);
         }
 
-        ctx.render_context->unmap_buffer(frustum_vbo_);
+        ctx.render_context->bind_vertex_array(frustum_vao_);
+
+        ctx.render_context->apply();
+
+        ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, frusta.size());
+
+
+
+        // {
+        //   auto vbo_mem = static_cast<scm::math::vec3d*>(
+        //                               ctx.render_context->map_buffer(
+        //                                   frustum_vbo_,
+        //                                   scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
+
+        //   for (int i(0); i < frusta.size(); ++i) {
+
+        //     auto bbox(frusta[i].get_bounding_box());
+        //     vbo_mem[i * 8 + 0] = scm::math::vec3d(bbox.min.x, bbox.min.y, bbox.min.z);
+        //     vbo_mem[i * 8 + 1] = scm::math::vec3d(bbox.min.x, bbox.min.y, bbox.max.z);
+        //     vbo_mem[i * 8 + 2] = scm::math::vec3d(bbox.min.x, bbox.max.y, bbox.min.z);
+        //     vbo_mem[i * 8 + 3] = scm::math::vec3d(bbox.min.x, bbox.max.y, bbox.max.z);
+        //     vbo_mem[i * 8 + 4] = scm::math::vec3d(bbox.max.x, bbox.min.y, bbox.min.z);
+        //     vbo_mem[i * 8 + 5] = scm::math::vec3d(bbox.max.x, bbox.min.y, bbox.max.z);
+        //     vbo_mem[i * 8 + 6] = scm::math::vec3d(bbox.max.x, bbox.max.y, bbox.min.z);
+        //     vbo_mem[i * 8 + 7] = scm::math::vec3d(bbox.max.x, bbox.max.y, bbox.max.z);
+        //   }
+
+        //   ctx.render_context->unmap_buffer(frustum_vbo_);
+        // }
+
+        // ctx.render_context->bind_vertex_array(frustum_vao_);
+
+        // ctx.render_context->apply();
+
+        // ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, frusta.size());
       }
+    };
 
-      ctx.render_context->bind_vertex_array(frustum_vao_);
-
-      ctx.render_context->apply();
-
-      ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, frusta_.size());
-    }
-  };
+  }
 
   return pass;
 }

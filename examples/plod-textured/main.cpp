@@ -123,8 +123,8 @@ int main(int argc, char** argv) {
   std::set<std::string> frustum_files;
   std::vector<texstr::Frustum> frusta;
 
-  boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
-  // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
+  // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
+  boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
 
   if (is_directory(frusta_path)) {
 
@@ -150,11 +150,12 @@ int main(int argc, char** argv) {
     );
 
     new_frustum.set_image_file_name(frustum.get_image_file_name());
+    new_frustum.set_capture_time(frustum.get_capture_time());
 
     frusta.push_back(new_frustum);
   }
 
-  texstr::FrustumManagement::register_frusta(frusta);
+  texstr::FrustumManagement::instance()->register_frusta(frusta);
 
   int current_frustum(0);
   int current_blending_range(0);
@@ -189,7 +190,9 @@ int main(int argc, char** argv) {
   // pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   //pipe->add_pass(std::make_shared<gua::BBoxPassDescription>());
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
-  pipe->add_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
+  auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
+  frustum_vis_pass->set_query_radius(50.0);
+  pipe->add_pass(frustum_vis_pass);
   pipe->add_pass(std::make_shared<gua::TextureProjectionUpdatePassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
@@ -219,24 +222,33 @@ int main(int argc, char** argv) {
   graph.add_node("/", gui_quad);
 
   gui->on_loaded.connect([&]() {
-    // gui->add_javascript_getter("get_depth_layers", [&](){ return std::to_string(warp_pass->max_layers());});
+    gui->add_javascript_getter("get_query_radius", [&](){ return std::to_string(frustum_vis_pass->get_query_radius());});
 
     gui->add_javascript_callback("set_blending_mode_average");
     gui->add_javascript_callback("set_blending_mode_median");
+    gui->add_javascript_callback("set_frustum_vis_pass_enable");
+    gui->add_javascript_callback("set_query_radius");
 
     gui->call_javascript("init");
   });
 
   gui->on_javascript_callback.connect([&](std::string const& callback, std::vector<std::string> const& params) {
     if (callback == "set_blending_mode_average"
-     || callback == "set_blending_mode_median") {
+     || callback == "set_blending_mode_median"
+     || callback == "set_frustum_vis_pass_enable") {
       std::stringstream str(params[0]);
       bool checked;
       str >> checked;
 
       if (callback == "set_blending_mode_average") current_blending_mode = 0;
       if (callback == "set_blending_mode_median") current_blending_mode = 1;
-    }
+      if (callback == "set_frustum_vis_pass_enable") frustum_vis_pass->set_enabled(checked);
+    } if (callback == "set_query_radius") {
+        std::stringstream str(params[0]);
+        double query_radius;
+        str >> query_radius;
+        frustum_vis_pass->set_query_radius(query_radius);
+      }
   });
 
   /////////////////////////////////////////////////////////////////////////////

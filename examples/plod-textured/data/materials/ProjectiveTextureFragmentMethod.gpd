@@ -18,7 +18,7 @@
       proj_tex_space_pos /= proj_tex_space_pos.w;
       if (abs(proj_tex_space_pos.x) <  1.0 &&
           abs(proj_tex_space_pos.y) <  1.0 &&
-          depth                     >= 0.0) {
+          depth                     >= 0.0 ) {
 
         vec2 proj_texcoord = proj_tex_space_pos.xy;
         proj_texcoord = 0.5 * proj_texcoord + 0.5;

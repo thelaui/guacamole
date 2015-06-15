@@ -35,8 +35,15 @@ class GUA_DLL FrustumVisualizationPassDescription : public PipelinePassDescripti
   FrustumVisualizationPassDescription();
   std::shared_ptr<PipelinePassDescription> make_copy() const override;
   friend class Pipeline;
+
+  void set_enabled(bool enabled);
+  double get_query_radius() const { return query_radius_; }
+  void set_query_radius(double query_radius);
+
  protected:
   PipelinePass make_pass(RenderContext const&, SubstitutionMap&) override;
+  bool enabled_;
+  double query_radius_;
 };
 
 }

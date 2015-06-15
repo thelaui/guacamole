@@ -45,34 +45,34 @@ PipelinePass TextureProjectionUpdatePassDescription::make_pass(RenderContext con
 {
   PipelinePass pass{*this, ctx, substitution_map};
 
-  auto uniform_block_(std::make_shared<TextureProjectionUniformBlock>(ctx.render_device));
+  // auto uniform_block_(std::make_shared<TextureProjectionUniformBlock>(ctx.render_device));
 
-  auto frusta = texstr::FrustumManagement::fetch_frusta();
-  std::vector<math::mat4f> projection_view_mats_;
-  std::vector<math::vec2ui> projection_textures_;
+  // auto frusta = texstr::FrustumManagement::fetch_frusta();
+  // std::vector<math::mat4f> projection_view_mats_;
+  // std::vector<math::vec2ui> projection_textures_;
 
-  for (int i(0); i < MAX_PROJECTIVE_TEXTURE_COUNT; ++i) {
-    projection_view_mats_.push_back(math::mat4f(frusta[i].get_projection() * frusta[i].get_view()));
+  // for (int i(0); i < MAX_PROJECTIVE_TEXTURE_COUNT; ++i) {
+  //   projection_view_mats_.push_back(math::mat4f(frusta[i].get_projection() * frusta[i].get_view()));
 
-    math::vec2ui texture_handle(0);
-    if (!TextureDatabase::instance()->contains(frusta[i].get_image_file_name())) {
-      auto new_tex = std::make_shared<Texture2D>(frusta[i].get_image_file_name());
-      TextureDatabase::instance()->add(frusta[i].get_image_file_name(), new_tex);
-      texture_handle = new_tex->get_handle(ctx);
-    } else {
-      texture_handle = TextureDatabase::instance()->lookup(frusta[i].get_image_file_name())->get_handle(ctx);
-    }
-    projection_textures_.push_back(texture_handle);
-  }
+  //   math::vec2ui texture_handle(0);
+  //   if (!TextureDatabase::instance()->contains(frusta[i].get_image_file_name())) {
+  //     auto new_tex = std::make_shared<Texture2D>(frusta[i].get_image_file_name());
+  //     TextureDatabase::instance()->add(frusta[i].get_image_file_name(), new_tex);
+  //     texture_handle = new_tex->get_handle(ctx);
+  //   } else {
+  //     texture_handle = TextureDatabase::instance()->lookup(frusta[i].get_image_file_name())->get_handle(ctx);
+  //   }
+  //   projection_textures_.push_back(texture_handle);
+  // }
 
-  pass.process_ = [uniform_block_, projection_view_mats_, projection_textures_](PipelinePass&, PipelinePassDescription const&, Pipeline& pipe) {
+  // pass.process_ = [uniform_block_, projection_view_mats_, projection_textures_](PipelinePass&, PipelinePassDescription const&, Pipeline& pipe) {
 
-    RenderContext const& ctx(pipe.get_context());
+  //   RenderContext const& ctx(pipe.get_context());
 
-    uniform_block_->update(ctx, projection_view_mats_, projection_textures_);
-    ctx.render_context->bind_uniform_buffer(uniform_block_->block().block_buffer(), 2);
+  //   uniform_block_->update(ctx, projection_view_mats_, projection_textures_);
+  //   ctx.render_context->bind_uniform_buffer(uniform_block_->block().block_buffer(), 2);
 
-  };
+  // };
 
   return pass;
 }
