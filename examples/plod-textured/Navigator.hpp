@@ -2,6 +2,7 @@
 #define NAVIGATOR_HPP
 
 #include <gua/utils/Timer.hpp>
+#include <gua/gui/keyboard_enums.hpp>
 
 #include <scm/core/math.h>
 
@@ -16,7 +17,7 @@ class Navigator {
     void set_transform(scm::math::mat4f const& transform);
     scm::math::mat4f const& get_transform() const;
 
-    void set_key_press(unsigned char key);
+    void set_key_press(gua::Key key, int action);
     void set_mouse_button(int button, int state);
 
     void set_mouse_position(scm::math::vec2i const& new_position);
@@ -28,8 +29,8 @@ class Navigator {
     scm::math::vec4f current_location_;
     scm::math::vec2f current_rotation_;
 
-    scm::math::vec2i mouse_position_;
-    scm::math::vec2i mouse_movement_;
+    scm::math::vec2f mouse_position_;
+    scm::math::vec2f mouse_movement_;
 
     bool w_pressed_;
     bool s_pressed_;

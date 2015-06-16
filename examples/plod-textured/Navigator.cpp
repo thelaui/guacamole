@@ -28,15 +28,14 @@ void Navigator::update() {
 
     frame_time_ = timer_.get_elapsed();
 
-    const float rotation_speed = 0.25f;
-    const float motion_speed = 1.f;
-    // const float motion_speed = 0.01f;
+    const float rotation_speed = 0.2f;
+    const float motion_speed = 0.02f;
 
     auto y_rot(scm::math::mat4f::identity());
     auto x_rot(scm::math::mat4f::identity());
 
     if (mlb_pressed_) {
-      current_rotation_ -= mouse_movement_;
+      current_rotation_ -= mouse_movement_;//*rotation_speed;
     }
 
     y_rot = scm::math::make_rotation( current_rotation_.x, 0.f, 1.f, 0.f);
@@ -65,22 +64,10 @@ void Navigator::update() {
     }
 
     auto target = scm::math::make_translation(current_location_.x, current_location_.y, current_location_.z) * rotation;
-
-    auto orig_rot = scm::math::quat<float>::from_matrix(transform_);
-    auto orig   = scm::math::make_translation(transform_[12], transform_[13], transform_[14]) *
-                  orig_rot.to_matrix();
-
-    float smoothness = frame_time_ * 10.0;
-
-    // transform_ = orig * (1.f - smoothness) + target * smoothness;
-    transform_ = target;
-
+    float smoothness = frame_time_ * 10;
+    transform_ = transform_ * (1.f - smoothness) + target * smoothness;
     mouse_movement_ = scm::math::vec2i(0);
 
-    w_pressed_ = false;
-    s_pressed_ = false;
-    a_pressed_ = false;
-    d_pressed_ = false;
     timer_.reset();
   }
 }
@@ -97,25 +84,23 @@ scm::math::mat4f const& Navigator::get_transform() const {
   return transform_;
 }
 
-void Navigator::set_key_press(unsigned char key) {
+void Navigator::set_key_press(gua::Key key, int action) {
   switch (key) {
-    case 'w':
-      w_pressed_ = true;
+    case gua::Key::W:
+      w_pressed_ = action != 0;
       break;
 
-    case 's':
-      s_pressed_ = true;
+    case gua::Key::S:
+      s_pressed_ = action != 0;
       break;
 
-    case 'a':
-      a_pressed_ = true;
+    case gua::Key::A:
+      a_pressed_ = action != 0;
       break;
 
-    case 'd':
-      d_pressed_ = true;
+    case gua::Key::D:
+      d_pressed_ = action != 0;
       break;
-
-    default: break;
   }
 }
 
@@ -124,7 +109,6 @@ void Navigator::set_mouse_button(int button, int state) {
     case 0:
       mlb_pressed_ = state == 1;
       break;
-    default: break;
   }
 }
 
@@ -132,4 +116,3 @@ void Navigator::set_mouse_position(scm::math::vec2i const& new_position) {
   mouse_movement_ = new_position - mouse_position_;
   mouse_position_ = new_position;
 }
-
