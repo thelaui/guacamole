@@ -136,7 +136,7 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
                                           scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
 
           for (int i(0); i < frusta.size(); ++i) {
-            auto corners(frusta[i].get_corners());
+            auto corners(frusta[i]->get_corners());
             for (int c(0); c < corners.size(); ++c) {
               vbo_mem[i * 8 + c] = corners[c];
             }

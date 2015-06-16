@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
   /////////////////////////////////////////////////////////////////////////////
 
   std::set<std::string> frustum_files;
-  std::vector<texstr::Frustum> frusta;
+  std::vector<texstr::Frustum*> frusta;
 
   // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
   boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
     new_frustum.set_image_file_name(frustum.get_image_file_name());
     new_frustum.set_capture_time(frustum.get_capture_time());
 
-    frusta.push_back(new_frustum);
+    frusta.push_back(new texstr::Frustum(new_frustum));
   }
 
   texstr::FrustumManagement::instance()->register_frusta(frusta);
@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
 
   Navigator navigator;
   bool navigator_active(false);
-  navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
+  navigator.set_transform(scm::math::mat4f(frusta[0]->get_camera_transform()));
 
   /////////////////////////////////////////////////////////////////////////////
   // create window and callback setup
@@ -318,12 +318,12 @@ int main(int argc, char** argv) {
       // arrow right
       if (key == 262) {
         current_frustum = std::min(current_frustum + 1, int(frusta.size()));
-        navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
+        navigator.set_transform(scm::math::mat4f(frusta[current_frustum]->get_camera_transform()));
         navigator_active = false;
       // arrow left
       } else if (key == 263) {
         current_frustum = std::max(current_frustum - 1, 0);
-        navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
+        navigator.set_transform(scm::math::mat4f(frusta[current_frustum]->get_camera_transform()));
         navigator_active = false;
       }
     }
@@ -346,8 +346,8 @@ int main(int argc, char** argv) {
       // screen->set_transform(scm::math::make_translation(0.0, 0.0, -0.0061637285428946));
       // screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
     } else {
-      camera->set_transform(gua::math::mat4(frusta[current_frustum].get_camera_transform()));
-      screen->set_world_transform(frusta[current_frustum].get_screen_transform());
+      camera->set_transform(gua::math::mat4(frusta[current_frustum]->get_camera_transform()));
+      screen->set_world_transform(frusta[current_frustum]->get_screen_transform());
       screen->data.set_size(gua::math::vec2(1.0, 1.0));;
     }
 
