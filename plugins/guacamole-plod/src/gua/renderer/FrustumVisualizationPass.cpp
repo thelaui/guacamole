@@ -91,14 +91,15 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
         0);
 
     auto format = scm::gl::vertex_format({
-      scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-      scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-      scm::gl::vertex_format::element(0, 2, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-      scm::gl::vertex_format::element(0, 3, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-      scm::gl::vertex_format::element(0, 4, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-      scm::gl::vertex_format::element(0, 5, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-      scm::gl::vertex_format::element(0, 6, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8),
-      scm::gl::vertex_format::element(0, 7, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 8)
+      scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9),
+      scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9),
+      scm::gl::vertex_format::element(0, 2, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9),
+      scm::gl::vertex_format::element(0, 3, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9),
+      scm::gl::vertex_format::element(0, 4, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9),
+      scm::gl::vertex_format::element(0, 5, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9),
+      scm::gl::vertex_format::element(0, 6, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9),
+      scm::gl::vertex_format::element(0, 7, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9),
+      scm::gl::vertex_format::element(0, 8, scm::gl::TYPE_VEC3D, sizeof(scm::math::vec3d) * 9)
     });
 
     auto frustum_vao_ = ctx.render_device->create_vertex_array(format, {frustum_vbo_});
@@ -122,54 +123,24 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
 
       texstr::FrustumManagement::instance()->send_query(texstr_frustum, options);
 
-      auto frusta = texstr::FrustumManagement::instance()->fetch_cached_frusta();
+      auto nodes = texstr::FrustumManagement::instance()->fetch_cut();
       // auto frusta = texstr::FrustumManagement::get_all_frusta();
 
-      if (frusta.size() > 0) {
+      if (nodes.size() > 0) {
 
-        ctx.render_device->resize_buffer(frustum_vbo_, frusta.size() * 8 * sizeof(scm::math::vec3d));
-
-        {
-          auto vbo_mem = static_cast<scm::math::vec3d*>(
-                                      ctx.render_context->map_buffer(
-                                          frustum_vbo_,
-                                          scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
-
-          for (int i(0); i < frusta.size(); ++i) {
-            auto corners(frusta[i]->get_corners());
-            for (int c(0); c < corners.size(); ++c) {
-              vbo_mem[i * 8 + c] = corners[c];
-            }
-          }
-
-          ctx.render_context->unmap_buffer(frustum_vbo_);
-        }
-
-        ctx.render_context->bind_vertex_array(frustum_vao_);
-
-        ctx.render_context->apply();
-
-        ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, frusta.size());
-
-
+        ctx.render_device->resize_buffer(frustum_vbo_, nodes.size() * 9 * sizeof(scm::math::vec3d));
 
         // {
-        //   auto vbo_mem = static_cast<scm::math::vec3d*>(
+        //   auto vbo_mem = static_cast<scm::math:nodes:vec3d*>(
         //                               ctx.render_context->map_buffer(
         //                                   frustum_vbo_,
         //                                   scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
 
         //   for (int i(0); i < frusta.size(); ++i) {
-
-        //     auto bbox(frusta[i].get_bounding_box());
-        //     vbo_mem[i * 8 + 0] = scm::math::vec3d(bbox.min.x, bbox.min.y, bbox.min.z);
-        //     vbo_mem[i * 8 + 1] = scm::math::vec3d(bbox.min.x, bbox.min.y, bbox.max.z);
-        //     vbo_mem[i * 8 + 2] = scm::math::vec3d(bbox.min.x, bbox.max.y, bbox.min.z);
-        //     vbo_mem[i * 8 + 3] = scm::math::vec3d(bbox.min.x, bbox.max.y, bbox.max.z);
-        //     vbo_mem[i * 8 + 4] = scm::math::vec3d(bbox.max.x, bbox.min.y, bbox.min.z);
-        //     vbo_mem[i * 8 + 5] = scm::math::vec3d(bbox.max.x, bbox.min.y, bbox.max.z);
-        //     vbo_mem[i * 8 + 6] = scm::math::vec3d(bbox.max.x, bbox.max.y, bbox.min.z);
-        //     vbo_mem[i * 8 + 7] = scm::math::vec3d(bbox.max.x, bbox.max.y, bbox.max.z);
+        //     auto corners(frusta[i]->get_corners());
+        //     for (int c(0); c < corners.size(); ++c) {
+        //       vbo_mem[i * 8 + c] = corners[c];
+        //     }
         //   }
 
         //   ctx.render_context->unmap_buffer(frustum_vbo_);
@@ -180,6 +151,36 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
         // ctx.render_context->apply();
 
         // ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, frusta.size());
+
+
+
+        {
+          auto vbo_mem = static_cast<scm::math::vec3d*>(
+                                      ctx.render_context->map_buffer(
+                                          frustum_vbo_,
+                                          scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
+
+          for (int i(0); i < nodes.size(); ++i) {
+            auto bbox(nodes[i]->bounding_box);
+            vbo_mem[i * 9 + 0] = scm::math::vec3d(bbox.min.x, bbox.min.y, bbox.min.z);
+            vbo_mem[i * 9 + 1] = scm::math::vec3d(bbox.min.x, bbox.min.y, bbox.max.z);
+            vbo_mem[i * 9 + 2] = scm::math::vec3d(bbox.min.x, bbox.max.y, bbox.min.z);
+            vbo_mem[i * 9 + 3] = scm::math::vec3d(bbox.min.x, bbox.max.y, bbox.max.z);
+            vbo_mem[i * 9 + 4] = scm::math::vec3d(bbox.max.x, bbox.min.y, bbox.min.z);
+            vbo_mem[i * 9 + 5] = scm::math::vec3d(bbox.max.x, bbox.min.y, bbox.max.z);
+            vbo_mem[i * 9 + 6] = scm::math::vec3d(bbox.max.x, bbox.max.y, bbox.min.z);
+            vbo_mem[i * 9 + 7] = scm::math::vec3d(bbox.max.x, bbox.max.y, bbox.max.z);
+            vbo_mem[i * 9 + 8] = scm::math::vec3d(nodes[i]->depth / 13.0);
+          }
+
+          ctx.render_context->unmap_buffer(frustum_vbo_);
+        }
+
+        ctx.render_context->bind_vertex_array(frustum_vao_);
+
+        ctx.render_context->apply();
+
+        ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, nodes.size());
       }
     };
 

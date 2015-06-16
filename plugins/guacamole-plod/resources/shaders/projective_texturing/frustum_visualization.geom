@@ -33,21 +33,28 @@ in vec4 varying_corner_rbb[];
 in vec4 varying_corner_rbf[];
 in vec4 varying_corner_rtb[];
 in vec4 varying_corner_rtf[];
+in vec3 varying_color[];
+
+out vec3 frustum_color;
 
 void main() {
 
   // back quad
 
   gl_Position = varying_corner_lbb[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_ltb[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_rtb[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_rbb[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   EndPrimitive();
@@ -55,15 +62,19 @@ void main() {
   // bottom quad
 
   gl_Position = varying_corner_lbf[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_lbb[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_rbb[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_rbf[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   EndPrimitive();
@@ -71,15 +82,19 @@ void main() {
   // front quad
 
   gl_Position = varying_corner_ltf[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_lbf[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_rbf[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_rtf[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   EndPrimitive();
@@ -87,15 +102,19 @@ void main() {
   // top quad
 
   gl_Position = varying_corner_ltb[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_ltf[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_rtf[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   gl_Position = varying_corner_rtb[0];
+  frustum_color = varying_color[0];
   EmitVertex();
 
   EndPrimitive();

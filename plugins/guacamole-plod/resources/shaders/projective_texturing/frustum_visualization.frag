@@ -22,7 +22,7 @@
 @include "shaders/common/header.glsl"
 
 // varyings
-in vec2 gua_quad_coords;
+in vec3 frustum_color;
 
 @include "shaders/common/gua_camera_uniforms.glsl"
 @include "shaders/common/gua_gbuffer_input.glsl"
@@ -31,7 +31,7 @@ in vec2 gua_quad_coords;
 @include "shaders/common/gua_fragment_shader_output.glsl"
 
 void main() {
-  vec3 gua_color = vec3(1, 0, 0);
+  vec3 gua_color = frustum_color;//vec3(1, 0, 0);
   float gua_emissivity = 1.0;
   float gua_roughness = 0.0;
   float gua_metalness = 0.0;

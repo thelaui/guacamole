@@ -36,6 +36,7 @@ layout(location = 4) in vec3 in_corner_rbb;
 layout(location = 5) in vec3 in_corner_rbf;
 layout(location = 6) in vec3 in_corner_rtb;
 layout(location = 7) in vec3 in_corner_rtf;
+layout(location = 8) in vec3 in_frustum_color;
 
 out vec4 varying_corner_lbb;
 out vec4 varying_corner_lbf;
@@ -45,6 +46,7 @@ out vec4 varying_corner_rbb;
 out vec4 varying_corner_rbf;
 out vec4 varying_corner_rtb;
 out vec4 varying_corner_rtf;
+out vec3 varying_color;
 
 void main() {
   mat4 mat = gua_projection_matrix * gua_view_matrix;
@@ -57,6 +59,8 @@ void main() {
   varying_corner_rbf = mat * vec4(in_corner_rbf, 1.0);
   varying_corner_rtb = mat * vec4(in_corner_rtb, 1.0);
   varying_corner_rtf = mat * vec4(in_corner_rtf, 1.0);
+  varying_color = in_frustum_color;
+  // varying_color = vec3(1.0,0.0,0.0);
 }
 
 
