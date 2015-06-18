@@ -148,7 +148,8 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
             vbo_mem[i * 9 + 5] = scm::math::vec3d(bbox.max.x, bbox.min.y, bbox.max.z);
             vbo_mem[i * 9 + 6] = scm::math::vec3d(bbox.max.x, bbox.max.y, bbox.min.z);
             vbo_mem[i * 9 + 7] = scm::math::vec3d(bbox.max.x, bbox.max.y, bbox.max.z);
-            vbo_mem[i * 9 + 8] = scm::math::vec3d(nodes[i]->depth / 13.0);
+            vbo_mem[i * 9 + 8] = scm::math::vec3d(1.0 - nodes[i]->depth * 1.0 /
+                                                  texstr::FrustumManagement::instance()->get_tree_depth());
           }
 
           ctx.render_context->unmap_buffer(frustum_vbo_);
