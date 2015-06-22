@@ -193,6 +193,7 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
   frustum_vis_pass->set_query_radius(50.0);
+  frustum_vis_pass->set_enabled(false);
   pipe->add_pass(frustum_vis_pass);
   pipe->add_pass(std::make_shared<gua::TextureProjectionUpdatePassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
@@ -200,10 +201,12 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
   //pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
-  pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
+  // pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
+  pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::COLOR);
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/water_painted_noon.jpg");
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/bath.jpg");
-  pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/field.jpg");
+  // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/field.jpg");
+  pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.5f, 0.6f, 0.1f));
 
   camera->set_pipeline_description(pipe);
 
