@@ -160,6 +160,7 @@ int main(int argc, char** argv) {
   int current_frustum(0);
   int current_blending_range(0);
   int current_blending_mode(0);
+  float current_blending_factor(1.f);
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
@@ -223,11 +224,13 @@ int main(int argc, char** argv) {
 
   gui->on_loaded.connect([&]() {
     gui->add_javascript_getter("get_query_radius", [&](){ return std::to_string(frustum_vis_pass->get_query_radius());});
+    gui->add_javascript_getter("get_blending_factor", [&](){ return std::to_string(current_blending_factor);});
 
     gui->add_javascript_callback("set_blending_mode_average");
     gui->add_javascript_callback("set_blending_mode_median");
     gui->add_javascript_callback("set_frustum_vis_pass_enable");
     gui->add_javascript_callback("set_query_radius");
+    gui->add_javascript_callback("set_blending_factor");
 
     gui->call_javascript("init");
   });
@@ -243,12 +246,15 @@ int main(int argc, char** argv) {
       if (callback == "set_blending_mode_average") current_blending_mode = 0;
       if (callback == "set_blending_mode_median") current_blending_mode = 1;
       if (callback == "set_frustum_vis_pass_enable") frustum_vis_pass->set_enabled(checked);
-    } if (callback == "set_query_radius") {
-        std::stringstream str(params[0]);
-        double query_radius;
-        str >> query_radius;
-        frustum_vis_pass->set_query_radius(query_radius);
-      }
+    } else if (callback == "set_query_radius") {
+      std::stringstream str(params[0]);
+      double query_radius;
+      str >> query_radius;
+      frustum_vis_pass->set_query_radius(query_radius);
+    } else if (callback == "set_blending_factor") {
+      std::stringstream str(params[0]);
+      str >> current_blending_factor;
+    }
   });
 
   /////////////////////////////////////////////////////////////////////////////
@@ -358,9 +364,9 @@ int main(int argc, char** argv) {
       screen->data.set_size(gua::math::vec2(1.0, 1.0));;
     }
 
-    projective_texturing_material->set_uniform("current_frustum", current_frustum);
     projective_texturing_material->set_uniform("blending_range",  current_blending_range);
     projective_texturing_material->set_uniform("blending_mode",   current_blending_mode);
+    projective_texturing_material->set_uniform("blending_factor", current_blending_factor);
 
     window->process_events();
     if (window->should_close()) {
