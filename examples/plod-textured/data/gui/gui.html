@@ -221,6 +221,7 @@
 
         init_slider("#control-panel .query_radius", "query_radius");
         init_slider("#control-panel .blending_factor", "blending_factor");
+        init_slider("#control-panel .blending_range", "blending_range");
         // init_slider("#preview-panel .split_threshold", "split_threshold");
         // init_slider("#preview-panel .cell_size", "cell_size");
 
@@ -283,6 +284,12 @@
             </div>
             <div class="col-xs-7">
               <input class="slider blending_factor" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="1" data-slider-step="0.1" handle="custom"/>
+            </div>
+            <div class="col-xs-5">
+              Blending Range:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider blending_range" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="5" data-slider-step="1" handle="custom"/>
             </div>
           </div>
 

@@ -177,6 +177,7 @@ int main(int argc, char** argv) {
   camera->config.set_far_clip(100000.0f);
   // camera->config.set_far_clip(0.0061637285428946);
   camera->config.set_near_clip(0.01f);
+  camera->config.mask().blacklist.add_tag("invisible");
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
   // screen->data.set_size(gua::math::vec2(1.92f, 1.08f));
@@ -207,7 +208,8 @@ int main(int argc, char** argv) {
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/water_painted_noon.jpg");
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/bath.jpg");
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/field.jpg");
-  pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.5f, 0.6f, 0.1f));
+  // pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.5f, 0.6f, 0.1f));
+  pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.8f, 0.8f, 1.f));
 
   camera->set_pipeline_description(pipe);
 
@@ -223,12 +225,14 @@ int main(int argc, char** argv) {
   gui_quad->data.texture() = "gui";
   gui_quad->data.size() = gua::math::vec2ui(330, 760);
   gui_quad->data.anchor() = gua::math::vec2(1.f, 0.f);
+  bool gui_visible(true);
 
   graph.add_node("/", gui_quad);
 
   gui->on_loaded.connect([&]() {
     gui->add_javascript_getter("get_query_radius", [&](){ return std::to_string(frustum_vis_pass->get_query_radius());});
     gui->add_javascript_getter("get_blending_factor", [&](){ return std::to_string(current_blending_factor);});
+    gui->add_javascript_getter("get_blending_range", [&](){ return std::to_string(current_blending_range);});
 
     gui->add_javascript_callback("set_blending_mode_average");
     gui->add_javascript_callback("set_blending_mode_median");
@@ -236,6 +240,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_frustum_vis_enable");
     gui->add_javascript_callback("set_query_radius");
     gui->add_javascript_callback("set_blending_factor");
+    gui->add_javascript_callback("set_blending_range");
 
     gui->call_javascript("init");
   });
@@ -261,6 +266,9 @@ int main(int argc, char** argv) {
     } else if (callback == "set_blending_factor") {
       std::stringstream str(params[0]);
       str >> current_blending_factor;
+    } else if (callback == "set_blending_range") {
+      std::stringstream str(params[0]);
+      str >> current_blending_range;
     }
   });
 
@@ -305,20 +313,28 @@ int main(int argc, char** argv) {
   });
 
   window->on_scroll.connect([&current_blending_range](gua::math::vec2 const& scroll){
-    if (scroll.y > 0.0) {
-      current_blending_range = std::min(current_blending_range + 1, 5);
-    } else if (scroll.y < 0.0) {
-      current_blending_range = std::max(current_blending_range - 1, 0);
-    }
+    // if (scroll.y > 0.0) {
+    //   current_blending_range = std::min(current_blending_range + 1, 5);
+    // } else if (scroll.y < 0.0) {
+    //   current_blending_range = std::max(current_blending_range - 1, 0);
+    // }
   });
 
-  window->on_char.connect([&navigator, &navigator_active, &current_frustum, &frusta](unsigned key){
+  window->on_char.connect([&navigator, &navigator_active, &current_frustum,
+                           &frusta, &gui_quad, &gui_visible](unsigned key){
     if (key == 'e') {
       current_frustum = std::min(current_frustum + 1, int(frusta.size()));
       navigator_active = true;
     } else if (key == 'q') {
       current_frustum = std::max(current_frustum - 1, 0);
       navigator_active = true;
+    } else if (key == 'h') {
+      if (gui_visible) {
+        gui_quad->get_tags().add_tag("invisible");
+      } else {
+        gui_quad->get_tags().remove_tag("invisible");
+      }
+      gui_visible = !gui_visible;
     }
   });
 

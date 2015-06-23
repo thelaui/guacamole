@@ -192,7 +192,7 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
             for (int c(0); c < corners.size(); ++c) {
               vbo_mem[i * 9 + c] = corners[c];
             }
-            vbo_mem[i * 9 + 8] = scm::math::vec3d(0.8, 0.5, 0.1);
+            vbo_mem[i * 9 + 8] = scm::math::vec3d(0.5, 0.8, 0.1);
           }
 
           ctx.render_context->unmap_buffer(frustum_vbo_);
