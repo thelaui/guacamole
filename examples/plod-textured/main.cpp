@@ -193,7 +193,8 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
   frustum_vis_pass->set_query_radius(50.0);
-  frustum_vis_pass->set_enabled(false);
+  frustum_vis_pass->set_tree_visualization_enabled(false);
+  frustum_vis_pass->set_frustum_visualization_enabled(false);
   pipe->add_pass(frustum_vis_pass);
   pipe->add_pass(std::make_shared<gua::TextureProjectionUpdatePassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
@@ -231,7 +232,8 @@ int main(int argc, char** argv) {
 
     gui->add_javascript_callback("set_blending_mode_average");
     gui->add_javascript_callback("set_blending_mode_median");
-    gui->add_javascript_callback("set_frustum_vis_pass_enable");
+    gui->add_javascript_callback("set_tree_vis_enable");
+    gui->add_javascript_callback("set_frustum_vis_enable");
     gui->add_javascript_callback("set_query_radius");
     gui->add_javascript_callback("set_blending_factor");
 
@@ -241,14 +243,16 @@ int main(int argc, char** argv) {
   gui->on_javascript_callback.connect([&](std::string const& callback, std::vector<std::string> const& params) {
     if (callback == "set_blending_mode_average"
      || callback == "set_blending_mode_median"
-     || callback == "set_frustum_vis_pass_enable") {
+     || callback == "set_tree_vis_enable"
+     || callback == "set_frustum_vis_enable") {
       std::stringstream str(params[0]);
       bool checked;
       str >> checked;
 
       if (callback == "set_blending_mode_average") current_blending_mode = 0;
       if (callback == "set_blending_mode_median") current_blending_mode = 1;
-      if (callback == "set_frustum_vis_pass_enable") frustum_vis_pass->set_enabled(checked);
+      if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
+      if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
     } else if (callback == "set_query_radius") {
       std::stringstream str(params[0]);
       double query_radius;

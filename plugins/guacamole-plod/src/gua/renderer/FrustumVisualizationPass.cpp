@@ -34,7 +34,8 @@ namespace gua {
 
 FrustumVisualizationPassDescription::FrustumVisualizationPassDescription()
   : PipelinePassDescription()
-  , enabled_(true)
+  , tree_visualization_enabled_(true)
+  , frustum_visualization_enabled_(true)
   , query_radius_(0.0) {
   vertex_shader_ = "resources/shaders/projective_texturing/frustum_visualization.vert";
   geometry_shader_ = "resources/shaders/projective_texturing/frustum_visualization.geom";
@@ -69,8 +70,13 @@ std::shared_ptr<PipelinePassDescription> FrustumVisualizationPassDescription::ma
   return std::make_shared<FrustumVisualizationPassDescription>(*this);
 }
 
-void FrustumVisualizationPassDescription::set_enabled(bool enabled) {
-  enabled_ = enabled;
+void FrustumVisualizationPassDescription::set_tree_visualization_enabled(bool enabled) {
+  tree_visualization_enabled_ = enabled;
+  touch();
+}
+
+void FrustumVisualizationPassDescription::set_frustum_visualization_enabled(bool enabled) {
+  frustum_visualization_enabled_ = enabled;
   touch();
 }
 
@@ -83,7 +89,8 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
 {
   PipelinePass pass{*this, ctx, substitution_map};
 
-  auto enabled = enabled_;
+  auto tree_visualization_enabled = tree_visualization_enabled_;
+  auto frustum_visualization_enabled = frustum_visualization_enabled_;
   auto frustum_vbo_ = ctx.render_device->create_buffer(
       scm::gl::BIND_VERTEX_BUFFER,
       scm::gl::USAGE_DYNAMIC_DRAW,
@@ -105,7 +112,8 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
   auto frustum_vao_ = ctx.render_device->create_vertex_array(format, {frustum_vbo_});
   auto query_radius = query_radius_;
 
-  pass.process_ = [frustum_vbo_, frustum_vao_, query_radius, enabled](
+  pass.process_ = [frustum_vbo_, frustum_vao_, query_radius,
+                   tree_visualization_enabled, frustum_visualization_enabled](
       PipelinePass &, PipelinePassDescription const&, Pipeline & pipe) {
 
     RenderContext const& ctx(pipe.get_context());
@@ -123,13 +131,17 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
 
     texstr::FrustumManagement::instance()->send_query(texstr_frustum, options);
 
-    auto nodes = texstr::FrustumManagement::instance()->fetch_cut();
-    // auto frusta = texstr::FrustumManagement::get_all_frusta();
+    std::vector<texstr::FrustumTree::FrustumNode*> nodes;
+
+    if (tree_visualization_enabled) {
+      nodes = texstr::FrustumManagement::instance()->fetch_cut();
+    }
+
     auto frusta = texstr::FrustumManagement::instance()->fetch_frusta();
 
     if (!nodes.empty()) {
 
-      if (enabled) {
+      if (tree_visualization_enabled) {
         // render cut visualization
         ctx.render_device->resize_buffer(frustum_vbo_, nodes.size() * 9 * sizeof(scm::math::vec3d));
 
@@ -161,41 +173,45 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
         ctx.render_context->apply();
 
         ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, nodes.size());
+      }
+    }
 
-        // separately, render visualization of frusta of nodes at cut level 0
-        if (!frusta.empty()) {
-          ctx.render_device->resize_buffer(frustum_vbo_, frusta.size() * 9 * sizeof(scm::math::vec3d));
-          {
-            auto vbo_mem = static_cast<scm::math::vec3d*>(
-                                        ctx.render_context->map_buffer(
-                                            frustum_vbo_,
-                                            scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
+    if (!frusta.empty()) {
 
-            for (int i(0); i < frusta.size(); ++i) {
-              auto corners(frusta[i]->get_corners());
-              for (int c(0); c < corners.size(); ++c) {
-                vbo_mem[i * 9 + c] = corners[c];
-              }
-              vbo_mem[i * 9 + 8] = scm::math::vec3d(1.0, 0.0, 0.0);
+      if (frustum_visualization_enabled) {
+      // separately, render visualization of frusta of nodes at cut level 0
+        ctx.render_device->resize_buffer(frustum_vbo_, frusta.size() * 9 * sizeof(scm::math::vec3d));
+        {
+          auto vbo_mem = static_cast<scm::math::vec3d*>(
+                                      ctx.render_context->map_buffer(
+                                          frustum_vbo_,
+                                          scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
+
+          for (int i(0); i < frusta.size(); ++i) {
+            auto corners(frusta[i]->get_corners());
+            for (int c(0); c < corners.size(); ++c) {
+              vbo_mem[i * 9 + c] = corners[c];
             }
-
-            ctx.render_context->unmap_buffer(frustum_vbo_);
+            vbo_mem[i * 9 + 8] = scm::math::vec3d(0.8, 0.5, 0.1);
           }
 
-          ctx.render_context->bind_vertex_array(frustum_vao_);
-
-          ctx.render_context->apply();
-
-          ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, frusta.size());
-
+          ctx.render_context->unmap_buffer(frustum_vbo_);
         }
+
+        ctx.render_context->bind_vertex_array(frustum_vao_);
+
+        ctx.render_context->apply();
+
+        ctx.render_context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, frusta.size());
       }
 
+      // upload textures for currently visible frusta
       texstr::TextureManagement::instance()->update_texture_block(ctx.render_device,
                                                                   ctx.render_context,
                                                                   frusta, 2);
-
     }
+
+
   };
 
   return pass;
