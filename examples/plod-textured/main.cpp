@@ -278,6 +278,7 @@ int main(int argc, char** argv) {
 
   Navigator navigator;
   bool navigator_active(false);
+  bool gui_active(false);
   navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
 
   /////////////////////////////////////////////////////////////////////////////
@@ -301,15 +302,20 @@ int main(int argc, char** argv) {
     gua::math::vec2 hit_pos;
     if (gui_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
       gui->inject_mouse_position_relative(hit_pos);
+      gui_active = true;
     } else {
       navigator.set_mouse_position(gua::math::vec2i(pos));
+      gui_active = false;
     }
   });
 
   window->on_button_press.connect([&](int button, int action, int mods){
-    navigator_active = true;
-    navigator.set_mouse_button(button, action);
-    gui->inject_mouse_button(gua::Button(button), action, mods);
+    if (!gui_active) {
+      navigator_active = true;
+      navigator.set_mouse_button(button, action);
+    } else {
+      gui->inject_mouse_button(gua::Button(button), action, mods);
+    }
   });
 
   window->on_scroll.connect([&current_blending_range](gua::math::vec2 const& scroll){
@@ -356,11 +362,13 @@ int main(int argc, char** argv) {
         current_frustum = std::min(current_frustum + 1, int(frusta.size()));
         navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
         navigator_active = false;
+        std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
       // arrow left
       } else if (key == 263) {
         current_frustum = std::max(current_frustum - 1, 0);
         navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
         navigator_active = false;
+        std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
       }
     }
   });
