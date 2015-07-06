@@ -146,7 +146,7 @@
       gua_roughness = 1.0;
       gua_metalness = 1.0;
       gua_emissivity = 1.0;
-      gua_flags_passthrough = false;
+      gua_flags_passthrough = true;
       gua_alpha = 1.0;
     }
   ",

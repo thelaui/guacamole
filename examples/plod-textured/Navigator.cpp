@@ -77,7 +77,8 @@ void Navigator::set_transform(scm::math::mat4f const& transform) {
   current_location_ = scm::math::vec4f(transform_[12], transform_[13], transform_[14], 1.0f);
 
   auto rotation(gua::math::get_euler_angles(gua::math::mat4(transform)));
-  current_rotation_ = scm::math::vec2f(rotation.y, -rotation.x);
+  // current_rotation_ = scm::math::vec2f(rotation.y, -rotation.x);
+  current_rotation_ = scm::math::vec2f(rotation.y, 0.f);
 }
 
 scm::math::mat4f const& Navigator::get_transform() const {

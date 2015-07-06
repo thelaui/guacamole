@@ -43,12 +43,12 @@ FullscreenPassDescription::FullscreenPassDescription()
     @include "shaders/common/gua_camera_uniforms.glsl"
     @include "shaders/common/gua_gbuffer_input.glsl"
     layout(location=0) out vec3 gua_out_color;
-    void main() { 
+    void main() {
       gua_out_color = gua_get_color();
     }
   )";
 
-#ifndef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
+#ifdef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
   ResourceFactory factory;
   fragment_shader_ = factory.prepare_shader(fragment_shader_, "FullscreenPass shader");
 #else
@@ -69,7 +69,7 @@ FullscreenPassDescription::FullscreenPassDescription()
 
 FullscreenPassDescription& FullscreenPassDescription::source(std::string const& source) {
 
-#ifndef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
+#ifdef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
   ResourceFactory factory;
   fragment_shader_ = factory.prepare_shader(source, "FullscreenPass shader");
 #else

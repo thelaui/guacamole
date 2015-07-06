@@ -183,6 +183,7 @@
         init_radio("#blending_mode_average", "blending_mode_average");
         init_radio("#blending_mode_median", "blending_mode_median");
 
+        init_checkbox("#enableBackgroundFill", "background_fill_enable");
         init_checkbox("#enableTreeVis", "tree_vis_enable");
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
 
@@ -196,23 +197,12 @@
 
 
       $(document).ready(function() {
-        $('body').on('click', function (e) {
-          $('[data-toggle="popover"]').each(function () {
-            if (!$(this).is(e.target) && $(this).has(e.target).length === 0 && $('.popover').has(e.target).length === 0) {
-                $(this).popover('hide');
-            }
-          });
-        });
 
         $('#settings-right .side-panel').hover(function(){
           $('#settings-right .side-panel').removeClass("expanded");
           $(this).addClass("expanded");
         });
 
-        $('body').on('click','.ps_texture_button', function () {
-          gua.set_ps_texture($(this).data("texture"));
-          $('.texture_button').css('background-image', 'url(../../' + $(this).data("texture") + ')');
-        });
       });
 
     </script>
@@ -276,6 +266,20 @@
             </div>
             <div class="col-xs-7">
               <input class="slider blending_range" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="5" data-slider-step="1" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Fill Background:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableBackgroundFill" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
             </div>
           </div>
 

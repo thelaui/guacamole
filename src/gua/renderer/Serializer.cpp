@@ -79,7 +79,7 @@ void Serializer::check(SerializedScene& output,
 ////////////////////////////////////////////////////////////////////////////////
 
 /* virtual */ void Serializer::visit(node::Node* node) {
-  if (is_visible(node)) {
+  if (is_visible(node) || node->is_root()) {
     visit_children(node);
   }
 }

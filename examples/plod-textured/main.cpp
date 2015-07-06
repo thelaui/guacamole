@@ -54,6 +54,7 @@ int main(int argc, char** argv) {
   gua::init(argc, argv);
 
   gua::Logger::enable_debug = false;
+  texstr::Logger::state.verbose = false;
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene
@@ -157,12 +158,12 @@ int main(int argc, char** argv) {
   }
 
   texstr::FrustumManagement::instance()->register_frusta(frusta);
-  texstr::Logger::state.verbose = true;
 
   int current_frustum(0);
   int current_blending_range(0);
   int current_blending_mode(0);
   int current_selection_mode(0);
+  int background_fill_enabled(0);
   float current_blending_factor(1.f);
 
   /////////////////////////////////////////////////////////////////////////////
@@ -178,9 +179,11 @@ int main(int argc, char** argv) {
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
   camera->config.set_far_clip(100000.0f);
-  // camera->config.set_far_clip(0.0061637285428946);
   camera->config.set_near_clip(0.01f);
+  // camera->config.set_enable_frustum_culling(false);
   camera->config.mask().blacklist.add_tag("invisible");
+
+
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
   // screen->data.set_size(gua::math::vec2(1.92f, 1.08f));
@@ -188,6 +191,12 @@ int main(int argc, char** argv) {
   screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
   screen->translate(0.0, 0.0, -0.0061637285428946);
 
+  auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
+  frustum_vis_pass->set_query_radius(50.0);
+  frustum_vis_pass->set_tree_visualization_enabled(false);
+  frustum_vis_pass->set_frustum_visualization_enabled(false);
+  auto fill_pass = std::make_shared<gua::FullscreenPassDescription>();
+  fill_pass->source_file("data/shaders/background_fill.frag");
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
@@ -195,22 +204,20 @@ int main(int argc, char** argv) {
   // pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   //pipe->add_pass(std::make_shared<gua::BBoxPassDescription>());
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
-  auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
-  frustum_vis_pass->set_query_radius(50.0);
-  frustum_vis_pass->set_tree_visualization_enabled(false);
-  frustum_vis_pass->set_frustum_visualization_enabled(false);
   pipe->add_pass(frustum_vis_pass);
   pipe->add_pass(std::make_shared<gua::TextureProjectionUpdatePassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
+  pipe->add_pass(fill_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
-  //pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
   // pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
   pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::COLOR);
+  // pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::QUAD_TEXTURE);
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/water_painted_noon.jpg");
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/bath.jpg");
   // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/field.jpg");
+  // pipe->get_resolve_pass()->background_texture("fill_texture");
   // pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.5f, 0.6f, 0.1f));
   pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.8f, 0.8f, 1.f));
 
@@ -241,6 +248,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_selection_mode_fragment");
     gui->add_javascript_callback("set_blending_mode_average");
     gui->add_javascript_callback("set_blending_mode_median");
+    gui->add_javascript_callback("set_background_fill_enable");
     gui->add_javascript_callback("set_tree_vis_enable");
     gui->add_javascript_callback("set_frustum_vis_enable");
     gui->add_javascript_callback("set_query_radius");
@@ -255,6 +263,7 @@ int main(int argc, char** argv) {
      || callback == "set_selection_mode_fragment"
      || callback == "set_blending_mode_average"
      || callback == "set_blending_mode_median"
+     || callback == "set_background_fill_enable"
      || callback == "set_tree_vis_enable"
      || callback == "set_frustum_vis_enable") {
       std::stringstream str(params[0]);
@@ -265,6 +274,7 @@ int main(int argc, char** argv) {
       if (callback == "set_selection_mode_fragment") current_selection_mode = 1;
       if (callback == "set_blending_mode_average") current_blending_mode = 0;
       if (callback == "set_blending_mode_median") current_blending_mode = 1;
+      if (callback == "set_background_fill_enable") background_fill_enabled = checked ? 1 : 0;
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
     } else if (callback == "set_query_radius") {
@@ -309,7 +319,7 @@ int main(int argc, char** argv) {
 
   window->on_move_cursor.connect([&](gua::math::vec2 const& pos) {
     gua::math::vec2 hit_pos;
-    if (gui_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
+    if (gui_visible && gui_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
       gui->inject_mouse_position_relative(hit_pos);
       gui_active = true;
     } else {
@@ -337,13 +347,7 @@ int main(int argc, char** argv) {
 
   window->on_char.connect([&navigator, &navigator_active, &current_frustum,
                            &frusta, &gui_quad, &gui_visible](unsigned key){
-    if (key == 'e') {
-      current_frustum = std::min(current_frustum + 1, int(frusta.size()));
-      navigator_active = true;
-    } else if (key == 'q') {
-      current_frustum = std::max(current_frustum - 1, 0);
-      navigator_active = true;
-    } else if (key == 'h') {
+    if (key == 'h') {
       if (gui_visible) {
         gui_quad->get_tags().add_tag("invisible");
       } else {
@@ -368,7 +372,7 @@ int main(int argc, char** argv) {
     if (action == 1 || action == 2) {
       // arrow right
       if (key == 262) {
-        current_frustum = std::min(current_frustum + 1, int(frusta.size()));
+        current_frustum = std::min(current_frustum + 1, int(frusta.size() - 1));
         navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
         navigator_active = false;
         std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
@@ -408,6 +412,9 @@ int main(int argc, char** argv) {
     projective_texturing_material->set_uniform("blending_mode",   current_blending_mode);
     projective_texturing_material->set_uniform("selection_mode",  current_selection_mode);
     projective_texturing_material->set_uniform("blending_factor", current_blending_factor);
+    int enable_background(0);
+    if (background_fill_enabled == 1 && !navigator_active) enable_background = 1;
+    fill_pass->uniform("enabled", enable_background);
 
     window->process_events();
     if (window->should_close()) {
