@@ -177,53 +177,19 @@
 
       function init() {
 
+        init_radio("#selection_mode_camera", "selection_mode_camera");
+        init_radio("#selection_mode_fragment", "selection_mode_fragment");
+
         init_radio("#blending_mode_average", "blending_mode_average");
         init_radio("#blending_mode_median", "blending_mode_median");
+
         init_checkbox("#enableTreeVis", "tree_vis_enable");
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
-        // init_radio("#manipulation_object", "manipulation_object");
-
-        // init_radio("#scene_one_oilrig", "scene_one_oilrig");
-        // init_radio("#scene_many_oilrigs", "scene_many_oilrigs");
-        // init_radio("#scene_sponza", "scene_sponza");
-        // init_radio("#scene_teapot", "scene_teapot");
-        // init_radio("#scene_sphere", "scene_sphere");
-        // init_radio("#scene_textured_quads", "scene_textured_quads");
-
-        // init_checkbox("#orthographic", "orthographic");
-        // init_checkbox("#depth_test", "depth_test");
-        // init_checkbox("#backface_culling", "backface_culling");
-
-        // init_radio("#gbuffer_type_none", "gbuffer_type_none");
-        // init_radio("#gbuffer_type_screen_aligned_quads", "gbuffer_type_screen_aligned_quads");
-        // init_radio("#gbuffer_type_normal_aligned_quads", "gbuffer_type_normal_aligned_quads");
-        // init_radio("#gbuffer_type_depth_aligned_quads", "gbuffer_type_depth_aligned_quads");
-        // init_radio("#gbuffer_type_points", "gbuffer_type_points");
-        // init_radio("#gbuffer_type_scaled_points", "gbuffer_type_scaled_points");
-        // init_radio("#gbuffer_type_grid", "gbuffer_type_grid");
-        // init_radio("#gbuffer_type_adaptive_grid", "gbuffer_type_adaptive_grid");
-
-        // init_radio("#abuffer_type_none", "abuffer_type_none");
-        // init_radio("#abuffer_type_quads", "abuffer_type_quads");
-        // init_radio("#abuffer_type_points", "abuffer_type_points");
-        // init_radio("#abuffer_type_scaled_points", "abuffer_type_scaled_points");
-        // init_checkbox("#adaptive_abuffer", "adaptive_abuffer");
-
-        // init_checkbox("#show_warp_grid", "show_warp_grid");
-        // init_checkbox("#debug_cell_colors", "debug_cell_colors");
-        // init_checkbox("#debug_cell_gap", "debug_cell_gap");
-
-
-        // init_radio("#grid_surface", "grid_surface");
-        // init_radio("#grid_adaptive_surface", "grid_adaptive_surface");
-        // init_radio("#grid_depth_threshold", "grid_depth_threshold");
-
 
         init_slider("#control-panel .query_radius", "query_radius");
         init_slider("#control-panel .blending_factor", "blending_factor");
         init_slider("#control-panel .blending_range", "blending_range");
-        // init_slider("#preview-panel .split_threshold", "split_threshold");
-        // init_slider("#preview-panel .cell_size", "cell_size");
+
 
         $("body").addClass("on");
       }
@@ -260,6 +226,26 @@
         <div id="control-panel" class="panel-inner">
 
           <h4><i class="fa fa-truck"></i> Options</h4>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Selection Mode:
+            </div>
+            <div class="col-xs-7">
+              <div class="radio">
+                <label>
+                  <input type="radio" name="selectionModeRadios" id="selection_mode_camera" value="" checked>
+                  <span>Closest to camera</span>
+                </label>
+              </div>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="selectionModeRadios" id="selection_mode_fragment" value="">
+                  <span>Closest to fragment</span>
+                </label>
+              </div>
+            </div>
+          </div>
 
           <div class="row">
             <div class="col-xs-5">

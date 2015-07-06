@@ -125,6 +125,7 @@ int main(int argc, char** argv) {
 
   // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
   boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
+  // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0_new");
 
   if (is_directory(frusta_path)) {
 
@@ -156,10 +157,12 @@ int main(int argc, char** argv) {
   }
 
   texstr::FrustumManagement::instance()->register_frusta(frusta);
+  texstr::Logger::state.verbose = true;
 
   int current_frustum(0);
   int current_blending_range(0);
   int current_blending_mode(0);
+  int current_selection_mode(0);
   float current_blending_factor(1.f);
 
   /////////////////////////////////////////////////////////////////////////////
@@ -234,6 +237,8 @@ int main(int argc, char** argv) {
     gui->add_javascript_getter("get_blending_factor", [&](){ return std::to_string(current_blending_factor);});
     gui->add_javascript_getter("get_blending_range", [&](){ return std::to_string(current_blending_range);});
 
+    gui->add_javascript_callback("set_selection_mode_camera");
+    gui->add_javascript_callback("set_selection_mode_fragment");
     gui->add_javascript_callback("set_blending_mode_average");
     gui->add_javascript_callback("set_blending_mode_median");
     gui->add_javascript_callback("set_tree_vis_enable");
@@ -246,7 +251,9 @@ int main(int argc, char** argv) {
   });
 
   gui->on_javascript_callback.connect([&](std::string const& callback, std::vector<std::string> const& params) {
-    if (callback == "set_blending_mode_average"
+    if (callback == "set_selection_mode_camera"
+     || callback == "set_selection_mode_fragment"
+     || callback == "set_blending_mode_average"
      || callback == "set_blending_mode_median"
      || callback == "set_tree_vis_enable"
      || callback == "set_frustum_vis_enable") {
@@ -254,6 +261,8 @@ int main(int argc, char** argv) {
       bool checked;
       str >> checked;
 
+      if (callback == "set_selection_mode_camera") current_selection_mode = 0;
+      if (callback == "set_selection_mode_fragment") current_selection_mode = 1;
       if (callback == "set_blending_mode_average") current_blending_mode = 0;
       if (callback == "set_blending_mode_median") current_blending_mode = 1;
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
@@ -397,6 +406,7 @@ int main(int argc, char** argv) {
 
     projective_texturing_material->set_uniform("blending_range",  current_blending_range);
     projective_texturing_material->set_uniform("blending_mode",   current_blending_mode);
+    projective_texturing_material->set_uniform("selection_mode",  current_selection_mode);
     projective_texturing_material->set_uniform("blending_factor", current_blending_factor);
 
     window->process_events();
