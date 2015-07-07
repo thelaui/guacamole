@@ -224,7 +224,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
       ->create_texture_2d(render_target_dims,
                           scm::gl::FORMAT_D32F,
                           1, 1, 1);
-          
+
     accumulation_pass_color_result_ = ctx.render_device
       ->create_texture_2d(render_target_dims,
                           scm::gl::FORMAT_RGB_16F,
@@ -270,7 +270,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
     //accumulation_pass_result_fbo_->attach_depth_stencil_buffer(depth_pass_log_depth_result_);
     accumulation_pass_result_fbo_->attach_depth_stencil_buffer(depth_pass_linear_depth_result_);
 
-  
+
     nearest_sampler_state_ = ctx.render_device
       ->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
 
@@ -303,7 +303,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
                                 scm::gl::point_raster_state(false));
 
 
-    fullscreen_quad_.reset(new scm::gl::quad_geometry(ctx.render_device, 
+    fullscreen_quad_.reset(new scm::gl::quad_geometry(ctx.render_device,
                                                       scm::math::vec2(-1.0f, -1.0f), scm::math::vec2(1.0f, 1.0f )));
 
     //invalidation before first write
@@ -312,13 +312,13 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
 
   /////////////////////////////////////////////////////////////////////////////////////////////
   pbr::context_t PLODRenderer::_register_context_in_cut_update(gua::RenderContext const& ctx) {
-    
+
     pbr::ren::Controller* controller = pbr::ren::Controller::GetInstance();
     if (previous_frame_count_ != ctx.framecount) {
       controller->ResetSystem();
     }
     return controller->DeduceContextId(ctx.id);
-      
+
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////
@@ -331,7 +331,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
         _initialize_accumulation_pass_program(material);
         program_changed = true;
         return accumulation_pass_programs_.at(material);
-      } 
+      }
       catch (std::exception& e) {
         Logger::LOG_WARNING << "PLODPass::_get_material_program(): Cannot create material for accumulation pass program: " << e.what() << std::endl;
         return std::shared_ptr<ShaderProgram>();
@@ -365,9 +365,9 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
 
     std::string cpu_query_name_plod_total = "CPU: Camera uuid: " + std::to_string(pipe.current_viewstate().viewpoint_uuid) + " / PLODPass";
     pipe.begin_cpu_query(cpu_query_name_plod_total);
-    
+
     ///////////////////////////////////////////////////////////////////////////
-    //  sort nodes 
+    //  sort nodes
     ///////////////////////////////////////////////////////////////////////////
     auto sorted_objects(scene.nodes.find(std::type_index(typeid(node::PLODNode))));
 
@@ -506,7 +506,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
 
       std::vector<pbr::ren::Cut::NodeSlotAggregate>& node_list = cut.complete_set();
 
-      //perform frustum culling 
+      //perform frustum culling
       pbr::ren::KdnTree const* kdn_tree = database->GetModel(model_id)->kdn_tree();
       scm::gl::frustum const& culling_frustum = cut_update_cam.GetFrustumByModel(math::mat4f(scm_model_matrix));
 
@@ -520,11 +520,11 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
       auto scm_inverse_model_matrix = scm::math::inverse(scm_model_matrix);
 
       for(unsigned plane_idx = 0; plane_idx < num_global_clipping_planes; ++plane_idx) {
-  
+
         scm::math::vec4d plane_vec = scm::math::vec4d(global_clipping_planes[plane_idx]);
 
         scm::math::vec3d xyz_comp = scm::math::vec3d(plane_vec);
-    
+
         double d = -plane_vec.w ;
 
         scm::math::vec4d O = scm::math::vec4d( xyz_comp * d, 1.0);
@@ -541,14 +541,14 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
       for (auto const& n : node_list) {
         if (culling_frustum.classify(model_bounding_boxes[n.node_id_]) != 1) {
           if( num_global_clipping_planes == 0 || _intersects(model_bounding_boxes[n.node_id_], global_clipping_planes) ) {
-             nodes_in_frustum.insert(n.node_id_);         
+             nodes_in_frustum.insert(n.node_id_);
           }
 
         }
       }
 
     }
- 
+
 
     if (!pipe.current_viewstate().shadow_mode) {  //normal rendering branch
       ///////////////////////////////////////////////////////////////////////////
@@ -605,7 +605,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
 
 
       //////////////////////////////////////////////////////////////////////////
-      // 1. depth pass 
+      // 1. depth pass
       //////////////////////////////////////////////////////////////////////////
 
       {
@@ -656,7 +656,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
               controller->GetContextMemory(context_id, ctx.render_device),
               nodes_in_frustum);
 
-            
+
 
           }
           else {
@@ -670,7 +670,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // 2. accumulation pass 
+      // 2. accumulation pass
       //////////////////////////////////////////////////////////////////////////
       MaterialShader* current_material(nullptr);
       std::shared_ptr<ShaderProgram> current_material_program;
@@ -713,7 +713,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
 
           auto plod_resource = plod_node->get_geometry();
 
-          //retrieve frustum culling results      
+          //retrieve frustum culling results
           std::unordered_set<pbr::node_t>& nodes_in_frustum = nodes_in_frustum_per_model[model_id];
 
           if (plod_resource && current_material_program) {
@@ -736,7 +736,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
             current_material_program->apply_uniform(ctx, "enable_backface_culling", plod_node->get_enable_backface_culling_by_normal());
 
             plod_node->get_material()->apply_uniforms(ctx, current_material_program.get(), view_id);
-    
+
             plod_resource->draw(ctx,
               context_id,
               pbr_view_id,
@@ -760,7 +760,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
       target.bind(ctx, write_depth);
 
        //////////////////////////////////////////////////////////////////////////
-       // 3. normalization pass 
+       // 3. normalization pass
        //////////////////////////////////////////////////////////////////////////
        {
          scm::gl::context_all_guard context_guard(ctx.render_context);
@@ -773,7 +773,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
          {
 
            //ctx.render_context->set_depth_stencil_state(no_depth_test_with_writing_depth_stencil_state_);
-           
+
            ctx.render_context->bind_texture(accumulation_pass_color_result_, nearest_sampler_state_, 0);
            normalization_pass_program_->apply_uniform(ctx, "p02_color_texture", 0);
 
@@ -803,7 +803,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
         target.bind(ctx, write_depth);
 
       //////////////////////////////////////////////////////////////////////////
-      // only pass in this branch: shadow pass 
+      // only pass in this branch: shadow pass
       //////////////////////////////////////////////////////////////////////////
 
       {
@@ -850,8 +850,6 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
               controller->GetContextMemory(context_id, ctx.render_device),
               nodes_in_frustum);
 
-            
-
           }
           else {
             Logger::LOG_WARNING << "PLODRenderer::render(): Cannot find ressources for node: " << plod_node->get_name() << std::endl;
@@ -868,18 +866,19 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
      //////////////////////////////////////////////////////////////////////////
      target.unbind(ctx);
 
-     pipe.end_cpu_query(cpu_query_name_plod_total); 
- 
+     pipe.end_cpu_query(cpu_query_name_plod_total);
+
     //dispatch cut updates when all info has been uploaded
     if (previous_frame_count_ != ctx.framecount) {
       previous_frame_count_ = ctx.framecount;
       pbr::context_t context_id = controller->DeduceContextId(ctx.id);
-      controller->Dispatch(context_id, ctx.render_device);
+
+        controller->Dispatch(context_id, ctx.render_device);
 
     }
 
- 
-  } 
+
+  }
 
 }
- 
+

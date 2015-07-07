@@ -8,6 +8,28 @@
       int   frustum_count;
     };
 
+    // column wise
+    // mat3 homography = mat3(1.0);
+
+    // homography[0][0] = 0.9096919771606703;
+    // homography[0][1] = 0.02150734251201319;
+    // homography[0][2] = -4.229197174230906e-06;
+
+    // homography[1][0] = -0.2183931706726516;
+    // homography[1][1] = 0.8258750605747026;
+    // homography[1][2] = -0.0002650477794156489;
+
+    // homography[2][0] = 78.04320158153587 / 1280.0;
+    // homography[2][1] = 1.0 - (-0.221489251721314 / 960.0);
+    // homography[2][2] = 1.0;
+
+
+  // 0.9096919771606703, -0.2183931706726516, 78.04320158153587;
+  // 0.02150734251201319, 0.8258750605747026, -0.221489251721314;
+  // -4.229197174230906e-06, -0.0002650477794156489, 1
+
+    mat3 homography = mat3(1.0);
+
     int get_id_smallest_distance(in vec4 position) {
       float minimal_distance = 99999.9;
       int result = 0;
@@ -67,8 +89,11 @@
             abs(proj_tex_space_pos.y) <  1.0 &&
             depth                     >= 0.0) {
 
-          vec2 proj_texcoord = proj_tex_space_pos.xy;
-          proj_texcoord = 0.5 * proj_texcoord + 0.5;
+          vec3 transformed_coord = homography * vec3(proj_tex_space_pos.xy * 0.5 + 0.5, 1.0);
+          transformed_coord /= transformed_coord.z;
+
+          vec2 proj_texcoord = transformed_coord.xy;
+          //proj_texcoord = 0.5 * proj_texcoord + 0.5;
           result = texture(sampler2D(projection_textures[frustum_id]), proj_texcoord.xy).rgb;
         }
       }

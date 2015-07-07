@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
   auto model_offset = graph.add_node<gua::node::TransformNode>("/transform", "model_offset");
 
   auto setup_plod_node = [](std::shared_ptr<gua::node::PLODNode> const& node) {
-    node->set_radius_scale(0.8f);
+    node->set_radius_scale(1.2f);
     node->set_enable_backface_culling_by_normal(false);
     // node->set_draw_bounding_box(true);
   };
@@ -164,6 +164,7 @@ int main(int argc, char** argv) {
   int current_blending_mode(0);
   int current_selection_mode(0);
   int background_fill_enabled(0);
+  bool gui_visible(true);
   float current_blending_factor(1.f);
 
   /////////////////////////////////////////////////////////////////////////////
@@ -235,7 +236,6 @@ int main(int argc, char** argv) {
   gui_quad->data.texture() = "gui";
   gui_quad->data.size() = gua::math::vec2ui(330, 760);
   gui_quad->data.anchor() = gua::math::vec2(1.f, 0.f);
-  bool gui_visible(true);
 
   graph.add_node("/", gui_quad);
 
