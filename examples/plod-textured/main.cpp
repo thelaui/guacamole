@@ -67,8 +67,8 @@ int main(int argc, char** argv) {
   gua::PLODLoader plodLoader;
   gua::TriMeshLoader trimesh_loader;
 
-  plodLoader.set_upload_budget_in_mb(32);
-  plodLoader.set_render_budget_in_mb(2048);
+  plodLoader.set_upload_budget_in_mb(128);
+  plodLoader.set_render_budget_in_mb(4048);
   plodLoader.set_out_of_core_budget_in_mb(4096);
 
   auto transform = graph.add_node<gua::node::TransformNode>("/", "transform");
