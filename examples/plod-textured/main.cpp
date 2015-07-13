@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
   auto model_offset = graph.add_node<gua::node::TransformNode>("/transform", "model_offset");
 
   auto setup_plod_node = [](std::shared_ptr<gua::node::PLODNode> const& node) {
-    node->set_radius_scale(1.2f);
+    node->set_radius_scale(1.3f);
     node->set_enable_backface_culling_by_normal(false);
     // node->set_draw_bounding_box(true);
   };
@@ -94,7 +94,8 @@ int main(int argc, char** argv) {
   std::set<std::string> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
 
-  boost::filesystem::path model_path("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz_new/");
+  boost::filesystem::path model_path("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
+  // boost::filesystem::path model_path("/home/tosa2305/Desktop/thesis/data/untracked/point_clouds");
 
   if (is_directory(model_path)) {
 

@@ -67,7 +67,8 @@ void main() {
     discard;
   }
 
-  gua_out_color = vec3(0.8, 0.8, 1.0);
+  // gua_out_color = vec3(0.8, 0.8, 1.0);
+  gua_out_color = vec3(0.0);
 
   if (enabled == 1) {
     int frustum_id = get_id_smallest_distance(gua_camera_position_4);

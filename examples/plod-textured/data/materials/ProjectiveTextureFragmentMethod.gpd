@@ -15,7 +15,6 @@
       -85.0306662046851187, 3.2737730386715316, 1.0000000000000000
     ));
 
-
     // mat3 homography = mat3(1.0);
 
     int get_id_smallest_distance(in vec4 position) {
