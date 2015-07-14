@@ -64,12 +64,12 @@ int main(int argc, char** argv) {
   gua::SceneGraph graph("main_scenegraph");
 
   // configure plod-renderer and create point-based objects
-  gua::PLODLoader plodLoader;
+  gua::PLODLoader plod_loader;
   gua::TriMeshLoader trimesh_loader;
 
-  plodLoader.set_upload_budget_in_mb(128);
-  plodLoader.set_render_budget_in_mb(4048);
-  plodLoader.set_out_of_core_budget_in_mb(4096);
+  plod_loader.set_upload_budget_in_mb(128);
+  plod_loader.set_render_budget_in_mb(4048);
+  plod_loader.set_out_of_core_budget_in_mb(4096);
 
   auto transform = graph.add_node<gua::node::TransformNode>("/", "transform");
   auto model_offset = graph.add_node<gua::node::TransformNode>("/transform", "model_offset");
@@ -80,16 +80,16 @@ int main(int argc, char** argv) {
     // node->set_draw_bounding_box(true);
   };
 
-  auto projective_texturing_material_desc(std::make_shared<gua::MaterialShaderDescription>(
-                                            "data/materials/ProjectiveTextureMaterial.gmd"));
+  auto street_material_desc(std::make_shared<gua::MaterialShaderDescription>(
+                                            "data/materials/StreetMaterial.gmd"));
 
-  auto projective_texturing_material_shader(std::make_shared<gua::MaterialShader>(
-                                            "ProjectiveTextureMaterial",
-                                            projective_texturing_material_desc));
+  auto street_material_shader(std::make_shared<gua::MaterialShader>(
+                                            "StreetMaterial",
+                                            street_material_desc));
 
-  gua::MaterialShaderDatabase::instance()->add(projective_texturing_material_shader);
+  gua::MaterialShaderDatabase::instance()->add(street_material_shader);
 
-  auto projective_texturing_material(projective_texturing_material_shader->make_new_material());
+  auto street_material(street_material_shader->make_new_material());
 
   std::set<std::string> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
@@ -109,7 +109,11 @@ int main(int argc, char** argv) {
   }
 
   for (auto file : model_files){
-    auto node = plodLoader.load_geometry(file + "_node", file, projective_texturing_material, gua::PLODLoader::DEFAULTS);
+    auto node = plod_loader.load_geometry(file + "_node",
+                                         file,
+                                         street_material,
+                                         gua::PLODLoader::DEFAULTS |
+                                         gua::PLODLoader::MAKE_PICKABLE);
     plod_geometrys.push_back(node);
     setup_plod_node(node);
     graph.add_node("/transform/model_offset", node);
@@ -167,20 +171,24 @@ int main(int argc, char** argv) {
   int background_fill_enabled(0);
   bool gui_visible(true);
   float current_blending_factor(1.f);
+  int lens_enabled(0);
+  gua::math::vec3 current_pick_pos(0.0);
+  gua::math::vec3 current_pick_normal(0.0);
+  float current_lens_radius(5.f);
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
   /////////////////////////////////////////////////////////////////////////////
 
-  // auto resolution = gua::math::vec2ui(1920, 1080);
-  auto resolution = gua::math::vec2ui(1280, 960);
+  auto resolution = gua::math::vec2ui(1920, 1080);
+  // auto resolution = gua::math::vec2ui(1280, 960);
 
   auto camera = graph.add_node<gua::node::CameraNode>("/", "cam");
   camera->config.set_resolution(resolution);
   camera->config.set_screen_path("/cam/screen");
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
-  camera->config.set_far_clip(100000.0f);
+  camera->config.set_far_clip(5000.0f);
   camera->config.set_near_clip(0.01f);
   // camera->config.set_enable_frustum_culling(false);
   camera->config.mask().blacklist.add_tag("invisible");
@@ -188,9 +196,9 @@ int main(int argc, char** argv) {
 
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
-  // screen->data.set_size(gua::math::vec2(1.92f, 1.08f));
-  // screen->translate(0.0, 0.0, -2.0);
-  screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
+  screen->data.set_size(gua::math::vec2(1.92f, 1.08f) * 0.01f);
+  // screen->translate(0.0, 0.0, -0.5);
+  // screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
   screen->translate(0.0, 0.0, -0.0061637285428946);
 
   auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
@@ -244,17 +252,20 @@ int main(int argc, char** argv) {
     gui->add_javascript_getter("get_query_radius", [&](){ return std::to_string(frustum_vis_pass->get_query_radius());});
     gui->add_javascript_getter("get_blending_factor", [&](){ return std::to_string(current_blending_factor);});
     gui->add_javascript_getter("get_blending_range", [&](){ return std::to_string(current_blending_range);});
+    gui->add_javascript_getter("get_lens_radius", [&](){ return std::to_string(current_lens_radius);});
 
     gui->add_javascript_callback("set_selection_mode_camera");
     gui->add_javascript_callback("set_selection_mode_fragment");
     gui->add_javascript_callback("set_blending_mode_average");
     gui->add_javascript_callback("set_blending_mode_median");
+    gui->add_javascript_callback("set_lens_enable");
     gui->add_javascript_callback("set_background_fill_enable");
     gui->add_javascript_callback("set_tree_vis_enable");
     gui->add_javascript_callback("set_frustum_vis_enable");
     gui->add_javascript_callback("set_query_radius");
     gui->add_javascript_callback("set_blending_factor");
     gui->add_javascript_callback("set_blending_range");
+    gui->add_javascript_callback("set_lens_radius");
 
     gui->call_javascript("init");
   });
@@ -264,6 +275,7 @@ int main(int argc, char** argv) {
      || callback == "set_selection_mode_fragment"
      || callback == "set_blending_mode_average"
      || callback == "set_blending_mode_median"
+     || callback == "set_lens_enable"
      || callback == "set_background_fill_enable"
      || callback == "set_tree_vis_enable"
      || callback == "set_frustum_vis_enable") {
@@ -275,6 +287,7 @@ int main(int argc, char** argv) {
       if (callback == "set_selection_mode_fragment") current_selection_mode = 1;
       if (callback == "set_blending_mode_average") current_blending_mode = 0;
       if (callback == "set_blending_mode_median") current_blending_mode = 1;
+      if (callback == "set_lens_enable") lens_enabled = checked ? 1 : 0;
       if (callback == "set_background_fill_enable") background_fill_enabled = checked ? 1 : 0;
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
@@ -289,6 +302,9 @@ int main(int argc, char** argv) {
     } else if (callback == "set_blending_range") {
       std::stringstream str(params[0]);
       str >> current_blending_range;
+    } else if (callback == "set_lens_radius") {
+      std::stringstream str(params[0]);
+      str >> current_lens_radius;
     }
   });
 
@@ -326,6 +342,41 @@ int main(int argc, char** argv) {
     } else {
       navigator.set_mouse_position(gua::math::vec2i(pos));
       gui_active = false;
+
+      if (lens_enabled) {
+        auto screen_space_pos = pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
+
+        auto origin = screen->get_scaled_world_transform() *
+                      gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
+
+        auto direction = scm::math::normalize(
+                          origin - camera->get_cached_world_transform() *
+                          gua::math::vec4(0,0,0,1)
+                         ) * 100.0;
+
+        auto up = screen->get_scaled_world_transform() *
+                  gua::math::vec4(0.0, 1.0, 0.0, 0.0);
+
+        auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
+                                    gua::PickResult::PICK_ONLY_FIRST_OBJECT |
+                                    gua::PickResult::PICK_ONLY_FIRST_FACE |
+                                    gua::PickResult::GET_WORLD_POSITIONS |
+                                    gua::PickResult::GET_POSITIONS |
+                                    gua::PickResult::GET_WORLD_NORMALS);
+
+        // auto picks = plod_loader.pick_plod_interpolate(origin, direction, up,
+        //                                                1.f, // bundle radius
+        //                                                100.f, // max distance
+        //                                                5, // max tree depth
+        //                                                0, // surfel skip
+        //                                                1.f // aabb scale
+        //                                               );
+
+        if (!picks.empty()) {
+          current_pick_pos = picks.begin()->world_position;
+          current_pick_normal = picks.begin()->world_normal;
+        }
+      }
     }
   });
 
@@ -336,14 +387,6 @@ int main(int argc, char** argv) {
     } else {
       gui->inject_mouse_button(gua::Button(button), action, mods);
     }
-  });
-
-  window->on_scroll.connect([&current_blending_range](gua::math::vec2 const& scroll){
-    // if (scroll.y > 0.0) {
-    //   current_blending_range = std::min(current_blending_range + 1, 5);
-    // } else if (scroll.y < 0.0) {
-    //   current_blending_range = std::max(current_blending_range - 1, 0);
-    // }
   });
 
   window->on_char.connect([&navigator, &navigator_active, &current_frustum,
@@ -405,17 +448,25 @@ int main(int argc, char** argv) {
       // screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
     } else {
       camera->set_transform(gua::math::mat4(frusta[current_frustum].get_camera_transform()));
-      screen->set_world_transform(frusta[current_frustum].get_screen_transform());
-      screen->data.set_size(gua::math::vec2(1.0, 1.0));;
+      // screen->set_world_transform(frusta[current_frustum].get_screen_transform());
+      // screen->data.set_size(gua::math::vec2(1.0, 1.0));;
     }
 
-    projective_texturing_material->set_uniform("blending_range",  current_blending_range);
-    projective_texturing_material->set_uniform("blending_mode",   current_blending_mode);
-    projective_texturing_material->set_uniform("selection_mode",  current_selection_mode);
-    projective_texturing_material->set_uniform("blending_factor", current_blending_factor);
+    street_material->set_uniform("blending_range",  current_blending_range);
+    street_material->set_uniform("blending_mode",   current_blending_mode);
+    street_material->set_uniform("selection_mode",  current_selection_mode);
+    street_material->set_uniform("blending_factor", current_blending_factor);
+    street_material->set_uniform("pick_pos_and_radius",
+                                  gua::math::vec4(current_pick_pos.x,
+                                                  current_pick_pos.y,
+                                                  current_pick_pos.z,
+                                                  current_lens_radius));
+    street_material->set_uniform("pick_normal", scm::math::normalize(current_pick_normal));
+    street_material->set_uniform("lens_enabled", lens_enabled);
     int enable_background(0);
     if (background_fill_enabled == 1 && !navigator_active) enable_background = 1;
     fill_pass->uniform("enabled", enable_background);
+    fill_pass->uniform("resolution", gua::math::vec2f(resolution.x, resolution.y));
 
     window->process_events();
     if (window->should_close()) {

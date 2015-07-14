@@ -1,0 +1,145 @@
+{
+  "name" : "LensFragmentMethod",
+  "source" : "
+
+    float gamma        = 0.80;
+    float intensity_max = 255.0;
+
+    float get_distance_to_plane(in vec3 plane_point, in vec3 plane_normal,
+                                in vec3 query_point) {
+
+      return dot(plane_normal, (query_point - plane_point));
+
+    }
+
+    float round(float d){
+      return floor(d + 0.5);
+    }
+
+    float adjust(float color, float factor){
+      if (color == 0.0){
+        return 0.0;
+      }
+      else{
+        float res = round(intensity_max * pow(color * factor, gamma));
+        return min(255.0, max(0.0, res));
+      }
+    }
+
+    vec3 wavelength_to_rgb(float wavelength)
+    {
+      float red, green, blue;
+      float factor;
+
+      if(380.0 <= wavelength && wavelength <= 440.0){
+        red   = -(wavelength - 440.0) / (440.0 - 380.0);
+        green = 0.0;
+        blue  = 1.0;
+      }
+      else if(440.0 < wavelength && wavelength <= 490.0){
+        red   = 0.0;
+        green = (wavelength - 440.0) / (490.0 - 440.0);
+        blue  = 1.0;
+      }
+      else if(490.0 < wavelength && wavelength <= 510.0){
+        red   = 0.0;
+        green = 1.0;
+        blue  = -(wavelength - 510.0) / (510.0 - 490.0);
+      }
+      else if(510.0 < wavelength && wavelength <= 580.0){
+        red   = (wavelength - 510.0) / (580.0 - 510.0);
+        green = 1.0;
+        blue  = 0.0;
+      }
+      else if(580.0 < wavelength && wavelength <= 645.0){
+        red   = 1.0;
+        green = -(wavelength - 645.0) / (645.0 - 580.0);
+        blue  = 0.0;
+      }
+      else if(645.0 < wavelength && wavelength <= 780.0){
+        red   = 1.0;
+        green = 0.0;
+        blue  = 0.0;
+      }
+      else{
+        red   = 0.0;
+        green = 0.0;
+        blue  = 0.0;
+      }
+
+
+      if(380.0 <= wavelength && wavelength <= 420.0){
+        factor = 0.3 + 0.7*(wavelength - 380.0) / (420.0 - 380.0);
+      }
+      else if(420.0 < wavelength && wavelength <= 701.0){
+        factor = 1.0;
+      }
+      else if(701.0 < wavelength && wavelength <= 780.0){
+        factor = 0.3 + 0.7*(780.0 - wavelength) / (780.0 - 701.0);
+      }
+      else{
+        factor = 0.0;
+      }
+      float r = adjust(red,   factor);
+      float g = adjust(green, factor);
+      float b = adjust(blue,  factor);
+      return vec3(r/255.0,g/255.0,b/255.0);
+    }
+
+    float get_wave_length_from_data_point(float value, float min_value, float max_value) {
+      float min_visible_wave_length = 380.0; //350.0;
+      float max_visible_wave_length = 780.0; //650.0;
+      //Convert data value in the range of min_values..max_values to the
+      //range 350..780
+      return (value - min_value) / (max_value-min_value) *
+             (max_visible_wave_length - min_visible_wave_length) +
+             min_visible_wave_length;
+    }
+
+    void LensFragmentMethod() {
+
+      float distance_to_pick = length(pick_pos_and_radius.xyz - gua_world_position.xyz);
+
+      vec3 lens_color = vec3(0.0);
+      float radial_fade = 0.0;
+
+      if (lens_enabled == 1 && distance_to_pick < pick_pos_and_radius.w) {
+        radial_fade = 1.0 - pow(distance_to_pick / pick_pos_and_radius.w, 3);
+        // radial_fade = 1.0;
+
+        vec3 binormal = vec3(pick_normal.y, -pick_normal.x, 0.0);
+        binormal = normalize(binormal);
+
+        float d = dot(binormal, gua_normal);
+
+        // float d = get_distance_to_plane(pick_pos_and_radius.xyz,
+        //                                 pick_normal,
+        //                                 gua_world_position.xyz);
+
+        lens_color = wavelength_to_rgb(get_wave_length_from_data_point(d, -1.0, 1.0));
+
+      }
+
+      gua_color = mix(gua_color, lens_color, radial_fade);
+
+    }
+  ",
+  "uniforms" :
+  [
+    {
+      "name" : "pick_pos_and_radius",
+      "type" : "vec4",
+      "value": "(0.0, 0.0, 0.0, 0.0)"
+    },
+    {
+      "name" : "pick_normal",
+      "type" : "vec3",
+      "value": "(0.0, 0.0, 0.0)"
+    },
+    {
+      "name" : "lens_enabled",
+      "type" : "int",
+      "value": "0"
+    }
+  ]
+}

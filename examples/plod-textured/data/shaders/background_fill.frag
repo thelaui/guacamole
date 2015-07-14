@@ -17,6 +17,7 @@ layout (std430, binding=2) uniform projective_texure_block {
 };
 
 uniform int enabled;
+uniform vec2 resolution;
 
 mat3 homography = (mat3(
   1.0844150096782323, -0.0216027047911971, -0.0000027239192071,
@@ -46,12 +47,12 @@ vec3 get_color(int frustum_id) {
 
     vec2 quad_coords = gua_get_quad_coords();
 
-    vec2 pixel_coords = vec2(1280.0 * quad_coords.x,
-                              960.0 * (1.0 - (quad_coords.y)));
+    vec2 pixel_coords = vec2(resolution.x * quad_coords.x,
+                             resolution.y * (1.0 - (quad_coords.y)));
 
     vec3 transformed_coord = homography * vec3(pixel_coords, 1.0);
     transformed_coord /= transformed_coord.z;
-    transformed_coord.xy /= vec2(1280.0, 960.0);
+    transformed_coord.xy /= resolution;
     transformed_coord.y = 1.0 - transformed_coord.y;
 
     result = texture(sampler2D(projection_textures[frustum_id]),
@@ -67,8 +68,8 @@ void main() {
     discard;
   }
 
-  // gua_out_color = vec3(0.8, 0.8, 1.0);
-  gua_out_color = vec3(0.0);
+  gua_out_color = vec3(0.8, 0.8, 1.0);
+  // gua_out_color = vec3(0.0);
 
   if (enabled == 1) {
     int frustum_id = get_id_smallest_distance(gua_camera_position_4);

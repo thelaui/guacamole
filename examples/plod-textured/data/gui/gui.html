@@ -183,6 +183,7 @@
         init_radio("#blending_mode_average", "blending_mode_average");
         init_radio("#blending_mode_median", "blending_mode_median");
 
+        init_checkbox("#enableLens", "lens_enable");
         init_checkbox("#enableBackgroundFill", "background_fill_enable");
         init_checkbox("#enableTreeVis", "tree_vis_enable");
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
@@ -190,6 +191,7 @@
         init_slider("#control-panel .query_radius", "query_radius");
         init_slider("#control-panel .blending_factor", "blending_factor");
         init_slider("#control-panel .blending_range", "blending_range");
+        init_slider("#control-panel .lens_radius", "lens_radius");
 
 
         $("body").addClass("on");
@@ -266,6 +268,27 @@
             </div>
             <div class="col-xs-7">
               <input class="slider blending_range" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="5" data-slider-step="1" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Show Lens:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableLens" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="col-xs-5">
+            Lens Radius:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider lens_radius" data-slider-tooltip="hide" data-slider-id="lens_radius" type="text" data-slider-min="0" data-slider-max="10" data-slider-step="0.1" handle="custom"/>
             </div>
           </div>
 
