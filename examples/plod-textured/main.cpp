@@ -46,6 +46,22 @@
 
 #include "Navigator.hpp"
 
+struct file_name_comp {
+  bool operator() (std::string const& lhs, std::string const& rhs) const {
+    auto lhs_num_pos(lhs.find("out_"));
+    auto lhs_num_string(lhs.substr(lhs_num_pos + 4));
+    lhs_num_string = lhs_num_string.substr(0, lhs_num_string.find("_"));
+    auto lhs_num = gua::string_utils::from_string<int>(lhs_num_string);
+
+    auto rhs_num_pos(rhs.find("out_"));
+    auto rhs_num_string(rhs.substr(rhs_num_pos + 4));
+    rhs_num_string = rhs_num_string.substr(0, rhs_num_string.find("_"));
+    auto rhs_num = gua::string_utils::from_string<int>(rhs_num_string);
+
+    return lhs_num < rhs_num;
+  }
+};
+
 int main(int argc, char** argv) {
   /////////////////////////////////////////////////////////////////////////////
   // initialize guacamole
@@ -91,7 +107,7 @@ int main(int argc, char** argv) {
 
   auto street_material(street_material_shader->make_new_material());
 
-  std::set<std::string> model_files;
+  std::set<std::string, file_name_comp> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
 
   boost::filesystem::path model_path("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
@@ -99,7 +115,8 @@ int main(int argc, char** argv) {
 
   if (is_directory(model_path)) {
 
-    for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(model_path), {})) {
+    for (auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(model_path), {})) {
+
       auto model_filename = entry.path();
 
       if (model_filename.has_extension() && model_filename.extension() == ".kdn") {
@@ -108,15 +125,25 @@ int main(int argc, char** argv) {
     }
   }
 
+  const int max_load_count(80);
+  int count(0);
+
   for (auto file : model_files){
-    auto node = plod_loader.load_geometry(file + "_node",
-                                         file,
-                                         street_material,
-                                         gua::PLODLoader::DEFAULTS |
-                                         gua::PLODLoader::MAKE_PICKABLE);
-    plod_geometrys.push_back(node);
-    setup_plod_node(node);
-    graph.add_node("/transform/model_offset", node);
+    std::cout << file << std::endl;
+    if (count < max_load_count) {
+      auto node = plod_loader.load_geometry(file + "_node",
+                                           file,
+                                           street_material,
+                                           gua::PLODLoader::DEFAULTS |
+                                           gua::PLODLoader::MAKE_PICKABLE);
+      plod_geometrys.push_back(node);
+      setup_plod_node(node);
+      graph.add_node("/transform/model_offset", node);
+
+      ++count;
+    } else {
+      break;
+    }
   }
 
   model_offset->translate(-plod_geometrys[0]->get_bounding_box().center());
