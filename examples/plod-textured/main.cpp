@@ -20,6 +20,7 @@
  ******************************************************************************/
 
 #include <functional>
+#include <sys/resource.h>
 
 #include <gua/guacamole.hpp>
 #include <gua/renderer/TriMeshLoader.hpp>
@@ -39,6 +40,8 @@
 #include <gua/renderer/TexturedScreenSpaceQuadPass.hpp>
 
 #include <gua/gui.hpp>
+
+#include <pbr/ren/config.h>
 
 #include <boost/filesystem.hpp>
 
@@ -125,8 +128,18 @@ int main(int argc, char** argv) {
     }
   }
 
-  const int max_load_count(80);
+  const int max_load_count(20);
   int count(0);
+
+  struct rlimit limit;
+
+  limit.rlim_cur = PBR_CUT_UPDATE_NUM_LOADING_THREADS * max_load_count * 2;
+  limit.rlim_max = limit.rlim_cur;
+  std::cout << "rlimit " << limit.rlim_max << std::endl;
+  if (setrlimit(RLIMIT_NOFILE, &limit) != 0) {
+    printf("setrlimit() failed with errno=%d\n", errno);
+    return 1;
+  }
 
   for (auto file : model_files){
     std::cout << file << std::endl;
@@ -493,7 +506,6 @@ int main(int argc, char** argv) {
     int enable_background(0);
     if (background_fill_enabled == 1 && !navigator_active) enable_background = 1;
     fill_pass->uniform("enabled", enable_background);
-    fill_pass->uniform("resolution", gua::math::vec2f(resolution.x, resolution.y));
 
     window->process_events();
     if (window->should_close()) {

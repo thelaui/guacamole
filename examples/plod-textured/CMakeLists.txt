@@ -13,7 +13,14 @@ include_directories( ${INCLUDE_PATHS}
                      ${TEXTURE_STREAM_INCLUDE_DIRS}
                      ${AWESOMIUM_INCLUDE_DIR}
                      ${GUACAMOLE_GUI_INCLUDE_DIR}
+                     ${PBR_INCLUDE_DIRS}
                      )
+
+message("" "#########################")
+message("" "#########################")
+message("" "#########################")
+message("" "#########################")
+message("" ${PBR_INCLUDE_DIRS})
 
 file(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
 file(GLOB SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
