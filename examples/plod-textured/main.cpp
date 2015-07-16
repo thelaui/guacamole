@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  const int max_load_count(20);
+  const int max_load_count(280);
   int count(0);
 
   struct rlimit limit;
@@ -142,7 +142,6 @@ int main(int argc, char** argv) {
   }
 
   for (auto file : model_files){
-    std::cout << file << std::endl;
     if (count < max_load_count) {
       auto node = plod_loader.load_geometry(file + "_node",
                                            file,
@@ -273,9 +272,18 @@ int main(int argc, char** argv) {
 
   camera->set_pipeline_description(pipe);
 
+  /////////////////////////////////////////////////////////////////////////////
+  // create navigation
+  /////////////////////////////////////////////////////////////////////////////
+
+  Navigator navigator;
+  bool navigator_active(false);
+  bool gui_options_active(false);
+  bool gui_map_active(false);
+  navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
 
   /////////////////////////////////////////////////////////////////////////////
-  // setup gui
+  // setup gui and map
   /////////////////////////////////////////////////////////////////////////////
 
   auto gui = std::make_shared<gua::GuiResource>();
@@ -348,14 +356,56 @@ int main(int argc, char** argv) {
     }
   });
 
-  /////////////////////////////////////////////////////////////////////////////
-  // create navigation
-  /////////////////////////////////////////////////////////////////////////////
+  auto map = std::make_shared<gua::GuiResource>();
+  map->init("map", "asset://gua/data/gui/map.html", gua::math::vec2(430, 760));
 
-  Navigator navigator;
-  bool navigator_active(false);
-  bool gui_active(false);
-  navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
+  auto map_quad = std::make_shared<gua::node::TexturedScreenSpaceQuadNode>("map_quad");
+  map_quad->data.texture() = "map";
+  map_quad->data.size() = gua::math::vec2ui(430, 760);
+  map_quad->data.anchor() = gua::math::vec2(-1.f, 0.f);
+
+  graph.add_node("/", map_quad);
+
+  map->on_loaded.connect([&]() {
+    map->add_javascript_callback("set_camera_pos_utm");
+    map->call_javascript("init");
+  });
+
+  map->on_javascript_callback.connect([&](std::string const& callback, std::vector<std::string> const& params) {
+    if (callback == "set_camera_pos_utm") {
+      double easting, northing;
+      std::stringstream easting_str(params[0]);
+      easting_str >> easting;
+
+      std::stringstream northing_str(params[1]);
+      northing_str >> northing;
+
+      const scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66);
+
+      scm::math::vec4d new_pos(-(easting + global_offset.x),
+                                 0.0,
+                                 northing + global_offset.z,
+                                 1.0);
+      new_pos = offset_transform * new_pos;
+
+      auto closest_frustum(texstr::FrustumManagement::instance()->get_closest_frustum(
+        scm::math::vec3d(new_pos.x, new_pos.y, new_pos.z)
+      ));
+
+      if (closest_frustum) {
+        navigator.set_transform(scm::math::mat4f(closest_frustum->get_camera_transform()));
+
+        for (int i(0); i < frusta.size(); ++i) {
+          if (frusta[i].get_image_file_name() == closest_frustum->get_image_file_name()) {
+            current_frustum = i;
+            break;
+          }
+        }
+        navigator_active = false;
+      }
+    }
+  });
+
 
   /////////////////////////////////////////////////////////////////////////////
   // create window and callback setup
@@ -376,12 +426,20 @@ int main(int argc, char** argv) {
 
   window->on_move_cursor.connect([&](gua::math::vec2 const& pos) {
     gua::math::vec2 hit_pos;
-    if (gui_visible && gui_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
-      gui->inject_mouse_position_relative(hit_pos);
-      gui_active = true;
-    } else {
+    gui_options_active = false;
+    gui_map_active = false;
+    if (gui_visible) {
+      if (gui_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
+        gui->inject_mouse_position_relative(hit_pos);
+        gui_options_active = true;
+      } else if (map_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
+        map->inject_mouse_position_relative(hit_pos);
+        gui_map_active = true;
+      }
+    }
+
+    if (!gui_options_active && !gui_options_active) {
       navigator.set_mouse_position(gua::math::vec2i(pos));
-      gui_active = false;
 
       if (lens_enabled) {
         auto screen_space_pos = pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
@@ -404,14 +462,6 @@ int main(int argc, char** argv) {
                                     gua::PickResult::GET_POSITIONS |
                                     gua::PickResult::GET_WORLD_NORMALS);
 
-        // auto picks = plod_loader.pick_plod_interpolate(origin, direction, up,
-        //                                                1.f, // bundle radius
-        //                                                100.f, // max distance
-        //                                                5, // max tree depth
-        //                                                0, // surfel skip
-        //                                                1.f // aabb scale
-        //                                               );
-
         if (!picks.empty()) {
           current_pick_pos = picks.begin()->world_position;
           current_pick_normal = picks.begin()->world_normal;
@@ -421,27 +471,36 @@ int main(int argc, char** argv) {
   });
 
   window->on_button_press.connect([&](int button, int action, int mods){
-    if (!gui_active) {
+    if (!gui_options_active && !gui_map_active) {
       navigator_active = true;
       navigator.set_mouse_button(button, action);
-    } else {
+    } else if (gui_options_active) {
       gui->inject_mouse_button(gua::Button(button), action, mods);
+    } else if (gui_map_active) {
+      map->inject_mouse_button(gua::Button(button), action, mods);
     }
   });
 
-  window->on_char.connect([&navigator, &navigator_active, &current_frustum,
-                           &frusta, &gui_quad, &gui_visible](unsigned key){
+  window->on_scroll.connect([&](gua::math::vec2 const& scroll){
+    if (gui_map_active) {
+      map->inject_mouse_wheel(scroll);
+    }
+  });
+
+  window->on_char.connect([&](unsigned key){
     if (key == 'h') {
       if (gui_visible) {
         gui_quad->get_tags().add_tag("invisible");
+        map_quad->get_tags().add_tag("invisible");
       } else {
         gui_quad->get_tags().remove_tag("invisible");
+        map_quad->get_tags().remove_tag("invisible");
       }
       gui_visible = !gui_visible;
     }
   });
 
-  window->on_key_press.connect([&navigator, &current_frustum, &frusta, &navigator_active](int key, int scancode, int action, int mods){
+  window->on_key_press.connect([&](int key, int scancode, int action, int mods){
 
     auto gua_key(static_cast<gua::Key>(key));
     if (gua_key == gua::Key::W ||

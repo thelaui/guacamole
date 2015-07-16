@@ -12,11 +12,11 @@
 
     }
 
-    float round(float d){
+    float round(float d) {
       return floor(d + 0.5);
     }
 
-    float adjust(float color, float factor){
+    float adjust(float color, float factor) {
       if (color == 0.0){
         return 0.0;
       }
@@ -26,8 +26,7 @@
       }
     }
 
-    vec3 wavelength_to_rgb(float wavelength)
-    {
+    vec3 wavelength_to_rgb(float wavelength) {
       float red, green, blue;
       float factor;
 

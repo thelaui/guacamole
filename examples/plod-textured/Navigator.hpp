@@ -14,6 +14,9 @@ class Navigator {
 
     void update();
 
+    scm::math::vec4f const& get_location() const;
+    void set_location(scm::math::vec4f const& location);
+
     void set_transform(scm::math::mat4f const& transform);
     scm::math::mat4f const& get_transform() const;
 

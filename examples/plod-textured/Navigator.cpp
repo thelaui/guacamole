@@ -72,6 +72,14 @@ void Navigator::update() {
   }
 }
 
+scm::math::vec4f const& Navigator::get_location() const {
+  return current_location_;
+}
+
+void Navigator::set_location(scm::math::vec4f const& location) {
+  current_location_ = location;
+}
+
 void Navigator::set_transform(scm::math::mat4f const& transform) {
   transform_ = transform;
   current_location_ = scm::math::vec4f(transform_[12], transform_[13], transform_[14], 1.0f);
