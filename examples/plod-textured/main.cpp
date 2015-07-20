@@ -214,6 +214,7 @@ int main(int argc, char** argv) {
   gua::math::vec3 current_pick_pos(0.0);
   gua::math::vec3 current_pick_normal(0.0);
   float current_lens_radius(5.f);
+  const scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66);
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
@@ -380,10 +381,8 @@ int main(int argc, char** argv) {
       std::stringstream northing_str(params[1]);
       northing_str >> northing;
 
-      const scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66);
-
       scm::math::vec4d new_pos(-(easting + global_offset.x),
-                                 0.0,
+                                 global_offset.y,
                                  northing + global_offset.z,
                                  1.0);
       new_pos = offset_transform * new_pos;
@@ -513,17 +512,38 @@ int main(int argc, char** argv) {
 
     // check if key pressed
     if (action == 1 || action == 2) {
+      // F5 to reload gui
+      if (action == 1 && key == 294) {
+        gui->reload();
+        map->reload();
+      }
+
+      bool position_changed(false);
       // arrow right
       if (key == 262) {
         current_frustum = std::min(current_frustum + 1, int(frusta.size() - 1));
-        navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
-        navigator_active = false;
-        std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
+        position_changed = true;
       // arrow left
       } else if (key == 263) {
         current_frustum = std::max(current_frustum - 1, 0);
+        position_changed = true;
+      }
+
+      if (position_changed) {
         navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
         navigator_active = false;
+
+        // update map marker
+        auto pos(frusta[current_frustum].get_camera_position());
+        pos = scm::math::inverse(offset_transform) * pos;
+        pos = scm::math::vec3d(-(pos.x + global_offset.x),
+                                 0.0,
+                                 pos.z - global_offset.z
+                                );
+        map->call_javascript_arg_vector("set_position_marker_utm",
+                                        {gua::string_utils::to_string(pos.x),
+                                         gua::string_utils::to_string(pos.z)});
+
         std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
       }
     }
