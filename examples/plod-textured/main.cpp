@@ -76,15 +76,61 @@ int main(int argc, char** argv) {
   texstr::Logger::state.verbose = false;
 
   /////////////////////////////////////////////////////////////////////////////
+  // increase number of files that can be loaded in parallel
+  /////////////////////////////////////////////////////////////////////////////
+
+  const int max_load_count(280);
+  int count(0);
+
+  struct rlimit limit;
+
+  limit.rlim_cur = PBR_CUT_UPDATE_NUM_LOADING_THREADS * max_load_count * 2;
+  limit.rlim_max = limit.rlim_cur;
+  std::cout << "rlimit " << limit.rlim_max << std::endl;
+  if (setrlimit(RLIMIT_NOFILE, &limit) != 0) {
+    printf("setrlimit() failed with errno=%d\n", errno);
+    return 1;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
   // create scene
   /////////////////////////////////////////////////////////////////////////////
 
   // create scene graph object
   gua::SceneGraph graph("main_scenegraph");
 
+
+  // create material for streets
+  auto street_material_desc(std::make_shared<gua::MaterialShaderDescription>(
+                                            "data/materials/StreetMaterial.gmd"));
+
+  auto street_material_shader(std::make_shared<gua::MaterialShader>(
+                                            "StreetMaterial",
+                                            street_material_desc));
+
+  gua::MaterialShaderDatabase::instance()->add(street_material_shader);
+
+  auto street_material(street_material_shader->make_new_material());
+
+  // create node to display filled in images
+  gua::TriMeshLoader trimesh_loader;
+
+  auto background_fill_transform = graph.add_node<gua::node::TransformNode>(
+                                    "/", "background_fill_transform");
+
+  auto background_fill = trimesh_loader.create_geometry_from_file(
+                          "background_fill",
+                          "data/objects/plane.obj",
+                          street_material
+                         );
+
+  background_fill->rotate(90.0, 1.0, 0.0, 0.0);
+
+  // graph.add_node("/background_fill_transform", background_fill);
+
+
   // configure plod-renderer and create point-based objects
   gua::PLODLoader plod_loader;
-  gua::TriMeshLoader trimesh_loader;
 
   plod_loader.set_upload_budget_in_mb(128);
   plod_loader.set_render_budget_in_mb(4048);
@@ -98,17 +144,6 @@ int main(int argc, char** argv) {
     node->set_enable_backface_culling_by_normal(false);
     // node->set_draw_bounding_box(true);
   };
-
-  auto street_material_desc(std::make_shared<gua::MaterialShaderDescription>(
-                                            "data/materials/StreetMaterial.gmd"));
-
-  auto street_material_shader(std::make_shared<gua::MaterialShader>(
-                                            "StreetMaterial",
-                                            street_material_desc));
-
-  gua::MaterialShaderDatabase::instance()->add(street_material_shader);
-
-  auto street_material(street_material_shader->make_new_material());
 
   std::set<std::string, file_name_comp> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
@@ -126,19 +161,6 @@ int main(int argc, char** argv) {
         model_files.insert(model_filename.string());
       }
     }
-  }
-
-  const int max_load_count(280);
-  int count(0);
-
-  struct rlimit limit;
-
-  limit.rlim_cur = PBR_CUT_UPDATE_NUM_LOADING_THREADS * max_load_count * 2;
-  limit.rlim_max = limit.rlim_cur;
-  std::cout << "rlimit " << limit.rlim_max << std::endl;
-  if (setrlimit(RLIMIT_NOFILE, &limit) != 0) {
-    printf("setrlimit() failed with errno=%d\n", errno);
-    return 1;
   }
 
   for (auto file : model_files){
@@ -229,7 +251,7 @@ int main(int argc, char** argv) {
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
   camera->config.set_far_clip(5000.0f);
-  camera->config.set_near_clip(0.01f);
+  camera->config.set_near_clip(0.001f);
   // camera->config.set_enable_frustum_culling(false);
   camera->config.mask().blacklist.add_tag("invisible");
 
@@ -388,7 +410,8 @@ int main(int argc, char** argv) {
       new_pos = offset_transform * new_pos;
 
       auto closest_frustum(texstr::FrustumManagement::instance()->get_closest_frustum(
-        scm::math::vec3d(new_pos.x, new_pos.y, new_pos.z)
+        scm::math::vec3d(new_pos.x, new_pos.y, new_pos.z),
+        scm::math::vec3d(1.0, 0.0, 1.0)
       ));
 
       if (closest_frustum) {
@@ -518,6 +541,11 @@ int main(int argc, char** argv) {
         map->reload();
       }
 
+      // F6 to reload pipeline
+      if (action == 1 && key == 295) {
+        fill_pass->touch();
+      }
+
       bool position_changed(false);
       // arrow right
       if (key == 262) {
@@ -543,6 +571,8 @@ int main(int argc, char** argv) {
         map->call_javascript_arg_vector("set_position_marker_utm",
                                         {gua::string_utils::to_string(pos.x),
                                          gua::string_utils::to_string(pos.z)});
+
+        background_fill_transform->set_world_transform(frusta[current_frustum].get_screen_transform());
 
         std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
       }
