@@ -16,12 +16,6 @@ include_directories( ${INCLUDE_PATHS}
                      ${PBR_INCLUDE_DIRS}
                      )
 
-message("" "#########################")
-message("" "#########################")
-message("" "#########################")
-message("" "#########################")
-message("" ${PBR_INCLUDE_DIRS})
-
 file(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp)
 file(GLOB SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 

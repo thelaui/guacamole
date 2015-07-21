@@ -71,7 +71,6 @@ int main(int argc, char** argv) {
   /////////////////////////////////////////////////////////////////////////////
 
   gua::init(argc, argv);
-
   gua::Logger::enable_debug = false;
   texstr::Logger::state.verbose = false;
 
@@ -148,7 +147,8 @@ int main(int argc, char** argv) {
   std::set<std::string, file_name_comp> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
 
-  boost::filesystem::path model_path("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
+  // boost::filesystem::path model_path("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
+  boost::filesystem::path model_path("/media/laui/street_data/pointcloud/xyz/");
   // boost::filesystem::path model_path("/home/tosa2305/Desktop/thesis/data/untracked/point_clouds");
 
   if (is_directory(model_path)) {
@@ -191,7 +191,8 @@ int main(int argc, char** argv) {
   std::vector<texstr::Frustum> frusta;
 
   // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
-  boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
+  // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
+  boost::filesystem::path frusta_path("/home/laui/Dokumente/Studium/Master/data/untracked/frusta_subset_cam_0");
   // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0_new");
 
   if (is_directory(frusta_path)) {
@@ -258,7 +259,8 @@ int main(int argc, char** argv) {
 
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
-  screen->data.set_size(gua::math::vec2(1.92f, 1.08f) * 0.01f);
+  // screen->data.set_size(gua::math::vec2(1.92f, 1.08f) * 0.01f);
+  screen->data.set_size(gua::math::vec2(resolution.x, resolution.y) * 0.00001f);
   // screen->translate(0.0, 0.0, -0.5);
   // screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
   screen->translate(0.0, 0.0, -0.0061637285428946);
@@ -441,9 +443,11 @@ int main(int argc, char** argv) {
   window->config.set_resolution(resolution);
 
   window->on_resize.connect([&](gua::math::vec2ui const& new_size) {
-    window->config.set_resolution(new_size);
-    camera->config.set_resolution(new_size);
-    screen->data.set_size(gua::math::vec2(0.001f * new_size.x, 0.001f * new_size.y));
+    resolution = new_size;
+    window->config.set_resolution(resolution);
+    camera->config.set_resolution(resolution);
+    screen->data.set_size(gua::math::vec2(0.00001f * resolution.x,
+                                          0.00001f * resolution.y));
   });
 
   window->on_move_cursor.connect([&](gua::math::vec2 const& pos) {
