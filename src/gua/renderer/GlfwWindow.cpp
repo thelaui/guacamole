@@ -68,7 +68,9 @@ void on_window_button_press(GLFWwindow* glfw_window, int button, int action, int
 
 void on_window_move_cursor(GLFWwindow* glfw_window, double x, double y) {
   auto window(static_cast<GlfwWindow*>(glfwGetWindowUserPointer(glfw_window)));
-  window->on_move_cursor.emit(math::vec2(float(x), float(window->config.get_size().y - y)));
+  auto mouse_position(math::vec2(float(x), float(window->config.get_size().y - y)));
+  window->set_mouse_position(mouse_position);
+  window->on_move_cursor.emit(mouse_position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +131,7 @@ void GlfwWindow::open() {
 
   glfw_window_ = glfwCreateWindow(
     config.get_size().x, config.get_size().y,
-    config.get_title().c_str(), 
+    config.get_title().c_str(),
     config.get_fullscreen_mode()? glfwGetPrimaryMonitor(): nullptr, nullptr
   );
 
@@ -143,7 +145,7 @@ void GlfwWindow::open() {
   glfwSetScrollCallback(      glfw_window_, &on_window_scroll);
   glfwSetCursorEnterCallback( glfw_window_, &on_window_enter);
 
-  switch(cursor_mode_) { 
+  switch(cursor_mode_) {
     case CursorMode::NORMAL:
      glfwSetInputMode(glfw_window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     break;
@@ -192,8 +194,8 @@ void GlfwWindow::process_events() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void GlfwWindow::cursor_mode(CursorMode mode) {
-  
-  switch(mode) { 
+
+  switch(mode) {
     case CursorMode::NORMAL:
       if(get_is_open()) glfwSetInputMode(glfw_window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
       cursor_mode_ = mode;

@@ -35,6 +35,12 @@ enum class RenderMode {
   Custom, Callback, Quad
 };
 
+// base class for storing feedback in PipelinePassFeedbackDatabase
+class GUA_DLL PipelinePassFeedback {
+  public:
+    virtual ~PipelinePassFeedback() {}
+};
+
 class GUA_DLL PipelinePassDescription {
  public:
 
@@ -48,6 +54,11 @@ class GUA_DLL PipelinePassDescription {
   std::string const& name() const;
   unsigned mod_count() const;
 
+  std::string const& get_feedback_identifier() const;
+  void set_feedback_identifier(std::string const& feedback_identifier);
+
+  std::shared_ptr<PipelinePassFeedback> get_feedback() const;
+
  protected:
 
   virtual PipelinePass make_pass(RenderContext const& ctx, SubstitutionMap& substitution_map) = 0;
@@ -58,6 +69,7 @@ class GUA_DLL PipelinePassDescription {
   std::string fragment_shader_ = "";
   std::string geometry_shader_ = "";
   std::string name_ = "";
+  std::string feedback_identifier_ = "";
 
   bool vertex_shader_is_file_name_ = true;
   bool fragment_shader_is_file_name_ = true;
@@ -67,7 +79,7 @@ class GUA_DLL PipelinePassDescription {
   bool writes_only_color_buffer_ = false;
 
   bool enable_for_shadows_ = false;
-  unsigned mod_count_ = 0; 
+  unsigned mod_count_ = 0;
 
   mutable bool recompile_shaders_ = true;
 
@@ -123,6 +135,7 @@ class GUA_DLL PipelinePass {
   PipelinePass(PipelinePassDescription const&, RenderContext const&, SubstitutionMap const&);
 
   virtual void upload_program(PipelinePassDescription const& desc, RenderContext const& ctx);
+  virtual void store_feedback(std::shared_ptr<PipelinePassFeedback> feedback) const;
 
   std::shared_ptr<ShaderProgram> shader_ = nullptr;
 
@@ -135,6 +148,7 @@ class GUA_DLL PipelinePass {
   bool enable_for_shadows_ = false;
   RenderMode rendermode_ = RenderMode::Custom;
   std::string name_ = "PipelinePass";
+  std::string feedback_identifier_ = "";
 
   std::function<void(PipelinePass&, PipelinePassDescription const&, Pipeline&)>
     process_ = [](PipelinePass&, PipelinePassDescription const&, Pipeline&) {

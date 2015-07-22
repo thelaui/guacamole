@@ -36,8 +36,8 @@
 #include <gua/renderer/BBoxPass.hpp>
 #include <gua/renderer/DebugViewPass.hpp>
 #include <gua/renderer/FrustumVisualizationPass.hpp>
-#include <gua/renderer/TextureProjectionUpdatePass.hpp>
 #include <gua/renderer/TexturedScreenSpaceQuadPass.hpp>
+#include <gua/renderer/ScreenSpacePickPass.hpp>
 
 #include <gua/gui.hpp>
 
@@ -74,11 +74,16 @@ int main(int argc, char** argv) {
   gua::Logger::enable_debug = false;
   texstr::Logger::state.verbose = false;
 
+  bool is_on_laptop(false);
+  if (argc > 1 && std::string(argv[1]) == "-l") {
+    is_on_laptop = true;
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   // increase number of files that can be loaded in parallel
   /////////////////////////////////////////////////////////////////////////////
 
-  const int max_load_count(280);
+  const int max_load_count(20);
   int count(0);
 
   struct rlimit limit;
@@ -147,9 +152,9 @@ int main(int argc, char** argv) {
   std::set<std::string, file_name_comp> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
 
-  // boost::filesystem::path model_path("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
-  boost::filesystem::path model_path("/media/laui/street_data/pointcloud/xyz/");
-  // boost::filesystem::path model_path("/home/tosa2305/Desktop/thesis/data/untracked/point_clouds");
+  boost::filesystem::path model_path(is_on_laptop ?
+                                     "/media/laui/street_data/pointcloud/xyz/" :
+                                     "/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
 
   if (is_directory(model_path)) {
 
@@ -190,10 +195,9 @@ int main(int argc, char** argv) {
   std::set<std::string> frustum_files;
   std::vector<texstr::Frustum> frusta;
 
-  // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta");
-  // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
-  boost::filesystem::path frusta_path("/home/laui/Dokumente/Studium/Master/data/untracked/frusta_subset_cam_0");
-  // boost::filesystem::path frusta_path("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0_new");
+  boost::filesystem::path frusta_path(is_on_laptop ?
+                                      "/home/laui/Dokumente/Studium/Master/data/untracked/frusta_subset_cam_0" :
+                                      "/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
 
   if (is_directory(frusta_path)) {
 
@@ -234,8 +238,7 @@ int main(int argc, char** argv) {
   bool gui_visible(true);
   float current_blending_factor(1.f);
   int lens_enabled(0);
-  gua::math::vec3 current_pick_pos(0.0);
-  gua::math::vec3 current_pick_normal(0.0);
+  gua::math::vec2 current_mouse_pos(0.0);
   float current_lens_radius(5.f);
   const scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66);
 
@@ -251,6 +254,7 @@ int main(int argc, char** argv) {
   camera->config.set_screen_path("/cam/screen");
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
+  camera->config.set_output_texture_name("main_buffer");
   camera->config.set_far_clip(5000.0f);
   camera->config.set_near_clip(0.001f);
   // camera->config.set_enable_frustum_culling(false);
@@ -269,20 +273,22 @@ int main(int argc, char** argv) {
   frustum_vis_pass->set_query_radius(50.0);
   frustum_vis_pass->set_tree_visualization_enabled(false);
   frustum_vis_pass->set_frustum_visualization_enabled(false);
+
   auto fill_pass = std::make_shared<gua::FullscreenPassDescription>();
   fill_pass->source_file("data/shaders/background_fill.frag");
+
+  auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
+  screen_space_pick_pass->set_window_name("main_window");
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
   pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
-  // pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
-  //pipe->add_pass(std::make_shared<gua::BBoxPassDescription>());
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   pipe->add_pass(frustum_vis_pass);
-  pipe->add_pass(std::make_shared<gua::TextureProjectionUpdatePassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
   pipe->add_pass(fill_pass);
+  // pipe->add_pass(screen_space_pick_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
 
   // pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
@@ -467,32 +473,33 @@ int main(int argc, char** argv) {
     if (!gui_options_active && !gui_options_active) {
       navigator.set_mouse_position(gua::math::vec2i(pos));
 
-      if (lens_enabled) {
-        auto screen_space_pos = pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
+      current_mouse_pos = pos;
+      // if (lens_enabled) {
+        // auto screen_space_pos = pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
 
-        auto origin = screen->get_scaled_world_transform() *
-                      gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
+        // auto origin = screen->get_scaled_world_transform() *
+        //               gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
 
-        auto direction = scm::math::normalize(
-                          origin - camera->get_cached_world_transform() *
-                          gua::math::vec4(0,0,0,1)
-                         ) * 100.0;
+        // auto direction = scm::math::normalize(
+        //                   origin - camera->get_cached_world_transform() *
+        //                   gua::math::vec4(0,0,0,1)
+        //                  ) * 100.0;
 
-        auto up = screen->get_scaled_world_transform() *
-                  gua::math::vec4(0.0, 1.0, 0.0, 0.0);
+        // auto up = screen->get_scaled_world_transform() *
+        //           gua::math::vec4(0.0, 1.0, 0.0, 0.0);
 
-        auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
-                                    gua::PickResult::PICK_ONLY_FIRST_OBJECT |
-                                    gua::PickResult::PICK_ONLY_FIRST_FACE |
-                                    gua::PickResult::GET_WORLD_POSITIONS |
-                                    gua::PickResult::GET_POSITIONS |
-                                    gua::PickResult::GET_WORLD_NORMALS);
+        // auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
+        //                             gua::PickResult::PICK_ONLY_FIRST_OBJECT |
+        //                             gua::PickResult::PICK_ONLY_FIRST_FACE |
+        //                             gua::PickResult::GET_WORLD_POSITIONS |
+        //                             gua::PickResult::GET_POSITIONS |
+        //                             gua::PickResult::GET_WORLD_NORMALS);
 
-        if (!picks.empty()) {
-          current_pick_pos = picks.begin()->world_position;
-          current_pick_normal = picks.begin()->world_normal;
-        }
-      }
+        // if (!picks.empty()) {
+        //   current_pick_pos = picks.begin()->world_position;
+        //   current_pick_normal = picks.begin()->world_normal;
+        // }
+      // }
     }
   });
 
@@ -609,13 +616,15 @@ int main(int argc, char** argv) {
     street_material->set_uniform("blending_mode",   current_blending_mode);
     street_material->set_uniform("selection_mode",  current_selection_mode);
     street_material->set_uniform("blending_factor", current_blending_factor);
-    street_material->set_uniform("pick_pos_and_radius",
-                                  gua::math::vec4(current_pick_pos.x,
-                                                  current_pick_pos.y,
-                                                  current_pick_pos.z,
-                                                  current_lens_radius));
-    street_material->set_uniform("pick_normal", scm::math::normalize(current_pick_normal));
+    // street_material->set_uniform("pick_pos_and_radius",
+    //                               gua::math::vec4(current_pick_pos.x,
+    //                                               current_pick_pos.y,
+    //                                               current_pick_pos.z,
+    //                                               current_lens_radius));
+    street_material->set_uniform("mouse_pos_ndc", current_mouse_pos/gua::math::vec2(resolution.x, resolution.y));
+    street_material->set_uniform("lens_radius", current_lens_radius);
     street_material->set_uniform("lens_enabled", lens_enabled);
+    // street_material->set_uniform("last_frame_depth", std::string("main_buffer_depth"));
     int enable_background(0);
     if (background_fill_enabled == 1 && !navigator_active) enable_background = 1;
     fill_pass->uniform("enabled", enable_background);

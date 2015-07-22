@@ -87,7 +87,7 @@ void FrustumVisualizationPassDescription::set_query_radius(double query_radius) 
 
 PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const& ctx, SubstitutionMap& substitution_map)
 {
-  PipelinePass pass{*this, ctx, substitution_map};
+  PipelinePass pass(*this, ctx, substitution_map);
 
   auto tree_visualization_enabled = tree_visualization_enabled_;
   auto frustum_visualization_enabled = frustum_visualization_enabled_;

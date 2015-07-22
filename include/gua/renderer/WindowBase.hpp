@@ -166,6 +166,14 @@ class GUA_DLL WindowBase {
   virtual void display(std::shared_ptr<Texture> const& center_texture,
                        bool is_left);
 
+  virtual void set_mouse_position(gua::math::vec2 const& mouse_position) {
+    mouse_position_ = mouse_position;
+  }
+
+  virtual gua::math::vec2 const& get_mouse_position() const {
+    return mouse_position_;
+  }
+
   /**
    * Get the RenderContext of this window.
    *
@@ -200,6 +208,8 @@ protected:
   static std::atomic_uint last_context_id_;
 
   static std::mutex last_context_id_mutex_;
+
+  gua::math::vec2 mouse_position_;
 
 
  private:

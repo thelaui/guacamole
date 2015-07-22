@@ -29,6 +29,7 @@
 #include <gua/renderer/LightTable.hpp>
 #include <gua/renderer/Pipeline.hpp>
 #include <gua/databases/GeometryDatabase.hpp>
+#include <gua/databases/PipelinePassFeedbackDatabase.hpp>
 #include <gua/databases/Resources.hpp>
 #include <gua/utils/Logger.hpp>
 
@@ -49,7 +50,26 @@ unsigned PipelinePassDescription::mod_count() const {
   return mod_count_;
 }
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+std::string const& PipelinePassDescription::get_feedback_identifier() const {
+  return feedback_identifier_;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void PipelinePassDescription::set_feedback_identifier(std::string const& feedback_identifier) {
+  feedback_identifier_ = feedback_identifier;
+  touch();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<PipelinePassFeedback> PipelinePassDescription::get_feedback() const{
+  if (feedback_identifier_ != "") {
+    return PipelinePassFeedbackDatabase::instance()->lookup(feedback_identifier_);
+  }
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 PipelinePass::PipelinePass(PipelinePassDescription const& d,
                            RenderContext const& ctx,
                            SubstitutionMap const& substitution_map)
@@ -63,6 +83,7 @@ PipelinePass::PipelinePass(PipelinePassDescription const& d,
   , rendermode_(d.rendermode_)
   , process_(d.process_)
   , name_(d.name_)
+  , feedback_identifier_(d.feedback_identifier_)
   , substitution_map_(substitution_map)
 {
   upload_program(d, ctx);
@@ -80,6 +101,7 @@ PipelinePass::PipelinePass(PipelinePassDescription const& d,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 void PipelinePass::process(PipelinePassDescription const& desc, Pipeline& pipe) {
 
   auto const& ctx(pipe.get_context());
@@ -127,6 +149,7 @@ void PipelinePass::process(PipelinePassDescription const& desc, Pipeline& pipe) 
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 void PipelinePass::upload_program(PipelinePassDescription const& desc, RenderContext const& ctx) {
 
   if (!desc.vertex_shader_.empty() && !desc.fragment_shader_.empty()) {
@@ -158,6 +181,13 @@ void PipelinePass::upload_program(PipelinePassDescription const& desc, RenderCon
     }
 
     shader_->upload_to(ctx);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void PipelinePass::store_feedback(std::shared_ptr<PipelinePassFeedback> feedback) const {
+  if (feedback_identifier_ != "") {
+    PipelinePassFeedbackDatabase::instance()->add(feedback_identifier_, feedback);
   }
 }
 
