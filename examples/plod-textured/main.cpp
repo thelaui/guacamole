@@ -240,6 +240,7 @@ int main(int argc, char** argv) {
   int current_selection_mode(0);
   int background_fill_enabled(0);
   bool gui_visible(true);
+  bool map_visible(true);
   float current_blending_factor(1.f);
   int lens_enabled(0);
   gua::math::vec3 current_pick_pos(0.0);
@@ -532,15 +533,21 @@ int main(int argc, char** argv) {
   });
 
   window->on_char.connect([&](unsigned key){
-    if (key == 'h') {
+    if (key == 'g') {
       if (gui_visible) {
         gui_quad->get_tags().add_tag("invisible");
-        map_quad->get_tags().add_tag("invisible");
       } else {
         gui_quad->get_tags().remove_tag("invisible");
-        map_quad->get_tags().remove_tag("invisible");
       }
       gui_visible = !gui_visible;
+
+    } else if (key == 'm') {
+      if (map_visible) {
+        map_quad->get_tags().add_tag("invisible");
+      } else {
+        map_quad->get_tags().remove_tag("invisible");
+      }
+      map_visible = !map_visible;
     }
   });
 
