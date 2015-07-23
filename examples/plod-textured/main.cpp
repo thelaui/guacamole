@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
   // increase number of files that can be loaded in parallel
   /////////////////////////////////////////////////////////////////////////////
 
-  const int max_load_count(20);
+  const int max_load_count(280);
   int count(0);
 
   struct rlimit limit;
@@ -119,18 +119,20 @@ int main(int argc, char** argv) {
   // create node to display filled in images
   gua::TriMeshLoader trimesh_loader;
 
-  auto background_fill_transform = graph.add_node<gua::node::TransformNode>(
-                                    "/", "background_fill_transform");
+  auto pick_proxy_transform = graph.add_node<gua::node::TransformNode>(
+                                    "/", "pick_proxy_transform");
 
-  auto background_fill = trimesh_loader.create_geometry_from_file(
-                          "background_fill",
-                          "data/objects/plane.obj",
-                          street_material
-                         );
+  auto pick_proxy = trimesh_loader.create_geometry_from_file(
+                                    "pick_proxy",
+                                    "data/objects/plane.obj",
+                                    gua::TriMeshLoader::MAKE_PICKABLE
+                                   );
 
-  background_fill->rotate(90.0, 1.0, 0.0, 0.0);
+  // pick_proxy->rotate(90.0, 1.0, 0.0, 0.0);
+  pick_proxy->scale(100.f);
+  pick_proxy->get_tags().add_tag("invisible");
 
-  // graph.add_node("/background_fill_transform", background_fill);
+  graph.add_node("/pick_proxy_transform", pick_proxy);
 
 
   // configure plod-renderer and create point-based objects
@@ -142,10 +144,12 @@ int main(int argc, char** argv) {
 
   auto transform = graph.add_node<gua::node::TransformNode>("/", "transform");
   auto model_offset = graph.add_node<gua::node::TransformNode>("/transform", "model_offset");
+  transform->get_tags().add_tag("no_pick");
 
   auto setup_plod_node = [](std::shared_ptr<gua::node::PLODNode> const& node) {
     node->set_radius_scale(1.3f);
     node->set_enable_backface_culling_by_normal(false);
+    node->get_tags().add_tag("no_pick");
     // node->set_draw_bounding_box(true);
   };
 
@@ -238,7 +242,8 @@ int main(int argc, char** argv) {
   bool gui_visible(true);
   float current_blending_factor(1.f);
   int lens_enabled(0);
-  gua::math::vec2 current_mouse_pos(0.0);
+  gua::math::vec3 current_pick_pos(0.0);
+  gua::math::vec3 current_pick_normal(0.0);
   float current_lens_radius(5.f);
   const scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66);
 
@@ -432,6 +437,12 @@ int main(int argc, char** argv) {
           }
         }
         navigator_active = false;
+
+        auto ground_transform(scm::math::make_translation(
+          frusta[current_frustum].get_camera_position() -
+          scm::math::vec3d(0.0, 2.83, 0.0)
+        ));
+        pick_proxy_transform->set_world_transform(ground_transform);
       }
     }
   });
@@ -473,33 +484,33 @@ int main(int argc, char** argv) {
     if (!gui_options_active && !gui_options_active) {
       navigator.set_mouse_position(gua::math::vec2i(pos));
 
-      current_mouse_pos = pos;
-      // if (lens_enabled) {
-        // auto screen_space_pos = pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
+      if (lens_enabled) {
+        auto screen_space_pos = pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
 
-        // auto origin = screen->get_scaled_world_transform() *
-        //               gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
+        auto origin = screen->get_scaled_world_transform() *
+                      gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
 
-        // auto direction = scm::math::normalize(
-        //                   origin - camera->get_cached_world_transform() *
-        //                   gua::math::vec4(0,0,0,1)
-        //                  ) * 100.0;
+        auto direction = scm::math::normalize(
+                          origin - camera->get_cached_world_transform() *
+                          gua::math::vec4(0,0,0,1)
+                         ) * 100.0;
 
-        // auto up = screen->get_scaled_world_transform() *
-        //           gua::math::vec4(0.0, 1.0, 0.0, 0.0);
+        auto up = screen->get_scaled_world_transform() *
+                  gua::math::vec4(0.0, 1.0, 0.0, 0.0);
 
-        // auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
-        //                             gua::PickResult::PICK_ONLY_FIRST_OBJECT |
-        //                             gua::PickResult::PICK_ONLY_FIRST_FACE |
-        //                             gua::PickResult::GET_WORLD_POSITIONS |
-        //                             gua::PickResult::GET_POSITIONS |
-        //                             gua::PickResult::GET_WORLD_NORMALS);
+        auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
+                                    gua::PickResult::PICK_ONLY_FIRST_OBJECT |
+                                    gua::PickResult::PICK_ONLY_FIRST_FACE |
+                                    gua::PickResult::GET_WORLD_POSITIONS |
+                                    gua::PickResult::GET_POSITIONS |
+                                    gua::PickResult::GET_WORLD_NORMALS,
+                                    gua::Mask({}, {"no_pick"}));
 
-        // if (!picks.empty()) {
-        //   current_pick_pos = picks.begin()->world_position;
-        //   current_pick_normal = picks.begin()->world_normal;
-        // }
-      // }
+        if (!picks.empty()) {
+          current_pick_pos = picks.begin()->world_position;
+          current_pick_normal = picks.begin()->world_normal;
+        }
+      }
     }
   });
 
@@ -583,7 +594,12 @@ int main(int argc, char** argv) {
                                         {gua::string_utils::to_string(pos.x),
                                          gua::string_utils::to_string(pos.z)});
 
-        background_fill_transform->set_world_transform(frusta[current_frustum].get_screen_transform());
+        auto ground_transform(scm::math::make_translation(
+          frusta[current_frustum].get_camera_position() -
+          scm::math::vec3d(0.0, 2.83, 0.0)
+        ));
+        pick_proxy_transform->set_world_transform(ground_transform);
+        // pick_proxy->
 
         std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
       }
@@ -616,15 +632,13 @@ int main(int argc, char** argv) {
     street_material->set_uniform("blending_mode",   current_blending_mode);
     street_material->set_uniform("selection_mode",  current_selection_mode);
     street_material->set_uniform("blending_factor", current_blending_factor);
-    // street_material->set_uniform("pick_pos_and_radius",
-    //                               gua::math::vec4(current_pick_pos.x,
-    //                                               current_pick_pos.y,
-    //                                               current_pick_pos.z,
-    //                                               current_lens_radius));
-    street_material->set_uniform("mouse_pos_ndc", current_mouse_pos/gua::math::vec2(resolution.x, resolution.y));
-    street_material->set_uniform("lens_radius", current_lens_radius);
+    street_material->set_uniform("pick_pos_and_radius",
+                                  gua::math::vec4(current_pick_pos.x,
+                                                  current_pick_pos.y,
+                                                  current_pick_pos.z,
+                                                  current_lens_radius));
+    street_material->set_uniform("pick_normal", current_pick_normal);
     street_material->set_uniform("lens_enabled", lens_enabled);
-    // street_material->set_uniform("last_frame_depth", std::string("main_buffer_depth"));
     int enable_background(0);
     if (background_fill_enabled == 1 && !navigator_active) enable_background = 1;
     fill_pass->uniform("enabled", enable_background);
