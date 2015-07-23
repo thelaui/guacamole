@@ -26,6 +26,7 @@
     <script type="text/javascript" src="third_party/js/leaflet.js"></script>
     <script type="text/javascript" src="third_party/js/Polyline.encoded.js"></script>
     <script type="text/javascript" src="third_party/js/proj4.js"></script>
+    <script type="text/javascript" src="route_array.js"></script>
 
 
     <script type="text/javascript">
@@ -94,25 +95,38 @@
           gua.set_camera_pos_utm(utm_coords[0], utm_coords[1]);
         });
 
-        var url = 'http://osrm.mapzen.com/car/viaroute?';
-        url += '&loc=' + latlons.src[0] + ',' + latlons.src[1];
-        url += '&loc=' + latlons.trg[0] + ',' + latlons.trg[1];
+        var polyline = L.polyline(
+          window.route_array,
+          {color:'red'}
+        ).addTo(routeGroup);
 
-        // Get route from Mapzen
-        var jqxhr = $.ajax({
-          url: url,
-          data: {
-            instructions: false,
-            alt: false
-          },
-          dataType: 'json'
-        })
-        .done(function(data) {
-          var polyline = L.polyline(
-            L.PolylineUtil.decode(data.route_geometry, 6),
-            {color:'red'}
-          ).addTo(routeGroup);
-        });
+        // var url = 'http://osrm.mapzen.com/car/viaroute?';
+        // url += '&loc=' + latlons.src[0] + ',' + latlons.src[1];
+        // url += '&loc=' + latlons.trg[0] + ',' + latlons.trg[1];
+
+        // //Get route from Mapzen
+        // var jqxhr = $.ajax({
+        //   url: url,
+        //   data: {
+        //     instructions: false,
+        //     alt: false
+        //   },
+        //   dataType: 'json'
+        // })
+        // .done(function(data) {
+        //   var polyline = L.polyline(
+        //     L.PolylineUtil.decode(data.route_geometry, 6),
+        //     {color:'red'}
+        //   ).addTo(routeGroup);
+
+        //   var decoded = L.PolylineUtil.decode(data.route_geometry, 6);
+        //   var array_string = "[";
+        //   for (var i = 0; i < decoded.length; ++i) {
+        //     array_string += "[" + decoded[i][0] + "," + decoded[i][1] + "],";
+        //   }
+        //   array_string += "]";
+        //   console.log(array_string);
+        // });
       }
 
       function init() {
