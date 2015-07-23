@@ -243,6 +243,7 @@ int main(int argc, char** argv) {
   bool map_visible(true);
   float current_blending_factor(1.f);
   int lens_enabled(0);
+  gua::math::vec2 current_mouse_pos(0.0);
   gua::math::vec3 current_pick_pos(0.0);
   gua::math::vec3 current_pick_normal(0.0);
   float current_lens_radius(5.f);
@@ -283,8 +284,8 @@ int main(int argc, char** argv) {
   auto fill_pass = std::make_shared<gua::FullscreenPassDescription>();
   fill_pass->source_file("data/shaders/background_fill.frag");
 
-  auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
-  screen_space_pick_pass->set_window_name("main_window");
+  // auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
+  // screen_space_pick_pass->set_window_name("main_window");
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
@@ -472,46 +473,20 @@ int main(int argc, char** argv) {
     gua::math::vec2 hit_pos;
     gui_options_active = false;
     gui_map_active = false;
+    current_mouse_pos = pos;
+
     if (gui_visible) {
-      if (gui_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
+      if (gui_quad->pixel_to_texcoords(current_mouse_pos, resolution, hit_pos)) {
         gui->inject_mouse_position_relative(hit_pos);
         gui_options_active = true;
-      } else if (map_quad->pixel_to_texcoords(pos, resolution, hit_pos)) {
+      } else if (map_quad->pixel_to_texcoords(current_mouse_pos, resolution, hit_pos)) {
         map->inject_mouse_position_relative(hit_pos);
         gui_map_active = true;
       }
     }
 
     if (!gui_options_active && !gui_options_active) {
-      navigator.set_mouse_position(gua::math::vec2i(pos));
-
-      if (lens_enabled) {
-        auto screen_space_pos = pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
-
-        auto origin = screen->get_scaled_world_transform() *
-                      gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
-
-        auto direction = scm::math::normalize(
-                          origin - camera->get_cached_world_transform() *
-                          gua::math::vec4(0,0,0,1)
-                         ) * 100.0;
-
-        auto up = screen->get_scaled_world_transform() *
-                  gua::math::vec4(0.0, 1.0, 0.0, 0.0);
-
-        auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
-                                    gua::PickResult::PICK_ONLY_FIRST_OBJECT |
-                                    gua::PickResult::PICK_ONLY_FIRST_FACE |
-                                    gua::PickResult::GET_WORLD_POSITIONS |
-                                    gua::PickResult::GET_POSITIONS |
-                                    gua::PickResult::GET_WORLD_NORMALS,
-                                    gua::Mask({}, {"no_pick"}));
-
-        if (!picks.empty()) {
-          current_pick_pos = picks.begin()->world_position;
-          current_pick_normal = picks.begin()->world_normal;
-        }
-      }
+      navigator.set_mouse_position(gua::math::vec2i(current_mouse_pos));
     }
   });
 
@@ -633,6 +608,31 @@ int main(int argc, char** argv) {
       camera->set_transform(gua::math::mat4(frusta[current_frustum].get_camera_transform()));
       // screen->set_world_transform(frusta[current_frustum].get_screen_transform());
       // screen->data.set_size(gua::math::vec2(1.0, 1.0));;
+    }
+
+    if (lens_enabled == 1) {
+      auto screen_space_pos = current_mouse_pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
+
+      auto origin = screen->get_scaled_world_transform() *
+                    gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
+
+      auto direction = scm::math::normalize(
+                        origin - camera->get_cached_world_transform() *
+                        gua::math::vec4(0,0,0,1)
+                       ) * 100.0;
+
+      auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
+                                  gua::PickResult::PICK_ONLY_FIRST_OBJECT |
+                                  gua::PickResult::PICK_ONLY_FIRST_FACE |
+                                  gua::PickResult::GET_WORLD_POSITIONS |
+                                  gua::PickResult::GET_POSITIONS |
+                                  gua::PickResult::GET_WORLD_NORMALS,
+                                  gua::Mask({}, {"no_pick"}));
+
+      if (!picks.empty()) {
+        current_pick_pos = picks.begin()->world_position;
+        current_pick_normal = picks.begin()->world_normal;
+      }
     }
 
     street_material->set_uniform("blending_range",  current_blending_range);
