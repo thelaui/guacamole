@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
   // increase number of files that can be loaded in parallel
   /////////////////////////////////////////////////////////////////////////////
 
-  const int max_load_count(280);
+  const int max_load_count(20);
   int count(0);
 
   struct rlimit limit;
@@ -284,8 +284,8 @@ int main(int argc, char** argv) {
   auto fill_pass = std::make_shared<gua::FullscreenPassDescription>();
   fill_pass->source_file("data/shaders/background_fill.frag");
 
-  // auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
-  // screen_space_pick_pass->set_window_name("main_window");
+  auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
+  screen_space_pick_pass->set_window_name("main_window");
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
@@ -295,7 +295,7 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
   pipe->add_pass(fill_pass);
-  // pipe->add_pass(screen_space_pick_pass);
+  pipe->add_pass(screen_space_pick_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
 
   // pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
@@ -611,28 +611,28 @@ int main(int argc, char** argv) {
     }
 
     if (lens_enabled == 1) {
-      auto screen_space_pos = current_mouse_pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
+      // auto screen_space_pos = current_mouse_pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
 
-      auto origin = screen->get_scaled_world_transform() *
-                    gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
+      // auto origin = screen->get_scaled_world_transform() *
+      //               gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
 
-      auto direction = scm::math::normalize(
-                        origin - camera->get_cached_world_transform() *
-                        gua::math::vec4(0,0,0,1)
-                       ) * 100.0;
+      // auto direction = scm::math::normalize(
+      //                   origin - camera->get_cached_world_transform() *
+      //                   gua::math::vec4(0,0,0,1)
+      //                  ) * 100.0;
 
-      auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
-                                  gua::PickResult::PICK_ONLY_FIRST_OBJECT |
-                                  gua::PickResult::PICK_ONLY_FIRST_FACE |
-                                  gua::PickResult::GET_WORLD_POSITIONS |
-                                  gua::PickResult::GET_POSITIONS |
-                                  gua::PickResult::GET_WORLD_NORMALS,
-                                  gua::Mask({}, {"no_pick"}));
+      // auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
+      //                             gua::PickResult::PICK_ONLY_FIRST_OBJECT |
+      //                             gua::PickResult::PICK_ONLY_FIRST_FACE |
+      //                             gua::PickResult::GET_WORLD_POSITIONS |
+      //                             gua::PickResult::GET_POSITIONS |
+      //                             gua::PickResult::GET_WORLD_NORMALS,
+      //                             gua::Mask({}, {"no_pick"}));
 
-      if (!picks.empty()) {
-        current_pick_pos = picks.begin()->world_position;
-        current_pick_normal = picks.begin()->world_normal;
-      }
+      // if (!picks.empty()) {
+      //   current_pick_pos = picks.begin()->world_position;
+      //   current_pick_normal = picks.begin()->world_normal;
+      // }
     }
 
     street_material->set_uniform("blending_range",  current_blending_range);
