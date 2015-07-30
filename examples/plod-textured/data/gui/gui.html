@@ -185,6 +185,7 @@
 
         init_checkbox("#enableLens", "lens_enable");
         init_checkbox("#enableBackgroundFill", "background_fill_enable");
+        init_checkbox("#enableMeasurement", "measurement_enable");
         init_checkbox("#enableTreeVis", "tree_vis_enable");
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
 
@@ -290,6 +291,21 @@
             <div class="col-xs-7">
               <input class="slider lens_radius" data-slider-tooltip="hide" data-slider-id="lens_radius" type="text" data-slider-min="0" data-slider-max="10" data-slider-step="0.1" handle="custom"/>
             </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Enable Measurement:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableMeasurement" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+
           </div>
 
           <div class="row">

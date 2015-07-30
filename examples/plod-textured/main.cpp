@@ -122,18 +122,38 @@ int main(int argc, char** argv) {
   auto pick_proxy_transform = graph.add_node<gua::node::TransformNode>(
                                     "/", "pick_proxy_transform");
 
-  auto pick_proxy = trimesh_loader.create_geometry_from_file(
-                                    "pick_proxy",
-                                    "data/objects/plane.obj",
-                                    gua::TriMeshLoader::MAKE_PICKABLE
-                                   );
+  // auto pick_proxy = trimesh_loader.create_geometry_from_file(
+  //                                   "pick_proxy",
+  //                                   "data/objects/plane.obj",
+  //                                   gua::TriMeshLoader::MAKE_PICKABLE
+  //                                  );
 
   // pick_proxy->rotate(90.0, 1.0, 0.0, 0.0);
-  pick_proxy->scale(100.f);
-  pick_proxy->get_tags().add_tag("invisible");
+  // pick_proxy->scale(100.f);
+  // pick_proxy->get_tags().add_tag("invisible");
 
-  graph.add_node("/pick_proxy_transform", pick_proxy);
+  // graph.add_node("/pick_proxy_transform", pick_proxy);
 
+
+  auto measurement_marker_1 = trimesh_loader.create_geometry_from_file(
+                                "measurement_marker_1",
+                                "data/objects/measurement_marker.obj",
+                                gua::TriMeshLoader::MAKE_PICKABLE
+                               );
+
+  measurement_marker_1->scale(0.2);
+
+  graph.add_node("/", measurement_marker_1);
+
+  auto measurement_marker_2 = trimesh_loader.create_geometry_from_file(
+                                "measurement_marker_2",
+                                "data/objects/measurement_marker.obj",
+                                gua::TriMeshLoader::MAKE_PICKABLE
+                               );
+
+  measurement_marker_2->scale(0.2);
+
+  graph.add_node("/", measurement_marker_2);
 
   // configure plod-renderer and create point-based objects
   gua::PLODLoader plod_loader;
@@ -144,12 +164,11 @@ int main(int argc, char** argv) {
 
   auto transform = graph.add_node<gua::node::TransformNode>("/", "transform");
   auto model_offset = graph.add_node<gua::node::TransformNode>("/transform", "model_offset");
-  transform->get_tags().add_tag("no_pick");
+  // transform->get_tags().add_tag("no_pick");
 
   auto setup_plod_node = [](std::shared_ptr<gua::node::PLODNode> const& node) {
     node->set_radius_scale(1.3f);
     node->set_enable_backface_culling_by_normal(false);
-    node->get_tags().add_tag("no_pick");
     // node->set_draw_bounding_box(true);
   };
 
@@ -241,8 +260,10 @@ int main(int argc, char** argv) {
   int background_fill_enabled(0);
   bool gui_visible(true);
   bool map_visible(true);
+  bool picking_enabled(false);
   float current_blending_factor(1.f);
-  int lens_enabled(0);
+  bool lens_enabled(false);
+  bool measurement_enabled(false);
   gua::math::vec2 current_mouse_pos(0.0);
   gua::math::vec3 current_pick_pos(0.0);
   gua::math::vec3 current_pick_normal(0.0);
@@ -264,6 +285,8 @@ int main(int argc, char** argv) {
   camera->config.set_output_texture_name("main_buffer");
   camera->config.set_far_clip(5000.0f);
   camera->config.set_near_clip(0.001f);
+  // camera->config.set_far_clip(5.0f);
+  // camera->config.set_near_clip(1.f);
   // camera->config.set_enable_frustum_culling(false);
   camera->config.mask().blacklist.add_tag("invisible");
 
@@ -292,20 +315,13 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   pipe->add_pass(frustum_vis_pass);
+  // pipe->add_pass(screen_space_pick_pass);
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
   pipe->add_pass(fill_pass);
-  pipe->add_pass(screen_space_pick_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
 
-  // pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::SKYMAP_TEXTURE);
   pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::COLOR);
-  // pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::QUAD_TEXTURE);
-  // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/water_painted_noon.jpg");
-  // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/bath.jpg");
-  // pipe->get_resolve_pass()->background_texture("/opt/guacamole/resources/skymaps/field.jpg");
-  // pipe->get_resolve_pass()->background_texture("fill_texture");
-  // pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.5f, 0.6f, 0.1f));
   pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.8f, 0.8f, 1.f));
 
   camera->set_pipeline_description(pipe);
@@ -345,6 +361,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_blending_mode_average");
     gui->add_javascript_callback("set_blending_mode_median");
     gui->add_javascript_callback("set_lens_enable");
+    gui->add_javascript_callback("set_measurement_enable");
     gui->add_javascript_callback("set_background_fill_enable");
     gui->add_javascript_callback("set_tree_vis_enable");
     gui->add_javascript_callback("set_frustum_vis_enable");
@@ -362,6 +379,7 @@ int main(int argc, char** argv) {
      || callback == "set_blending_mode_average"
      || callback == "set_blending_mode_median"
      || callback == "set_lens_enable"
+     || callback == "set_measurement_enable"
      || callback == "set_background_fill_enable"
      || callback == "set_tree_vis_enable"
      || callback == "set_frustum_vis_enable") {
@@ -373,7 +391,8 @@ int main(int argc, char** argv) {
       if (callback == "set_selection_mode_fragment") current_selection_mode = 1;
       if (callback == "set_blending_mode_average") current_blending_mode = 0;
       if (callback == "set_blending_mode_median") current_blending_mode = 1;
-      if (callback == "set_lens_enable") lens_enabled = checked ? 1 : 0;
+      if (callback == "set_lens_enable") lens_enabled = checked;;
+      if (callback == "set_measurement_enable") measurement_enabled = checked;;
       if (callback == "set_background_fill_enable") background_fill_enabled = checked ? 1 : 0;
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
@@ -475,7 +494,7 @@ int main(int argc, char** argv) {
     gui_map_active = false;
     current_mouse_pos = pos;
 
-    if (gui_visible) {
+    if (gui_visible || map_visible) {
       if (gui_quad->pixel_to_texcoords(current_mouse_pos, resolution, hit_pos)) {
         gui->inject_mouse_position_relative(hit_pos);
         gui_options_active = true;
@@ -492,8 +511,18 @@ int main(int argc, char** argv) {
 
   window->on_button_press.connect([&](int button, int action, int mods){
     if (!gui_options_active && !gui_map_active) {
-      navigator_active = true;
-      navigator.set_mouse_button(button, action);
+      if (measurement_enabled) {
+        if (action == 1) {
+          if (button == 0) {
+            measurement_marker_1->translate(current_pick_pos - measurement_marker_1->get_world_position());
+          } else if (button == 1) {
+            measurement_marker_2->translate(current_pick_pos - measurement_marker_2->get_world_position());
+          }
+        }
+      } else {
+        navigator_active = true;
+        navigator.set_mouse_button(button, action);
+      }
     } else if (gui_options_active) {
       gui->inject_mouse_button(gua::Button(button), action, mods);
     } else if (gui_map_active) {
@@ -581,7 +610,6 @@ int main(int argc, char** argv) {
           scm::math::vec3d(0.0, 2.83, 0.0)
         ));
         pick_proxy_transform->set_world_transform(ground_transform);
-        // pick_proxy->
 
         std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
       }
@@ -595,8 +623,10 @@ int main(int argc, char** argv) {
   // application loop
   gua::events::MainLoop loop;
   gua::events::Ticker ticker(loop, 1.0/500.0);
+  int frame_count(0);
 
   ticker.on_tick.connect([&]() {
+    ++frame_count;
     navigator.update();
     gua::Interface::instance()->update();
 
@@ -610,29 +640,31 @@ int main(int argc, char** argv) {
       // screen->data.set_size(gua::math::vec2(1.0, 1.0));;
     }
 
-    if (lens_enabled == 1) {
-      // auto screen_space_pos = current_mouse_pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
+    picking_enabled = lens_enabled || measurement_enabled;
 
-      // auto origin = screen->get_scaled_world_transform() *
-      //               gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
+    if (picking_enabled) {
+      auto screen_space_pos = current_mouse_pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;
 
-      // auto direction = scm::math::normalize(
-      //                   origin - camera->get_cached_world_transform() *
-      //                   gua::math::vec4(0,0,0,1)
-      //                  ) * 100.0;
+      auto origin = screen->get_scaled_world_transform() *
+                    gua::math::vec4(screen_space_pos.x, screen_space_pos.y, 0, 1);
 
-      // auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
-      //                             gua::PickResult::PICK_ONLY_FIRST_OBJECT |
-      //                             gua::PickResult::PICK_ONLY_FIRST_FACE |
-      //                             gua::PickResult::GET_WORLD_POSITIONS |
-      //                             gua::PickResult::GET_POSITIONS |
-      //                             gua::PickResult::GET_WORLD_NORMALS,
-      //                             gua::Mask({}, {"no_pick"}));
+      auto direction = scm::math::normalize(
+                        origin - camera->get_cached_world_transform() *
+                        gua::math::vec4(0,0,0,1)
+                       ) * 100.0;
 
-      // if (!picks.empty()) {
-      //   current_pick_pos = picks.begin()->world_position;
-      //   current_pick_normal = picks.begin()->world_normal;
-      // }
+      auto picks = graph.ray_test(gua::Ray(origin, direction, 1.0),
+                                  gua::PickResult::PICK_ONLY_FIRST_OBJECT |
+                                  gua::PickResult::PICK_ONLY_FIRST_FACE |
+                                  gua::PickResult::GET_WORLD_POSITIONS |
+                                  gua::PickResult::GET_POSITIONS |
+                                  gua::PickResult::GET_WORLD_NORMALS,
+                                  gua::Mask({}, {"no_pick"}));
+
+      if (!picks.empty()) {
+        current_pick_pos = picks.begin()->world_position;
+        current_pick_normal = picks.begin()->world_normal;
+      }
     }
 
     street_material->set_uniform("blending_range",  current_blending_range);
@@ -645,7 +677,8 @@ int main(int argc, char** argv) {
                                                   current_pick_pos.z,
                                                   current_lens_radius));
     street_material->set_uniform("pick_normal", current_pick_normal);
-    street_material->set_uniform("lens_enabled", lens_enabled);
+    street_material->set_uniform("lens_enabled", lens_enabled ? 1 : 0);
+
     int enable_background(0);
     if (background_fill_enabled == 1 && !navigator_active) enable_background = 1;
     fill_pass->uniform("enabled", enable_background);
