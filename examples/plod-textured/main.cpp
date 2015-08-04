@@ -36,6 +36,7 @@
 #include <gua/renderer/BBoxPass.hpp>
 #include <gua/renderer/DebugViewPass.hpp>
 #include <gua/renderer/FrustumVisualizationPass.hpp>
+#include <gua/renderer/TexturedQuadPass.hpp>
 #include <gua/renderer/TexturedScreenSpaceQuadPass.hpp>
 #include <gua/renderer/ScreenSpacePickPass.hpp>
 
@@ -135,23 +136,27 @@ int main(int argc, char** argv) {
   // graph.add_node("/pick_proxy_transform", pick_proxy);
 
 
-  auto measurement_marker_1 = trimesh_loader.create_geometry_from_file(
-                                "measurement_marker_1",
-                                "data/objects/measurement_marker.obj",
-                                gua::TriMeshLoader::MAKE_PICKABLE
-                               );
+  // auto measurement_marker_1 = trimesh_loader.create_geometry_from_file(
+  //                               "measurement_marker_1",
+  //                               "data/objects/measurement_marker.obj",
+  //                               gua::TriMeshLoader::MAKE_PICKABLE
+  //                              );
 
-  measurement_marker_1->scale(0.2);
+  // measurement_marker_1->scale(0.2);
+
+  auto measurement_marker_1(std::make_shared<gua::node::TransformNode>("measurement_marker_1"));
 
   graph.add_node("/", measurement_marker_1);
 
-  auto measurement_marker_2 = trimesh_loader.create_geometry_from_file(
-                                "measurement_marker_2",
-                                "data/objects/measurement_marker.obj",
-                                gua::TriMeshLoader::MAKE_PICKABLE
-                               );
+  // auto measurement_marker_2 = trimesh_loader.create_geometry_from_file(
+  //                               "measurement_marker_2",
+  //                               "data/objects/measurement_marker.obj",
+  //                               gua::TriMeshLoader::MAKE_PICKABLE
+  //                              );
 
-  measurement_marker_2->scale(0.2);
+  // measurement_marker_2->scale(0.2);
+
+  auto measurement_marker_2(std::make_shared<gua::node::TransformNode>("measurement_marker_2"));
 
   graph.add_node("/", measurement_marker_2);
 
@@ -313,16 +318,18 @@ int main(int argc, char** argv) {
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
   pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
-  pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   pipe->add_pass(frustum_vis_pass);
   // pipe->add_pass(screen_space_pick_pass);
+  pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
+  pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
   pipe->add_pass(fill_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
 
-  pipe->get_resolve_pass()->background_mode(gua::ResolvePassDescription::BackgroundMode::COLOR);
-  pipe->get_resolve_pass()->background_color(gua::utils::Color3f(0.8f, 0.8f, 1.f));
+  // pipe->set_enable_abuffer(true);
+  // pipe->set_abuffer_size(1500);
+  // pipe->set_blending_termination_threshold(0.99f);
 
   camera->set_pipeline_description(pipe);
 
@@ -468,6 +475,26 @@ int main(int argc, char** argv) {
     }
   });
 
+  auto ruler = std::make_shared<gua::GuiResource>();
+  ruler->init("ruler", "asset://gua/data/gui/ruler.html", gua::math::vec2(1920, 60));
+
+  auto ruler_quad = std::make_shared<gua::node::TexturedQuadNode>("ruler_quad");
+  ruler_quad->data.texture() = "ruler";
+  ruler_quad->data.size() = gua::math::vec2(5.f, 1.f);
+
+  auto ruler_offset(graph.add_node<gua::node::TransformNode>("/", "ruler_offset"));
+  graph.add_node("/ruler_offset", ruler_quad);
+
+  auto measurement_text = std::make_shared<gua::GuiResource>();
+  measurement_text->init("measurement_text", "asset://gua/data/gui/measurement_text.html", gua::math::vec2(100, 100));
+
+  auto measurement_text_quad = std::make_shared<gua::node::TexturedScreenSpaceQuadNode>("measurement_text_quad");
+  measurement_text_quad->data.texture() = "measurement_text";
+  measurement_text_quad->data.size() = gua::math::vec2i(100, 100);
+  measurement_text_quad->data.anchor() = gua::math::vec2(0.f, 0.f);
+  measurement_text_quad->data.offset() = gua::math::vec2(0.f, 0.f);
+
+  graph.add_node("/", measurement_text_quad);
 
   /////////////////////////////////////////////////////////////////////////////
   // create window and callback setup
@@ -518,6 +545,28 @@ int main(int argc, char** argv) {
           } else if (button == 1) {
             measurement_marker_2->translate(current_pick_pos - measurement_marker_2->get_world_position());
           }
+          auto marker_to_marker(measurement_marker_2->get_world_position() - measurement_marker_1->get_world_position());
+          auto distance(scm::math::length(marker_to_marker));
+
+          auto new_transform(scm::math::make_look_at_matrix_inv(
+                              measurement_marker_1->get_world_position(),
+                              measurement_marker_2->get_world_position(),
+                              gua::math::vec3(0.0, 1.0, 0.0))
+                             );
+
+          ruler_offset->set_world_transform(new_transform);
+          ruler_quad->data.size().x = distance;
+
+          ruler_quad->set_transform(
+            scm::math::make_translation(
+              0.0,
+              ruler_quad->data.size().y * 0.5,
+              -ruler_quad->data.size().x * 0.5
+            ) *
+            scm::math::make_rotation(90.0, 0.0, 1.0, 0.0)
+          );
+
+          measurement_text->call_javascript("set_text", gua::to_string(distance) + "m");
         }
       } else {
         navigator_active = true;
@@ -572,6 +621,8 @@ int main(int argc, char** argv) {
       if (action == 1 && key == 294) {
         gui->reload();
         map->reload();
+        ruler->reload();
+        measurement_text->reload();
       }
 
       // F6 to reload pipeline
@@ -666,6 +717,29 @@ int main(int argc, char** argv) {
         current_pick_normal = picks.begin()->world_normal;
       }
     }
+
+    auto marker_center((measurement_marker_2->get_world_position() + measurement_marker_1->get_world_position()) * 0.5);
+    gua::math::vec4 text_center(marker_center.x,
+                                marker_center.y + ruler_quad->data.size().y * 0.8,
+                                marker_center.z,
+                                1.0);
+
+    auto rendering_frustum(camera->get_rendering_frustum(graph, gua::CameraMode::CENTER));
+    auto text_center_screen_space((rendering_frustum.get_projection() * rendering_frustum.get_view()) * text_center);
+
+    if (text_center_screen_space.z < 0.0) {
+      measurement_text_quad->get_tags().add_tag("invisible");
+    } else {
+      measurement_text_quad->get_tags().remove_tag("invisible");
+      text_center_screen_space /= text_center_screen_space.w;
+      // text_center_screen_space = text_center_screen_space * 0.5 + 0.5;
+      measurement_text_quad->data.offset() = gua::math::vec2(
+        text_center_screen_space.x * resolution.x,
+        text_center_screen_space.y * resolution.y
+      ) * 0.5;
+    }
+
+
 
     street_material->set_uniform("blending_range",  current_blending_range);
     street_material->set_uniform("blending_mode",   current_blending_mode);
