@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
   // increase number of files that can be loaded in parallel
   /////////////////////////////////////////////////////////////////////////////
 
-  const int max_load_count(20);
+  const int max_load_count(281);
   int count(0);
 
   struct rlimit limit;
@@ -279,8 +279,8 @@ int main(int argc, char** argv) {
   // create scene camera and pipeline
   /////////////////////////////////////////////////////////////////////////////
 
-  auto resolution = gua::math::vec2ui(1920, 1080);
-  // auto resolution = gua::math::vec2ui(1280, 960);
+  // auto resolution = gua::math::vec2ui(1920, 1080);
+  auto resolution = gua::math::vec2ui(1280, 960);
 
   auto camera = graph.add_node<gua::node::CameraNode>("/", "cam");
   camera->config.set_resolution(resolution);
@@ -589,8 +589,12 @@ int main(int argc, char** argv) {
     if (key == 'g') {
       if (gui_visible) {
         gui_quad->get_tags().add_tag("invisible");
+        measurement_text_quad->get_tags().add_tag("invisible");
+        ruler_quad->get_tags().add_tag("invisible");
       } else {
         gui_quad->get_tags().remove_tag("invisible");
+        measurement_text_quad->get_tags().remove_tag("invisible");
+        ruler_quad->get_tags().remove_tag("invisible");
       }
       gui_visible = !gui_visible;
 
@@ -727,16 +731,18 @@ int main(int argc, char** argv) {
     auto rendering_frustum(camera->get_rendering_frustum(graph, gua::CameraMode::CENTER));
     auto text_center_screen_space((rendering_frustum.get_projection() * rendering_frustum.get_view()) * text_center);
 
-    if (text_center_screen_space.z < 0.0) {
-      measurement_text_quad->get_tags().add_tag("invisible");
-    } else {
-      measurement_text_quad->get_tags().remove_tag("invisible");
-      text_center_screen_space /= text_center_screen_space.w;
-      // text_center_screen_space = text_center_screen_space * 0.5 + 0.5;
-      measurement_text_quad->data.offset() = gua::math::vec2(
-        text_center_screen_space.x * resolution.x,
-        text_center_screen_space.y * resolution.y
-      ) * 0.5;
+    if (gui_visible) {
+      if (text_center_screen_space.z < 0.0) {
+        measurement_text_quad->get_tags().add_tag("invisible");
+      } else {
+        measurement_text_quad->get_tags().remove_tag("invisible");
+        text_center_screen_space /= text_center_screen_space.w;
+        // text_center_screen_space = text_center_screen_space * 0.5 + 0.5;
+        measurement_text_quad->data.offset() = gua::math::vec2(
+          text_center_screen_space.x * resolution.x,
+          text_center_screen_space.y * resolution.y
+        ) * 0.5;
+      }
     }
 
 
