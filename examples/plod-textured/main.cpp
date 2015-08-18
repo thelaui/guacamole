@@ -250,6 +250,7 @@ int main(int argc, char** argv) {
       frustum.get_clip_far()
     );
 
+    new_frustum.set_homography(frustum.get_homography());
     new_frustum.set_image_file_name(frustum.get_image_file_name());
     new_frustum.set_capture_time(frustum.get_capture_time());
 
@@ -279,8 +280,8 @@ int main(int argc, char** argv) {
   // create scene camera and pipeline
   /////////////////////////////////////////////////////////////////////////////
 
-  // auto resolution = gua::math::vec2ui(1920, 1080);
-  auto resolution = gua::math::vec2ui(1280, 960);
+  auto resolution = gua::math::vec2ui(1920, 1080);
+  // auto resolution = gua::math::vec2ui(1280, 960);
 
   auto camera = graph.add_node<gua::node::CameraNode>("/", "cam");
   camera->config.set_resolution(resolution);
