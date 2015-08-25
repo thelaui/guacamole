@@ -22,7 +22,8 @@ mat3 homography = (mat3(
   -85.0306662046851187, 3.2737730386715316, 1.0000000000000000
 ));
 
-vec3 background_color = vec3(0.8, 0.8, 0.8);
+// vec3 background_color = vec3(0.8, 0.8, 0.8);
+vec3 background_color = vec3(0.0);
 
 int get_id_smallest_distance(in vec4 position) {
   float minimal_distance = 99999.9;

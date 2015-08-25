@@ -280,8 +280,8 @@ int main(int argc, char** argv) {
   // create scene camera and pipeline
   /////////////////////////////////////////////////////////////////////////////
 
-  auto resolution = gua::math::vec2ui(1920, 1080);
-  // auto resolution = gua::math::vec2ui(1280, 960);
+  // auto resolution = gua::math::vec2ui(1920, 1080);
+  auto resolution = gua::math::vec2ui(1280, 960);
 
   auto camera = graph.add_node<gua::node::CameraNode>("/", "cam");
   camera->config.set_resolution(resolution);
@@ -300,9 +300,9 @@ int main(int argc, char** argv) {
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
   // screen->data.set_size(gua::math::vec2(1.92f, 1.08f) * 0.01f);
-  screen->data.set_size(gua::math::vec2(resolution.x, resolution.y) * 0.00001f);
+  // screen->data.set_size(gua::math::vec2(resolution.x, resolution.y) * 0.00001f);
   // screen->translate(0.0, 0.0, -0.5);
-  // screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
+  screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
   screen->translate(0.0, 0.0, -0.0061637285428946);
 
   auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
@@ -668,6 +668,7 @@ int main(int argc, char** argv) {
         pick_proxy_transform->set_world_transform(ground_transform);
 
         std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
+        std::cout << frusta[current_frustum].get_homography() << std::endl;
       }
     }
   });
