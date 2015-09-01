@@ -45,6 +45,7 @@
 #include <pbr/ren/config.h>
 
 #include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
 
 #include <texture_stream/texture_stream.hpp>
 
@@ -68,17 +69,53 @@ struct file_name_comp {
 
 int main(int argc, char** argv) {
   /////////////////////////////////////////////////////////////////////////////
+  // process arguments
+  ////////////////////////////////////////////////////////////////////////////
+
+  namespace po = boost::program_options;
+  namespace fs = boost::filesystem;
+
+  const std::string exec_name = (argc > 0) ? fs::basename(argv[0]) : "";
+  po::options_description desc("Usage: " + exec_name + " [OPTION]...\n\n"
+                               "Allowed Options");
+
+  std::string frusta_path_string("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
+  std::string model_path_string("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
+  int width(1920);
+  int height(1080);
+  bool is_in_screenshot_mode(false);
+
+  desc.add_options()
+    ("help", "print help message")
+    ("frusta,f", po::value<std::string>(&frusta_path_string)->default_value(frusta_path_string), "specify a path to frustum files")
+    ("models,m", po::value<std::string>(&model_path_string)->default_value(model_path_string), "specify a path to kdn trees")
+    ("width,w", po::value<int>(&width)->default_value(width), "specify width of the window's resolution")
+    ("height,h", po::value<int>(&height)->default_value(height), "specify height of the window's resolution")
+    ("screenshot,s", "toggles the screenshot mode")
+    ;
+
+  po::variables_map vm;
+
+  try {
+    auto parsed_options = po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
+    po::store(parsed_options, vm);
+    po::notify(vm);
+
+    is_in_screenshot_mode = vm.count("screenshot");
+
+    if (vm.count("help")) {
+      std::cout << desc;
+      return 0;
+    }
+  } catch (std::exception& e) {}
+
+  /////////////////////////////////////////////////////////////////////////////
   // initialize guacamole
   /////////////////////////////////////////////////////////////////////////////
 
-  gua::init(argc, argv);
+  gua::init(0, 0);
   gua::Logger::enable_debug = false;
   texstr::Logger::state.verbose = false;
-
-  bool is_on_laptop(false);
-  if (argc > 1 && std::string(argv[1]) == "-l") {
-    is_on_laptop = true;
-  }
 
   /////////////////////////////////////////////////////////////////////////////
   // increase number of files that can be loaded in parallel
@@ -180,9 +217,7 @@ int main(int argc, char** argv) {
   std::set<std::string, file_name_comp> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
 
-  boost::filesystem::path model_path(is_on_laptop ?
-                                     "/media/laui/street_data/pointcloud/xyz/" :
-                                     "/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
+  boost::filesystem::path model_path(model_path_string);
 
   if (is_directory(model_path)) {
 
@@ -223,9 +258,7 @@ int main(int argc, char** argv) {
   std::set<std::string> frustum_files;
   std::vector<texstr::Frustum> frusta;
 
-  boost::filesystem::path frusta_path(is_on_laptop ?
-                                      "/home/laui/Dokumente/Studium/Master/data/untracked/frusta_subset_cam_0" :
-                                      "/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
+  boost::filesystem::path frusta_path(frusta_path_string);
 
   if (is_directory(frusta_path)) {
 
@@ -264,10 +297,13 @@ int main(int argc, char** argv) {
   int current_blending_mode(0);
   int current_selection_mode(0);
   int background_fill_enabled(0);
-  bool gui_visible(true);
-  bool map_visible(true);
+  bool gui_visible(!is_in_screenshot_mode);
+  bool map_visible(!is_in_screenshot_mode);
+  bool navigator_active(false);
+  bool gui_options_active(false);
+  bool gui_map_active(false);
   bool picking_enabled(false);
-  float current_blending_factor(1.f);
+  float current_blending_factor(is_in_screenshot_mode ? 0.f : 1.f);
   bool lens_enabled(false);
   bool measurement_enabled(false);
   gua::math::vec2 current_mouse_pos(0.0);
@@ -280,8 +316,8 @@ int main(int argc, char** argv) {
   // create scene camera and pipeline
   /////////////////////////////////////////////////////////////////////////////
 
-  // auto resolution = gua::math::vec2ui(1920, 1080);
-  auto resolution = gua::math::vec2ui(1280, 960);
+  auto resolution = is_in_screenshot_mode ? gua::math::vec2ui(1280, 960)
+                                          : gua::math::vec2ui(width, height);
 
   auto camera = graph.add_node<gua::node::CameraNode>("/", "cam");
   camera->config.set_resolution(resolution);
@@ -300,9 +336,12 @@ int main(int argc, char** argv) {
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
   // screen->data.set_size(gua::math::vec2(1.92f, 1.08f) * 0.01f);
-  // screen->data.set_size(gua::math::vec2(resolution.x, resolution.y) * 0.00001f);
   // screen->translate(0.0, 0.0, -0.5);
-  screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
+  if (is_in_screenshot_mode) {
+    screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
+  } else {
+    screen->data.set_size(gua::math::vec2(resolution.x, resolution.y) * 0.00001f);
+  }
   screen->translate(0.0, 0.0, -0.0061637285428946);
 
   auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
@@ -339,9 +378,6 @@ int main(int argc, char** argv) {
   /////////////////////////////////////////////////////////////////////////////
 
   Navigator navigator;
-  bool navigator_active(false);
-  bool gui_options_active(false);
-  bool gui_map_active(false);
   navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
 
   /////////////////////////////////////////////////////////////////////////////
@@ -497,6 +533,25 @@ int main(int argc, char** argv) {
 
   graph.add_node("/", measurement_text_quad);
 
+  //gui visibility helper lambda
+  auto update_gui_visibility = [&](){
+    if (!gui_visible) {
+      gui_quad->get_tags().add_tag("invisible");
+      measurement_text_quad->get_tags().add_tag("invisible");
+      ruler_quad->get_tags().add_tag("invisible");
+    } else {
+      gui_quad->get_tags().remove_tag("invisible");
+      measurement_text_quad->get_tags().remove_tag("invisible");
+      ruler_quad->get_tags().remove_tag("invisible");
+    }
+
+    if (!map_visible) {
+      map_quad->get_tags().add_tag("invisible");
+    } else {
+      map_quad->get_tags().remove_tag("invisible");
+    }
+  };
+
   /////////////////////////////////////////////////////////////////////////////
   // create window and callback setup
   /////////////////////////////////////////////////////////////////////////////
@@ -588,23 +643,9 @@ int main(int argc, char** argv) {
 
   window->on_char.connect([&](unsigned key){
     if (key == 'g') {
-      if (gui_visible) {
-        gui_quad->get_tags().add_tag("invisible");
-        measurement_text_quad->get_tags().add_tag("invisible");
-        ruler_quad->get_tags().add_tag("invisible");
-      } else {
-        gui_quad->get_tags().remove_tag("invisible");
-        measurement_text_quad->get_tags().remove_tag("invisible");
-        ruler_quad->get_tags().remove_tag("invisible");
-      }
       gui_visible = !gui_visible;
 
     } else if (key == 'm') {
-      if (map_visible) {
-        map_quad->get_tags().add_tag("invisible");
-      } else {
-        map_quad->get_tags().remove_tag("invisible");
-      }
       map_visible = !map_visible;
     }
   });
@@ -686,6 +727,7 @@ int main(int argc, char** argv) {
     ++frame_count;
     navigator.update();
     gua::Interface::instance()->update();
+    update_gui_visibility();
 
     if (navigator_active) {
       camera->set_transform(gua::math::mat4(navigator.get_transform()));
