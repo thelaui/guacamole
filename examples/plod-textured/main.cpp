@@ -79,18 +79,20 @@ int main(int argc, char** argv) {
   po::options_description desc("Usage: " + exec_name + " [OPTION]...\n\n"
                                "Allowed Options");
 
-  std::string frusta_path_string("/home/tosa2305/Desktop/thesis/data/untracked/frusta_subset_cam_0");
-  std::string model_path_string("/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/");
+  std::string frusta_path_string("/home/tosa2305/Desktop/thesis/data/untracked/france/frusta_subset_cam_0");
+  std::vector<std::string> model_paths_string({"/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/"});
   int width(1920);
   int height(1080);
   bool is_in_screenshot_mode(false);
+  std::string centroid_file_name;
 
   desc.add_options()
     ("help", "print help message")
     ("frusta,f", po::value<std::string>(&frusta_path_string)->default_value(frusta_path_string), "specify a path to frustum files")
-    ("models,m", po::value<std::string>(&model_path_string)->default_value(model_path_string), "specify a path to kdn trees")
+    ("models,m", po::value<std::vector<std::string>>(&model_paths_string)->multitoken()->default_value(model_paths_string), "specify paths to kdn trees")
     ("width,w", po::value<int>(&width)->default_value(width), "specify width of the window's resolution")
     ("height,h", po::value<int>(&height)->default_value(height), "specify height of the window's resolution")
+    ("centroid", po::value<std::string>(&centroid_file_name)->default_value(""), "specify the path to an centroid file name")
     ("screenshot,s", "toggles the screenshot mode")
     ;
 
@@ -214,22 +216,25 @@ int main(int argc, char** argv) {
     // node->set_draw_bounding_box(true);
   };
 
-  std::set<std::string, file_name_comp> model_files;
+  std::multiset<std::string, file_name_comp> model_files;
   std::vector<std::shared_ptr<gua::node::PLODNode>> plod_geometrys;
 
-  boost::filesystem::path model_path(model_path_string);
+  for (auto model_path_string : model_paths_string) {
+    boost::filesystem::path model_path(model_path_string);
 
-  if (is_directory(model_path)) {
+    if (is_directory(model_path)) {
 
-    for (auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(model_path), {})) {
+      for (auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(model_path), {})) {
 
-      auto model_filename = entry.path();
+        auto model_filename = entry.path();
 
-      if (model_filename.has_extension() && model_filename.extension() == ".kdn") {
-        model_files.insert(model_filename.string());
+        if (model_filename.has_extension() && model_filename.extension() == ".kdn") {
+          model_files.insert(model_filename.string());
+        }
       }
     }
   }
+
 
   for (auto file : model_files){
     if (count < max_load_count) {
@@ -285,6 +290,7 @@ int main(int argc, char** argv) {
 
     new_frustum.set_homography(frustum.get_homography());
     new_frustum.set_image_file_name(frustum.get_image_file_name());
+    new_frustum.set_image_dimensions(frustum.get_image_dimensions());
     new_frustum.set_capture_time(frustum.get_capture_time());
 
     frusta.push_back(new_frustum);
@@ -310,7 +316,24 @@ int main(int argc, char** argv) {
   gua::math::vec3 current_pick_pos(0.0);
   gua::math::vec3 current_pick_normal(0.0);
   float current_lens_radius(5.f);
-  const scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66);
+  // const scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66);
+  scm::math::vec3d global_offset(0.0);
+
+  if (centroid_file_name != "") {
+    texstr::DSVParser parser;
+    auto centroid_data = parser.read_file(centroid_file_name, ';');
+    if (centroid_data.size() == 2) {
+      auto centroid_values = centroid_data[1];
+      double x,y,z;
+      std::stringstream(centroid_values[0]) >> x;
+      std::stringstream(centroid_values[1]) >> y;
+      std::stringstream(centroid_values[2]) >> z;
+      global_offset = scm::math::vec3d(-x,-y,-z);
+      std::cout << "Loaded centroid " << global_offset << std::endl;
+    }
+
+  }
+
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
