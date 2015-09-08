@@ -190,6 +190,7 @@
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
 
         init_slider("#control-panel .query_radius", "query_radius");
+        init_slider("#control-panel .splat_radius", "splat_radius");
         init_slider("#control-panel .blending_factor", "blending_factor");
         init_slider("#control-panel .blending_range", "blending_range");
         init_slider("#control-panel .lens_radius", "lens_radius");
@@ -357,6 +358,15 @@
             </div>
             <div class="col-xs-7">
               <input class="slider query_radius" data-slider-tooltip="hide" data-slider-id="query_radius" type="text" data-slider-min="0" data-slider-max="500" data-slider-step="1" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+              Splat Radius:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider splat_radius" data-slider-tooltip="hide" data-slider-id="splat_radius" type="text" data-slider-min="0.1" data-slider-max="2.0" data-slider-step="0.1" handle="custom"/>
             </div>
           </div>
 

@@ -18,8 +18,6 @@
       -85.0306662046851187, 3.2737730386715316, 0.0, 1.0000000000000000
     ));
 
-    // mat3 homography = mat3(1.0);
-
     int get_id_smallest_distance(in vec4 position) {
       float minimal_distance = 99999.9;
       int result = 0;
@@ -153,10 +151,12 @@
 
       vec3 sampled_color = vec3(0.0);
 
-      if (blending_mode == 0) {
-        sampled_color = sample_color_average(frustum_id, blending_range);
-      } else if (blending_mode == 1) {
-        sampled_color = sample_color_median(frustum_id, blending_range);
+      if (blending_factor != 0.0) {
+        if (blending_mode == 0) {
+          sampled_color = sample_color_average(frustum_id, blending_range);
+        } else if (blending_mode == 1) {
+          sampled_color = sample_color_median(frustum_id, blending_range);
+        }
       }
 
       if (sampled_color != vec3(0.0)) {

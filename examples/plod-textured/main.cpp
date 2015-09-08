@@ -140,6 +140,28 @@ int main(int argc, char** argv) {
   // create scene
   /////////////////////////////////////////////////////////////////////////////
 
+  int current_frustum(0);
+  int current_blending_range(0);
+  int current_blending_mode(0);
+  int current_selection_mode(0);
+  int background_fill_enabled(0);
+  bool gui_visible(!is_in_screenshot_mode);
+  bool map_visible(!is_in_screenshot_mode);
+  bool navigator_active(false);
+  bool gui_options_active(false);
+  bool gui_map_active(false);
+  bool picking_enabled(false);
+  float current_blending_factor(is_in_screenshot_mode ? 0.f : 1.f);
+  bool lens_enabled(false);
+  bool measurement_enabled(false);
+  gua::math::vec2 current_mouse_pos(0.0);
+  gua::math::vec3 current_pick_pos(0.0);
+  gua::math::vec3 current_pick_normal(0.0);
+  float current_lens_radius(5.f);
+  float current_splat_radius(1.3f);
+  // scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66); //france
+  scm::math::vec3d global_offset(0.0);
+
   // create scene graph object
   gua::SceneGraph graph("main_scenegraph");
 
@@ -210,8 +232,8 @@ int main(int argc, char** argv) {
   auto model_offset = graph.add_node<gua::node::TransformNode>("/transform", "model_offset");
   // transform->get_tags().add_tag("no_pick");
 
-  auto setup_plod_node = [](std::shared_ptr<gua::node::PLODNode> const& node) {
-    node->set_radius_scale(1.3f);
+  auto setup_plod_node = [current_splat_radius](std::shared_ptr<gua::node::PLODNode> const& node) {
+    node->set_radius_scale(current_splat_radius);
     node->set_enable_backface_culling_by_normal(false);
     // node->set_draw_bounding_box(true);
   };
@@ -297,27 +319,6 @@ int main(int argc, char** argv) {
   }
 
   texstr::FrustumManagement::instance()->register_frusta(frusta);
-
-  int current_frustum(0);
-  int current_blending_range(0);
-  int current_blending_mode(0);
-  int current_selection_mode(0);
-  int background_fill_enabled(0);
-  bool gui_visible(!is_in_screenshot_mode);
-  bool map_visible(!is_in_screenshot_mode);
-  bool navigator_active(false);
-  bool gui_options_active(false);
-  bool gui_map_active(false);
-  bool picking_enabled(false);
-  float current_blending_factor(is_in_screenshot_mode ? 0.f : 1.f);
-  bool lens_enabled(false);
-  bool measurement_enabled(false);
-  gua::math::vec2 current_mouse_pos(0.0);
-  gua::math::vec3 current_pick_pos(0.0);
-  gua::math::vec3 current_pick_normal(0.0);
-  float current_lens_radius(5.f);
-  // const scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66);
-  scm::math::vec3d global_offset(0.0);
 
   if (centroid_file_name != "") {
     texstr::DSVParser parser;
@@ -419,6 +420,7 @@ int main(int argc, char** argv) {
 
   gui->on_loaded.connect([&]() {
     gui->add_javascript_getter("get_query_radius", [&](){ return std::to_string(frustum_vis_pass->get_query_radius());});
+    gui->add_javascript_getter("get_splat_radius", [&](){ return std::to_string(current_splat_radius);});
     gui->add_javascript_getter("get_blending_factor", [&](){ return std::to_string(current_blending_factor);});
     gui->add_javascript_getter("get_blending_range", [&](){ return std::to_string(current_blending_range);});
     gui->add_javascript_getter("get_lens_radius", [&](){ return std::to_string(current_lens_radius);});
@@ -433,6 +435,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_tree_vis_enable");
     gui->add_javascript_callback("set_frustum_vis_enable");
     gui->add_javascript_callback("set_query_radius");
+    gui->add_javascript_callback("set_splat_radius");
     gui->add_javascript_callback("set_blending_factor");
     gui->add_javascript_callback("set_blending_range");
     gui->add_javascript_callback("set_lens_radius");
@@ -468,6 +471,12 @@ int main(int argc, char** argv) {
       double query_radius;
       str >> query_radius;
       frustum_vis_pass->set_query_radius(query_radius);
+    } else if (callback == "set_splat_radius") {
+      std::stringstream str(params[0]);
+      str >> current_splat_radius;
+      for (auto& node : plod_geometrys) {
+        node->set_radius_scale(current_splat_radius);
+      }
     } else if (callback == "set_blending_factor") {
       std::stringstream str(params[0]);
       str >> current_blending_factor;
