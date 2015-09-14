@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
   po::options_description desc("Usage: " + exec_name + " [OPTION]...\n\n"
                                "Allowed Options");
 
-  std::string frusta_path_string("/home/tosa2305/Desktop/thesis/data/untracked/france/frusta_subset_cam_0");
+  std::vector<std::string> frusta_paths_string({"/home/tosa2305/Desktop/thesis/data/untracked/france/frusta_subset_cam_0"});
   std::vector<std::string> model_paths_string({"/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/"});
   int width(1920);
   int height(1080);
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
 
   desc.add_options()
     ("help", "print help message")
-    ("frusta,f", po::value<std::string>(&frusta_path_string)->default_value(frusta_path_string), "specify a path to frustum files")
+    ("frusta,f", po::value<std::vector<std::string>>(&frusta_paths_string)->multitoken()->default_value(frusta_paths_string), "specify a path to frustum files")
     ("models,m", po::value<std::vector<std::string>>(&model_paths_string)->multitoken()->default_value(model_paths_string), "specify paths to kdn trees")
     ("width,w", po::value<int>(&width)->default_value(width), "specify width of the window's resolution")
     ("height,h", po::value<int>(&height)->default_value(height), "specify height of the window's resolution")
@@ -123,7 +123,8 @@ int main(int argc, char** argv) {
   // increase number of files that can be loaded in parallel
   /////////////////////////////////////////////////////////////////////////////
 
-  const int max_load_count(281);
+  // const int max_load_count(281);
+  const int max_load_count(500);
   int count(0);
 
   struct rlimit limit;
@@ -158,7 +159,7 @@ int main(int argc, char** argv) {
   gua::math::vec3 current_pick_pos(0.0);
   gua::math::vec3 current_pick_normal(0.0);
   float current_lens_radius(5.f);
-  float current_splat_radius(1.3f);
+  float current_splat_radius(1.f);
   // scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66); //france
   scm::math::vec3d global_offset(0.0);
 
@@ -285,15 +286,17 @@ int main(int argc, char** argv) {
   std::set<std::string> frustum_files;
   std::vector<texstr::Frustum> frusta;
 
-  boost::filesystem::path frusta_path(frusta_path_string);
+  for (auto frusta_path_string : frusta_paths_string) {
+    boost::filesystem::path frusta_path(frusta_path_string);
 
-  if (is_directory(frusta_path)) {
+    if (is_directory(frusta_path)) {
 
-    for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(frusta_path), {})) {
-      auto frustum_file_name = entry.path();
+      for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(frusta_path), {})) {
+        auto frustum_file_name = entry.path();
 
-      if (frustum_file_name.has_extension() && frustum_file_name.extension() == ".frustum") {
-        frustum_files.insert(frustum_file_name.string());
+        if (frustum_file_name.has_extension() && frustum_file_name.extension() == ".frustum") {
+          frustum_files.insert(frustum_file_name.string());
+        }
       }
     }
   }
@@ -741,7 +744,6 @@ int main(int argc, char** argv) {
         pick_proxy_transform->set_world_transform(ground_transform);
 
         std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
-        std::cout << frusta[current_frustum].get_homography() << std::endl;
       }
     }
   });
