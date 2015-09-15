@@ -83,6 +83,9 @@ int main(int argc, char** argv) {
   std::vector<std::string> model_paths_string({"/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/"});
   int width(1920);
   int height(1080);
+  double focal_length(0.005);
+  double screen_width(width * 0.00001);
+  double screen_height(height * 0.00001);
   bool is_in_screenshot_mode(false);
   std::string centroid_file_name;
 
@@ -92,6 +95,9 @@ int main(int argc, char** argv) {
     ("models,m", po::value<std::vector<std::string>>(&model_paths_string)->multitoken()->default_value(model_paths_string), "specify paths to kdn trees")
     ("width,w", po::value<int>(&width)->default_value(width), "specify width of the window's resolution")
     ("height,h", po::value<int>(&height)->default_value(height), "specify height of the window's resolution")
+    ("focal-length,l", po::value<double>(&focal_length)->default_value(focal_length), "specify the focal length of the used camera in m")
+    ("screen-width", po::value<double>(&screen_width)->default_value(screen_width), "specify the width of the virtual screen in m, i.e. the used camera's sensor width")
+    ("screen-height", po::value<double>(&screen_height)->default_value(screen_height), "specify the height of the virtual screen in m, i.e. the used camera's sensor height")
     ("centroid", po::value<std::string>(&centroid_file_name)->default_value(""), "specify the path to an centroid file name")
     ("screenshot,s", "toggles the screenshot mode")
     ;
@@ -293,7 +299,7 @@ int main(int argc, char** argv) {
 
       for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(frusta_path), {})) {
         auto frustum_file_name = entry.path();
-
+        // std::cout << frustum_file_name << std::endl;
         if (frustum_file_name.has_extension() && frustum_file_name.extension() == ".frustum") {
           frustum_files.insert(frustum_file_name.string());
         }
@@ -362,14 +368,14 @@ int main(int argc, char** argv) {
 
 
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
-  // screen->data.set_size(gua::math::vec2(1.92f, 1.08f) * 0.01f);
+  screen->data.set_size(gua::math::vec2(screen_width, screen_height));
   // screen->translate(0.0, 0.0, -0.5);
-  if (is_in_screenshot_mode) {
-    screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
-  } else {
-    screen->data.set_size(gua::math::vec2(resolution.x, resolution.y) * 0.00001f);
-  }
-  screen->translate(0.0, 0.0, -0.0061637285428946);
+  // if (is_in_screenshot_mode) {
+  //   screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
+  // } else {
+  //   screen->data.set_size(gua::math::vec2(resolution.x, resolution.y) * 0.00001f);
+  // }
+  screen->translate(0.0, 0.0, -focal_length);
 
   auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
   frustum_vis_pass->set_query_radius(50.0);
