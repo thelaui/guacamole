@@ -774,7 +774,10 @@ int main(int argc, char** argv) {
       // screen->set_transform(scm::math::make_translation(0.0, 0.0, -0.0061637285428946));
       // screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
     } else {
-      camera->set_transform(gua::math::mat4(frusta[current_frustum].get_camera_transform()));
+      camera->set_transform(
+        gua::math::mat4(frusta[current_frustum].get_camera_transform()) *
+        scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0)
+      );
       // screen->set_world_transform(frusta[current_frustum].get_screen_transform());
       // screen->data.set_size(gua::math::vec2(1.0, 1.0));;
     }
