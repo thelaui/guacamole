@@ -204,30 +204,6 @@ int main(int argc, char** argv) {
   // graph.add_node("/pick_proxy_transform", pick_proxy);
 
 
-  // auto measurement_marker_1 = trimesh_loader.create_geometry_from_file(
-  //                               "measurement_marker_1",
-  //                               "data/objects/measurement_marker.obj",
-  //                               gua::TriMeshLoader::MAKE_PICKABLE
-  //                              );
-
-  // measurement_marker_1->scale(0.2);
-
-  auto measurement_marker_1(std::make_shared<gua::node::TransformNode>("measurement_marker_1"));
-
-  graph.add_node("/", measurement_marker_1);
-
-  // auto measurement_marker_2 = trimesh_loader.create_geometry_from_file(
-  //                               "measurement_marker_2",
-  //                               "data/objects/measurement_marker.obj",
-  //                               gua::TriMeshLoader::MAKE_PICKABLE
-  //                              );
-
-  // measurement_marker_2->scale(0.2);
-
-  auto measurement_marker_2(std::make_shared<gua::node::TransformNode>("measurement_marker_2"));
-
-  graph.add_node("/", measurement_marker_2);
-
   // configure plod-renderer and create point-based objects
   gua::PLODLoader plod_loader;
 
@@ -299,7 +275,6 @@ int main(int argc, char** argv) {
 
       for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(frusta_path), {})) {
         auto frustum_file_name = entry.path();
-        // std::cout << frustum_file_name << std::endl;
         if (frustum_file_name.has_extension() && frustum_file_name.extension() == ".frustum") {
           frustum_files.insert(frustum_file_name.string());
         }
@@ -553,12 +528,22 @@ int main(int argc, char** argv) {
     }
   });
 
+  //measurement
+
+  auto measurement_marker_1(std::make_shared<gua::node::TransformNode>("measurement_marker_1"));
+  graph.add_node("/", measurement_marker_1);
+  measurement_marker_1->translate(0.0, 1000.0, 0.0);
+  auto measurement_marker_2(std::make_shared<gua::node::TransformNode>("measurement_marker_2"));
+  graph.add_node("/", measurement_marker_2);
+  measurement_marker_2->translate(0.0, 1000.0, 0.0);
+
   auto ruler = std::make_shared<gua::GuiResource>();
   ruler->init("ruler", "asset://gua/data/gui/ruler.html", gua::math::vec2(1920, 60));
 
   auto ruler_quad = std::make_shared<gua::node::TexturedQuadNode>("ruler_quad");
   ruler_quad->data.texture() = "ruler";
   ruler_quad->data.size() = gua::math::vec2(5.f, 1.f);
+  ruler_quad->translate(0.0, 1000.0, 0.0);
 
   auto ruler_offset(graph.add_node<gua::node::TransformNode>("/", "ruler_offset"));
   graph.add_node("/ruler_offset", ruler_quad);

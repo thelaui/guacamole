@@ -8,9 +8,11 @@
 layout(location=0) out vec3 gua_out_color;
 
 layout (std430, binding=2) uniform projective_texure_block {
-  mat4  projection_view_mats[50];
-  vec4  frustum_positions[50];
-  uvec2 projection_textures[50];
+  mat4  projection_view_mats[64];
+  mat4  homographies[64];
+  vec4  frustum_positions[64];
+  vec4  projection_texture_resolutions[64];
+  uvec2 projection_textures[64];
   int   frustum_count;
 };
 
