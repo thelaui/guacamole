@@ -7,7 +7,7 @@
 // write outputs
 layout(location=0) out vec3 gua_out_color;
 
-layout (std430, binding=2) uniform projective_texure_block {
+layout (std140, binding=2) uniform projective_texure_block {
   mat4  projection_view_mats[64];
   mat4  homographies[64];
   vec4  frustum_positions[64];

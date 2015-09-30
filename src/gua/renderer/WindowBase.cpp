@@ -76,7 +76,8 @@ WindowBase::WindowBase(Configuration const& configuration)
       warpBR_(nullptr),
       warpRL_(nullptr),
       warpGL_(nullptr),
-      warpBL_(nullptr) {}
+      warpBL_(nullptr),
+      take_screen_shot_(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -118,7 +119,7 @@ void WindowBase::init_context() {
     fullscreen_shader_.create_from_sources(
       factory.read_shader_file("resources/shaders/display_shader.vert"),
       factory.read_shader_file("resources/shaders/display_shader.frag"));
-#else 
+#else
     fullscreen_shader_.create_from_sources(
       Resources::lookup_shader(Resources::shaders_display_shader_vert),
       Resources::lookup_shader(Resources::shaders_display_shader_frag));
@@ -141,7 +142,7 @@ void WindowBase::init_context() {
     fullscreen_shader_.create_from_sources(
       factory.read_shader_file("resources/shaders/display_shader.vert"),
       factory.read_shader_file("resources/shaders/display_shader_warped.frag"));
-#else 
+#else
     fullscreen_shader_.create_from_sources(
       Resources::lookup_shader(Resources::shaders_display_shader_vert),
       Resources::lookup_shader(Resources::shaders_display_shader_warped_frag)
@@ -186,10 +187,17 @@ void WindowBase::start_frame() const {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void WindowBase::take_screen_shot() {
+  std::lock_guard<std::mutex> lock(screen_shot_mutex_);
+  take_screen_shot_ = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void WindowBase::display(std::shared_ptr<Texture> const& center_texture) {
 
   display(center_texture, true);
-  
+
   if (config.get_stereo_mode() != StereoMode::MONO) {
     display(center_texture, false);
   }
@@ -229,6 +237,29 @@ void WindowBase::display(std::shared_ptr<Texture> const& texture,
               is_left ? WindowBase::CHECKER_EVEN : WindowBase::CHECKER_ODD,
               is_left, true);
       break;
+  }
+
+  std::lock_guard<std::mutex> lock(screen_shot_mutex_);
+  if (take_screen_shot_) {
+    take_screen_shot_ = false;
+
+    auto texture_ptr(std::dynamic_pointer_cast<Texture2D>(texture));
+
+    if (texture_ptr) {
+      auto texture_2d_ptr(boost::dynamic_pointer_cast<scm::gl::texture_2d>(texture_ptr->get_buffer(ctx_)));
+      auto width = texture_2d_ptr->descriptor()._size.x;
+      auto height = texture_2d_ptr->descriptor()._size.y;
+      // auto bpp = scm::gl::bit_per_pixel(texture_2d_ptr->format());
+      // auto gl_type = scm::gl::util::gl_base_type(texture_2d_ptr->format());
+      // auto gl_internal_format = scm::gl::util::gl_internal_format(texture_2d_ptr->format());
+      // auto gl_base_format = scm::gl::util::gl_base_format(texture_2d_ptr->format());
+
+      int size = width * height * scm::gl::size_of_format(texture_2d_ptr->format());
+      std::vector<char> data(size);
+
+      ctx_.render_context->retrieve_texture_data(texture_2d_ptr, 0, data.data());
+
+    }
   }
 
 }

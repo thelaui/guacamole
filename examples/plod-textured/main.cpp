@@ -372,7 +372,7 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
-  pipe->add_pass(fill_pass);
+  // pipe->add_pass(fill_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
 
   // pipe->set_enable_abuffer(true);
@@ -700,6 +700,11 @@ int main(int argc, char** argv) {
       // F6 to reload pipeline
       if (action == 1 && key == 295) {
         fill_pass->touch();
+      }
+
+      // F7 for screen shot
+      if (action == 1 && key == 296) {
+        window->take_screen_shot();
       }
 
       bool position_changed(false);

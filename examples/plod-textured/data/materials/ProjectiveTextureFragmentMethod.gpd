@@ -1,13 +1,14 @@
 {
   "name" : "ProjectiveTextureFragmentMethod",
   "source" : "
-    layout (std430, binding=2) uniform projective_texure_block {
+    layout (binding=2) uniform projective_texure_block {
       mat4  projection_view_mats[64];
       mat4  homographies[64];
       vec4  frustum_positions[64];
       vec4  projection_texture_resolutions[64];
       uvec2 projection_textures[64];
       int   frustum_count;
+      int   pad;
     };
 
     // column wise

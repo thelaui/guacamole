@@ -158,6 +158,8 @@ class GUA_DLL WindowBase {
    */
   virtual void finish_frame() const = 0;
 
+  virtual void take_screen_shot();
+
   /**
    *
    */
@@ -208,6 +210,9 @@ protected:
   static std::atomic_uint last_context_id_;
 
   static std::mutex last_context_id_mutex_;
+
+  bool take_screen_shot_;
+  std::mutex screen_shot_mutex_;
 
   gua::math::vec2 mouse_position_;
 
