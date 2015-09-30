@@ -5,6 +5,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 set(PBR_ROOT "/opt/pbr/inst_cb" CACHE PATH "Set to your PLOD install path.")
 include(FindPBR)
+include(find_texture_stream)
 
 ###############################################################################
 # determine source files
@@ -33,7 +34,9 @@ INCLUDE_DIRECTORIES( ${INCLUDE_PATHS}
                      ${GUACAMOLE_SOURCE_DIR}
                      ${GUACAMOLE_PLOD_INCLUDE_DIR}
                      ${PBR_INCLUDE_DIRS}
+                     ${TEXTURE_STREAM_INCLUDE_DIRS}
 )
+
 
 ADD_LIBRARY( guacamole-PLOD SHARED
     ${GUA_PLOD_NODE_SRC}
@@ -50,6 +53,9 @@ ADD_DEPENDENCIES(guacamole-PLOD guacamole)
 LIST(APPEND LIB_PATHS ${PROTOBUF_LIBRARY_DIRS})
 LIST(APPEND INCLUDE_PATHS ${PROTOBUF_INCLUDE_DIRS})
 
+LIST(APPEND LIB_PATHS ${TEXTURE_STREAM_LIBRARY_DIRS})
+LIST(APPEND INCLUDE_PATHS ${TEXTURE_STREAM_INCLUDE_DIRS})
+
 include(find_protobuf)
 #set(PLOD_ROOT "/opt/pbr/gualod/trunk/pbr" CACHE PATH "Set to your PLOD install path.")
 
@@ -59,6 +65,12 @@ message(STATUS " protobuf:" )
 message(STATUS "   library: ${PROTOBUF_LIBRARIES}" )
 message(STATUS "   library path: ${PROTOBUF_LIBRARY_DIRS}" )
 message(STATUS "   include: ${PROTOBUF_INCLUDE_DIRS}" )
+message(STATUS "" )
+
+message(STATUS " texture_stream:" )
+message(STATUS "   library: ${TEXTURE_STREAM_LIBRARIES}" )
+message(STATUS "   library path: ${TEXTURE_STREAM_LIBRARY_DIRS}" )
+message(STATUS "   include: ${TEXTURE_STREAM_INCLUDE_DIRS}" )
 message(STATUS "" )
 
 ###############################################################################
@@ -77,22 +89,25 @@ ENDIF(UNIX)
 IF (MSVC)
   target_link_libraries( guacamole-PLOD optimized ${PBR_RENDERING_LIBRARY}
                                         optimized ${PBR_COMMON_LIBRARY}
+                                        optimized ${TEXTURE_STREAM_LIBRARIES}
                                         debug ${PBR_RENDERING_LIBRARY_DEBUG}
-                                        debug ${PBR_COMMON_LIBRARY_DEBUG} 
+                                        debug ${PBR_COMMON_LIBRARY_DEBUG}
+                                        debug ${TEXTURE_STREAM_LIBRARIES}
                                         general guacamole
                        )
 ELSEIF (UNIX)
-  target_link_libraries( guacamole-PLOD 
-                         guacamole 
+  target_link_libraries( guacamole-PLOD
+                         guacamole
                          ${PBR_RENDERING_LIBRARY}
                          ${PBR_COMMON_LIBRARY}
+                         ${TEXTURE_STREAM_LIBRARIES}
                          ${PROTOBUF_LIBRARIES}
                        )
 
 ENDIF (MSVC)
 
 ###############################################################################
-# install 
+# install
 ###############################################################################
 
 IF (MSVC)
@@ -110,21 +125,21 @@ IF (MSVC)
     ARCHIVE DESTINATION lib/Debug
   )
 ELSEIF (UNIX)
-  install (TARGETS guacamole-PLOD 
+  install (TARGETS guacamole-PLOD
     RUNTIME DESTINATION lib
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
   )
 ENDIF (MSVC)
 
-# header files 
+# header files
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/gua/ DESTINATION include/gua FILES_MATCHING PATTERN "*.hpp")
 
 # shader and material resources
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION resources 
-        FILES_MATCHING 
-        PATTERN "*.frag" 
-        PATTERN "*.vert" 
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION resources
+        FILES_MATCHING
+        PATTERN "*.frag"
+        PATTERN "*.vert"
         PATTERN "*.glsl"
         PATTERN "*.geom"
         PATTERN "*.tctrl"

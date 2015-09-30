@@ -68,7 +68,9 @@ void on_window_button_press(GLFWwindow* glfw_window, int button, int action, int
 
 void on_window_move_cursor(GLFWwindow* glfw_window, double x, double y) {
   auto window(static_cast<GlfwWindow*>(glfwGetWindowUserPointer(glfw_window)));
-  window->on_move_cursor.emit(math::vec2(float(x), float(window->config.get_size().y - y)));
+  auto mouse_position(math::vec2(float(x), float(window->config.get_size().y - y)));
+  window->set_mouse_position(mouse_position);
+  window->on_move_cursor.emit(mouse_position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -77,7 +77,8 @@ WindowBase::WindowBase(Configuration const& configuration)
       warpRL_(nullptr),
       warpGL_(nullptr),
       warpBL_(nullptr),
-      display_count_(0) {}
+      display_count_(0),
+      take_screen_shot_(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -191,6 +192,12 @@ void WindowBase::finish_frame() const {
   ++display_count_;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+void WindowBase::take_screen_shot() {
+  std::lock_guard<std::mutex> lock(screen_shot_mutex_);
+  take_screen_shot_ = true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -256,6 +263,28 @@ void WindowBase::display(std::shared_ptr<Texture> const& texture,
     }
   }
 
+  std::lock_guard<std::mutex> lock(screen_shot_mutex_);
+  if (take_screen_shot_) {
+    take_screen_shot_ = false;
+
+    auto texture_ptr(std::dynamic_pointer_cast<Texture2D>(texture));
+
+    if (texture_ptr) {
+      auto texture_2d_ptr(boost::dynamic_pointer_cast<scm::gl::texture_2d>(texture_ptr->get_buffer(ctx_)));
+      auto width = texture_2d_ptr->descriptor()._size.x;
+      auto height = texture_2d_ptr->descriptor()._size.y;
+      // auto bpp = scm::gl::bit_per_pixel(texture_2d_ptr->format());
+      // auto gl_type = scm::gl::util::gl_base_type(texture_2d_ptr->format());
+      // auto gl_internal_format = scm::gl::util::gl_internal_format(texture_2d_ptr->format());
+      // auto gl_base_format = scm::gl::util::gl_base_format(texture_2d_ptr->format());
+
+      int size = width * height * scm::gl::size_of_format(texture_2d_ptr->format());
+      std::vector<char> data(size);
+
+      ctx_.render_context->retrieve_texture_data(texture_2d_ptr, 0, data.data());
+
+    }
+  }
 
 }
 

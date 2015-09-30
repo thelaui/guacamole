@@ -171,7 +171,7 @@ void key_press(gua::PipelineDescription& pipe, gua::SceneGraph& graph, int key, 
 		animate_light = !animate_light;
 		break;
 
-		// recompile shaders 
+		// recompile shaders
 	case 'r':
 		pipe.get_resolve_pass()->touch();
 		break;
@@ -179,8 +179,8 @@ void key_press(gua::PipelineDescription& pipe, gua::SceneGraph& graph, int key, 
 	default:
 		break;
 	}
-}
 
+}
 
 
 int main(int argc, char** argv) {
@@ -242,7 +242,7 @@ int main(int argc, char** argv) {
 	auto light_xf = graph.add_node<gua::node::TransformNode>("/", "lightxf");
 	auto light = graph.add_node<gua::node::LightNode>("/lightxf", "light");
 	light->data.set_type(gua::node::LightNode::Type::POINT);
-	light->data.set_enable_shadows(true);                                                         
+	light->data.set_enable_shadows(true);
 	light->data.set_shadow_map_size(1024);
 	light->data.set_shadow_near_clipping_in_sun_direction(0.1f);
 	light->data.brightness = 5.0f;
@@ -347,7 +347,7 @@ int main(int argc, char** argv) {
 			gua::math::float_t(trackball.shifty()),
 			gua::math::float_t(trackball.distance())) * gua::math::mat4(trackball.rotation());
 
-		
+
 		transform->set_transform(modelmatrix);
 		light_xf->set_transform(plod_node->get_cached_world_transform());
 

@@ -70,6 +70,7 @@ void render_quads(PipelinePass& pass,
                   PipelinePassDescription const&,
                   Pipeline& pipe) {
   auto& scene = *pipe.current_viewstate().scene;
+
   for (auto const& node : scene.nodes[std::type_index(typeid(node::TexturedScreenSpaceQuadNode))]) {
     auto quad_node(reinterpret_cast<node::TexturedScreenSpaceQuadNode*>(node));
     render_node(pass, quad_node, pipe);

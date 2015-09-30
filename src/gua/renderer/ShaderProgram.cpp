@@ -27,6 +27,7 @@
 #include <gua/renderer/RenderContext.hpp>
 #include <gua/renderer/Uniform.hpp>
 #include <gua/utils/Logger.hpp>
+#include <gua/databases/Resources.hpp>
 
 namespace gua {
 
@@ -146,7 +147,7 @@ bool ShaderProgram::upload_to(RenderContext const & context) const {
       auto source = factory.resolve_substitutions(s.source, substitutions_);
       shaders.push_back(context.render_device->create_shader(s.type, source));
     }
-    
+
     if (interleaved_stream_capture_.empty()) {
       program_ = context.render_device->create_program(shaders);
     } else {

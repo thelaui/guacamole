@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>gui</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-theme.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-slider.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap.colorpickersliders.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-select.min.css">
+    <link href="gui.css" rel="stylesheet">
+
+    <script type="text/javascript" src="third_party/js/jquery-1.10.2.js"></script>
+    <script type="text/javascript" src="third_party/js/jquery-ui-1.10.4.min.js"></script>
+    <script type="text/javascript" src="third_party/js/tinycolor.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap-slider.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap.colorpickersliders.min.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap-select.min.js"></script>
+
+
+    <script type="text/javascript">
+
+      function add_space(parent_selector, label) {
+        $(parent_selector).append('<hr />');
+      }
+
+      function init_color_picker(parent_selector, func) {
+
+        $(parent_selector + " ." + func).ColorPickerSliders({
+          size: "sm",
+          placement: "top",
+          sliders: false,
+          swatches: false,
+          hsvpanel: true,
+          onchange: function(container, color) {
+            var colorPicker = $(parent_selector + " ." + func);
+            var color_string = color.tiny.toRgbString();
+            colorPicker.css("background-color", color_string);
+            gua["set_" + func](color_string);
+          }
+        });
+
+        return {func: func, selector: parent_selector + " ." + func};
+      }
+
+      function add_texture_select(parent_selector, func, label) {
+
+        var texture_button_popover = "";
+        var count = textures.length;
+        for (var i = 0; i < count; i++) {
+          texture_button_popover += '<div data-texture="' + textures[i] + '" style="background-image:url(../../' + textures[i] + '); margin-right:4px; height: 40px; width: 30%;" class="btn btn-default btn-image ' + func + '_button"></div>';
+        }
+
+        $(parent_selector).append(
+          '<div class="row">' +
+            '<div class="col-xs-6">' +
+              label + ':' +
+            '</div>' +
+            '<div class="col-xs-6">' +
+              '<div class="btn btn-default btn-image texture_button ' + func + '" data-toggle="popover" data-placement="left" title="Select Texture" style="height: 20px; width: 100%; padding:0"></div>' +
+            '</div>' +
+          '</div>'
+        );
+
+        $(parent_selector + ' .' + func).popover({container:"body", html:true});
+        $(parent_selector + ' .' + func).data('bs.popover').options.content = texture_button_popover;
+
+        return {func: func, selector: parent_selector + " ." + func};
+      }
+
+      function add_color_picker_group(parent_selector, func1, func2, func3, label) {
+
+        $(parent_selector).append(
+          '<div class="row">' +
+            '<div class="col-xs-6">' +
+              label + ':' +
+            '</div>' +
+            '<div class="col-xs-6">' +
+              '<div class="btn btn-default ' + func1 + '" style="height: 20px; width: 30%; padding:0">' +
+              '</div>' +
+              '<div class="btn btn-default ' + func2 + '" style="height: 20px; width: 30%; margin-left:5%; margin-right:5%; padding:0">' +
+              '</div>' +
+              '<div class="btn btn-default ' + func3 + '" style="height: 20px; width: 30%; padding:0">' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        );
+
+        return [init_color_picker(parent_selector, func1), init_color_picker(parent_selector, func2), init_color_picker(parent_selector, func3)];
+      }
+
+      function add_slider(parent_selector, func, label, min, max, step) {
+        $(parent_selector).append(
+          '<div class="row">' +
+            '<div class="col-xs-5">' +
+              label + ':' +
+            '</div>' +
+            '<div class="col-xs-7">' +
+              '<input class="slider ' + func + '" data-slider-tooltip="hide" data-slider-id=' +
+                func + ' type="text" data-slider-min="' +
+                min + '" data-slider-max="' + max + '" data-slider-step="' +
+                step + '" handle="custom"/>' +
+            '</div>' +
+          '</div>'
+        );
+
+        return init_slider(parent_selector + ' .' + func, func);
+      }
+
+      function init_slider(id, func) {
+
+        var slider = $(id).slider();
+
+        var obj = $(id);
+
+        slider.swift_func = func;
+
+        slider.on("slideStop", function() {
+          var val = $(this).slider('getValue');
+          $(this).parent().attr("val", parseFloat(val.toFixed(4)));
+          gua["set_" + func](val);
+        });
+
+        slider.on("slide", function() {
+          var val = $(this).slider('getValue');
+          gua["set_" + func](val);
+          $(this).parent().attr("val", parseFloat(val.toFixed(4)));
+          obj.find(".slider-handle").focus();
+        });
+
+        obj.on("click", function(){
+          obj.find(".slider-handle").focus();
+        });
+
+        var val = parseFloat(gua["get_" + func]());
+        slider.slider('setValue', val);
+        $(id).parent().attr("val", parseFloat(val.toFixed(4)));
+
+        return slider;
+      }
+
+      function add_checkbox(parent_selector, func, label) {
+        $(parent_selector).append(
+          '<div class="row">' +
+            '<div class="col-xs-5">' +
+              label + ':' +
+            '</div>' +
+            '<div class="col-xs-7">' +
+              '<div class="checkbox">' +
+                '<label>' +
+                  '<input id="' + func + '" type="checkbox" value="">' +
+                  '<span></span>' +
+                '</label>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        );
+
+        return init_checkbox("#" + func, func);
+      }
+
+      var init_checkbox = function(selector, func) {
+        $(selector).change(function() {
+          gua["set_" + func](this.checked ? 1 : 0);
+        });
+      }
+
+      var init_radio = function(selector, func) {
+        $(selector).change(function() {
+          gua["set_" + func](this.checked ? 1 : 0);
+        });
+      }
+
+      function init() {
+
+        init_radio("#selection_mode_camera", "selection_mode_camera");
+        init_radio("#selection_mode_fragment", "selection_mode_fragment");
+
+        init_radio("#blending_mode_average", "blending_mode_average");
+        init_radio("#blending_mode_median", "blending_mode_median");
+
+        init_checkbox("#enableLens", "lens_enable");
+        init_checkbox("#enableBackgroundFill", "background_fill_enable");
+        init_checkbox("#enableMeasurement", "measurement_enable");
+        init_checkbox("#enableTreeVis", "tree_vis_enable");
+        init_checkbox("#enableFrustumVis", "frustum_vis_enable");
+
+        init_slider("#control-panel .query_radius", "query_radius");
+        init_slider("#control-panel .splat_radius", "splat_radius");
+        init_slider("#control-panel .blending_factor", "blending_factor");
+        init_slider("#control-panel .blending_range", "blending_range");
+        init_slider("#control-panel .lens_radius", "lens_radius");
+
+
+        $("body").addClass("on");
+      }
+
+
+      $(document).ready(function() {
+
+        $('#settings-right .side-panel').hover(function(){
+          $('#settings-right .side-panel').removeClass("expanded");
+          $(this).addClass("expanded");
+        });
+
+      });
+
+    </script>
+
+  </head>
+  <body>
+
+    <div id="settings-right">
+
+      <div class="side-panel expanded">
+        <div id="control-panel" class="panel-inner">
+
+          <h4><i class="fa fa-cogs"></i> Options</h4>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Selection Mode:
+            </div>
+            <div class="col-xs-7">
+              <div class="radio">
+                <label>
+                  <input type="radio" name="selectionModeRadios" id="selection_mode_camera" value="" checked>
+                  <span>Closest to camera</span>
+                </label>
+              </div>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="selectionModeRadios" id="selection_mode_fragment" value="">
+                  <span>Closest to fragment</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Blending Mode:
+            </div>
+            <div class="col-xs-7">
+              <div class="radio">
+                <label>
+                  <input type="radio" name="blendingModeRadios" id="blending_mode_average" value="" checked>
+                  <span>Average</span>
+                </label>
+              </div>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="blendingModeRadios" id="blending_mode_median" value="">
+                  <span>Median</span>
+                </label>
+              </div>
+            </div>
+            <div class="col-xs-5">
+              Blending Factor:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider blending_factor" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="1" data-slider-step="0.1" handle="custom"/>
+            </div>
+            <div class="col-xs-5">
+              Blending Range:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider blending_range" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="5" data-slider-step="1" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Show Lens:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableLens" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="col-xs-5">
+            Lens Radius:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider lens_radius" data-slider-tooltip="hide" data-slider-id="lens_radius" type="text" data-slider-min="0" data-slider-max="10" data-slider-step="0.1" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Measurement:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableMeasurement" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Fill Background:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableBackgroundFill" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Draw Tree:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableTreeVis" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Draw Frusta:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableFrustumVis" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+
+          <div class="row">
+            <div class="col-xs-5">
+              Query Radius:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider query_radius" data-slider-tooltip="hide" data-slider-id="query_radius" type="text" data-slider-min="0" data-slider-max="500" data-slider-step="1" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+              Splat Radius:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider splat_radius" data-slider-tooltip="hide" data-slider-id="splat_radius" type="text" data-slider-min="0.1" data-slider-max="2.0" data-slider-step="0.1" handle="custom"/>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </body>
+</html>
