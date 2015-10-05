@@ -37,7 +37,7 @@ class GUA_DLL GBuffer : public RenderTarget {
 
   void clear(RenderContext const& context, float depth = 1.f, unsigned stencil = 0) override;
   void clear_color(RenderContext const& context);
-  
+
   void bind(RenderContext const& context, bool write_depth) override;
   void unbind(RenderContext const& context) override;
 
@@ -51,6 +51,7 @@ class GUA_DLL GBuffer : public RenderTarget {
   std::shared_ptr<Texture2D> const& get_normal_buffer() const;
   std::shared_ptr<Texture2D> const& get_flags_buffer()  const;
   std::shared_ptr<Texture2D> const& get_depth_buffer()  const override;
+  std::shared_ptr<Texture2D> const& get_position_buffer()  const;
 
   inline scm::gl::frame_buffer_ptr get_fbo_read() const { return fbo_read_; }
 
@@ -69,6 +70,7 @@ class GUA_DLL GBuffer : public RenderTarget {
   std::shared_ptr<Texture2D> normal_buffer_;
   std::shared_ptr<Texture2D> flags_buffer_;
   std::shared_ptr<Texture2D> depth_buffer_;
+  std::shared_ptr<Texture2D> position_buffer_;
 };
 
 }

@@ -243,9 +243,12 @@ int main(int argc, char** argv) {
 
   for (auto file : model_files){
     if (count < max_load_count) {
-      auto node = plod_loader.load_geometry(file + "_node",
-                                           file,
-                                           street_material,
+      // auto node = plod_loader.load_geometry(file + "_node",
+      //                                      file,
+      //                                      street_material,
+      //                                      gua::PLODLoader::DEFAULTS |
+      //                                      gua::PLODLoader::MAKE_PICKABLE);
+      auto node = plod_loader.load_geometry(file,
                                            gua::PLODLoader::DEFAULTS |
                                            gua::PLODLoader::MAKE_PICKABLE);
       plod_geometrys.push_back(node);
@@ -371,8 +374,9 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
-  // pipe->add_pass(fill_pass);
+  pipe->add_pass(fill_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
+  pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
   // pipe->set_enable_abuffer(true);
   // pipe->set_abuffer_size(1500);
