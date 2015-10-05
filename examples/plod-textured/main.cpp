@@ -129,8 +129,8 @@ int main(int argc, char** argv) {
   // increase number of files that can be loaded in parallel
   /////////////////////////////////////////////////////////////////////////////
 
-  const int max_load_count(100);
-  // const int max_load_count(500);
+  // const int max_load_count(100);
+  const int max_load_count(180);
   int count(0);
 
   struct rlimit limit;
