@@ -41,18 +41,18 @@ namespace gua {
   class ShaderProgram;
 
   class PLODRenderer {
- 
+
   public:
 
     PLODRenderer();
 
     void render(Pipeline& pipe, PipelinePassDescription const& desc);
     void set_global_substitution_map(SubstitutionMap const& smap) { global_substitution_map_ = smap; }
-  
+
     void reload_programs();
 
  private:  //shader related auxiliary methods
-  
+
   void          _load_shaders();
   void          _initialize_log_to_lin_conversion_pass_program();
   void          _initialize_depth_pass_program();
@@ -66,10 +66,10 @@ namespace gua {
 
   void          _create_gpu_resources(gua::RenderContext const& ctx,
                                     scm::math::vec2ui const& render_target_dims,
-				    bool resize_resource_containers); 
-  
+				    bool resize_resource_containers);
+
  private:  //out-of-core related auxiliary methods
-  
+
    pbr::context_t _register_context_in_cut_update(gua::RenderContext const& ctx);
 
  private: //misc auxiliary methods
@@ -77,7 +77,7 @@ namespace gua {
                    std::vector<math::vec4f> const& global_planes) const;
 
    std::vector<math::vec3> _get_frustum_corners_vs(gua::Frustum const& frustum) const;
-   
+
  private:  //member variables
 
     //FBOs:
@@ -95,6 +95,7 @@ namespace gua {
     scm::gl::texture_2d_ptr                      accumulation_pass_normal_result_;
     scm::gl::texture_2d_ptr                      accumulation_pass_pbr_result_;
     scm::gl::texture_2d_ptr                      accumulation_pass_weight_and_depth_result_;
+    scm::gl::texture_2d_ptr                      accumulation_pass_position_result_;
     scm::gl::frame_buffer_ptr                    accumulation_pass_result_fbo_;
 
     //schism-GL states:
@@ -122,7 +123,7 @@ namespace gua {
 
     //context guard
     ////////////////////////////////////////////////////////////////////////////////////
-  
+
     std::mutex                                   mutex_;
     bool                                         shaders_loaded_;
 
@@ -134,7 +135,7 @@ namespace gua {
      */
 
     //render target dependent resources
-    unsigned                                                             current_rendertarget_width_;  
+    unsigned                                                             current_rendertarget_width_;
     unsigned                                                             current_rendertarget_height_;
 
     //CPU resources
@@ -145,7 +146,7 @@ namespace gua {
 
     std::vector<ShaderProgramStage>                                      shadow_pass_shader_stages_;
 
-    //additional GPU resources 
+    //additional GPU resources
     std::shared_ptr<ShaderProgram>                                       log_to_lin_conversion_pass_program_;
     std::shared_ptr<ShaderProgram>                                       depth_pass_program_;
     std::unordered_map<MaterialShader*, std::shared_ptr<ShaderProgram> > accumulation_pass_programs_;

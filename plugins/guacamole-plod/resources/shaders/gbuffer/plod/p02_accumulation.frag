@@ -36,6 +36,7 @@ layout (location = 0) out vec3 out_accumulated_color;
 layout (location = 1) out vec3 out_accumulated_normal;
 layout (location = 2) out vec3 out_accumulated_pbr;
 layout (location = 3) out vec2 out_accumulated_weight_and_depth;
+layout (location = 4) out vec3 out_accumulated_position;
 
 ///////////////////////////////////////////////////////////////////////////////
 // splatting methods
@@ -66,7 +67,7 @@ void main() {
     face_forward_normal = -face_forward_normal;
   }
 
-  if( dot(uv_coords, uv_coords) > 1) 
+  if( dot(uv_coords, uv_coords) > 1)
     discard;
   else
     weight = gaussian[(int)(round(length(uv_coords) * 31.0))];
@@ -95,6 +96,7 @@ void main() {
   //out_accumulated_normal = vec4(weight * face_forward_normal, gl_FragCoord.z);
   out_accumulated_normal = vec3(weight * face_forward_normal);
   out_accumulated_pbr = vec3(gua_metalness, gua_roughness, gua_emissivity) * weight;
+  out_accumulated_position = weight * gua_world_position.xyz;
 
   out_accumulated_weight_and_depth = vec2(weight, weight * pass_log_depth);
 

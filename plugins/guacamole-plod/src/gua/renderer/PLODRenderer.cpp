@@ -245,6 +245,11 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
                           scm::gl::FORMAT_RG_32F,
                           1, 1, 1);
 
+    accumulation_pass_position_result_ = ctx.render_device
+      ->create_texture_2d(render_target_dims,
+                          scm::gl::FORMAT_RGB_32F,
+                          1, 1, 1);
+
     log_to_lin_gua_depth_conversion_pass_fbo_ = ctx.render_device->create_frame_buffer();
     /*log_to_lin_gua_depth_conversion_pass_fbo_->attach_color_buffer(0,
                                                                    depth_pass_linear_depth_result_);*/
@@ -267,6 +272,8 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
                                                        accumulation_pass_pbr_result_);
     accumulation_pass_result_fbo_->attach_color_buffer(3,
                                                        accumulation_pass_weight_and_depth_result_);
+    accumulation_pass_result_fbo_->attach_color_buffer(4,
+                                                       accumulation_pass_position_result_);
     //accumulation_pass_result_fbo_->attach_depth_stencil_buffer(depth_pass_log_depth_result_);
     accumulation_pass_result_fbo_->attach_depth_stencil_buffer(depth_pass_linear_depth_result_);
 
@@ -417,6 +424,11 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
     ctx.render_context
       ->clear_color_buffer(accumulation_pass_result_fbo_,
       3,
+      scm::math::vec2f(0.0f, 0.0f));
+
+    ctx.render_context
+      ->clear_color_buffer(accumulation_pass_result_fbo_,
+      4,
       scm::math::vec2f(0.0f, 0.0f));
 
     ///////////////////////////////////////////////////////////////////////////
@@ -793,6 +805,9 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
 
            ctx.render_context->bind_texture(accumulation_pass_weight_and_depth_result_, nearest_sampler_state_, 3);
            normalization_pass_program_->apply_uniform(ctx, "p02_weight_and_depth_texture", 3);
+
+           ctx.render_context->bind_texture(accumulation_pass_position_result_, nearest_sampler_state_, 4);
+           normalization_pass_program_->apply_uniform(ctx, "p02_position_texture", 4);
 
            //ctx.render_context->bind_texture(depth_pass_log_depth_result_, nearest_sampler_state_, 3);
            //current_material_program->apply_uniform(ctx, "p01_log_depth_texture", 3);

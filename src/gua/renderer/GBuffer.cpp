@@ -56,12 +56,14 @@ GBuffer::GBuffer(RenderContext const& ctx, math::vec2ui const& resolution):
   normal_buffer_      = std::make_shared<Texture2D>(resolution.x, resolution.y, scm::gl::FORMAT_RGB_16,  1, state);
   flags_buffer_       = std::make_shared<Texture2D>(resolution.x, resolution.y, scm::gl::FORMAT_R_8UI,   1, state);
   depth_buffer_       = std::make_shared<Texture2D>(resolution.x, resolution.y, scm::gl::FORMAT_D24_S8,  1, state);
+  position_buffer_    = std::make_shared<Texture2D>(resolution.x, resolution.y, scm::gl::FORMAT_RGB_32F, 1, state);
 
   fbo_read_ = ctx.render_device->create_frame_buffer();
   fbo_read_->attach_color_buffer(0, color_buffer_read_->get_buffer(ctx),0,0);
   fbo_read_->attach_color_buffer(1, pbr_buffer_->get_buffer(ctx), 0, 0);
   fbo_read_->attach_color_buffer(2, normal_buffer_->get_buffer(ctx),0,0);
   fbo_read_->attach_color_buffer(3, flags_buffer_->get_buffer(ctx),0,0);
+  fbo_read_->attach_color_buffer(4, position_buffer_->get_buffer(ctx),0,0);
   fbo_read_->attach_depth_stencil_buffer(depth_buffer_->get_buffer(ctx),0,0);
 
   fbo_write_ = ctx.render_device->create_frame_buffer();
@@ -69,6 +71,7 @@ GBuffer::GBuffer(RenderContext const& ctx, math::vec2ui const& resolution):
   fbo_write_->attach_color_buffer(1, pbr_buffer_->get_buffer(ctx),0,0);
   fbo_write_->attach_color_buffer(2, normal_buffer_->get_buffer(ctx),0,0);
   fbo_write_->attach_color_buffer(3, flags_buffer_->get_buffer(ctx),0,0);
+  fbo_write_->attach_color_buffer(4, position_buffer_->get_buffer(ctx),0,0);
   fbo_write_->attach_depth_stencil_buffer(depth_buffer_->get_buffer(ctx),0,0);
 
   fbo_read_only_color_ = ctx.render_device->create_frame_buffer();
@@ -134,7 +137,7 @@ void GBuffer::toggle_ping_pong() {
 
 void GBuffer::remove_buffers(RenderContext const& ctx) {
   unbind(ctx);
-  
+
   if (fbo_write_) {
     fbo_write_->clear_attachments();
     fbo_write_.reset();
@@ -162,6 +165,9 @@ void GBuffer::remove_buffers(RenderContext const& ctx) {
   }
   if (depth_buffer_) {
     depth_buffer_->make_non_resident(ctx);
+  }
+  if (position_buffer_) {
+    position_buffer_->make_non_resident(ctx);
   }
 }
 
@@ -193,6 +199,12 @@ std::shared_ptr<Texture2D> const& GBuffer::get_flags_buffer() const {
 
 std::shared_ptr<Texture2D> const& GBuffer::get_depth_buffer() const {
   return depth_buffer_;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<Texture2D> const& GBuffer::get_position_buffer() const {
+  return position_buffer_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

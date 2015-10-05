@@ -328,7 +328,7 @@ std::shared_ptr<Texture2D> Pipeline::render_scene(
       case node::LightNode::Type::SPOT :
         generate_shadow_map_spotlight(light, light_block, viewport_size, needs_redraw);
         break;
-    default : 
+    default :
       throw std::runtime_error("Pipeline::generate_shadow_map(): Lightnode type not supported.");
     };
 
@@ -528,7 +528,7 @@ std::shared_ptr<Texture2D> Pipeline::render_scene(
 
       auto transform(light->get_cached_world_transform() * screen_transforms[cascade]);
 
-	  // scale far clip of virtual camera to radius of unit sphere 
+	  // scale far clip of virtual camera to radius of unit sphere
 	  auto light_far_clip = 2.0f * scm::math::length(math::get_translation(transform) - math::get_translation(light->get_cached_world_transform()));
 
 	  // TODO: make near clip of light configurable? currently 1/100th of light source size
@@ -576,7 +576,7 @@ std::shared_ptr<Texture2D> Pipeline::render_scene(
   PipelineViewState const& Pipeline::current_viewstate() const {
     return current_viewstate_;
   }
-  
+
   ////////////////////////////////////////////////////////////////////////////////
 
   RenderContext& Pipeline::get_context() {
@@ -623,6 +623,9 @@ std::shared_ptr<Texture2D> Pipeline::render_scene(
     shader->set_uniform(context_,
                         gbuffer_->get_depth_buffer()->get_handle(context_),
                         "gua_gbuffer_depth");
+    shader->set_uniform(context_,
+                        gbuffer_->get_position_buffer()->get_handle(context_),
+                        "gua_gbuffer_position");
   }
 
   ////////////////////////////////////////////////////////////////////////////////
