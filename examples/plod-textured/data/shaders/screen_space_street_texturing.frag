@@ -17,7 +17,8 @@ layout (binding=2) uniform projective_texure_block {
   int   pad;
 };
 
-uniform int enabled;
+uniform int selection_mode;
+uniform float blending_factor;
 
 mat4 homography = (mat4(
   1.0844150096782323, -0.0216027047911971, 0.0, -0.0000027239192071,
@@ -93,12 +94,12 @@ vec3 get_projected_color(int frustum_id) {
       vec2 pixel_coords = vec2(resolution.x * (proj_tex_space_pos.x * 0.5 + 0.5),
                                resolution.y * (1.0 - (proj_tex_space_pos.y * 0.5 + 0.5)));
       // vec4 transformed_coord = homography * vec4(pixel_coords, 0.0, 1.0);
-      // vec4 transformed_coord = homographies[frustum_id] * vec4(pixel_coords, 0.0, 1.0);
-      // transformed_coord /= transformed_coord.w;
-      // transformed_coord.xy /= resolution;
-      // transformed_coord.y = 1.0 - transformed_coord.y;
+      vec4 transformed_coord = homographies[frustum_id] * vec4(pixel_coords, 0.0, 1.0);
+      transformed_coord /= transformed_coord.w;
+      transformed_coord.xy /= resolution;
+      transformed_coord.y = 1.0 - transformed_coord.y;
 
-      result = texture(sampler2D(projection_textures[frustum_id]), proj_tex_space_pos.xy).rgb;
+      result = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy).rgb;
     }
   }
 
@@ -113,14 +114,23 @@ void main() {
 
   // gua_out_color = background_color;
 
-  // if (enabled == 1) {
-  int frustum_id = get_id_smallest_distance(gua_camera_position_4);
-  vec3 projected_color = get_projected_color(frustum_id);
-  if (projected_color != vec3(0.0)) {
-    gua_out_color = projected_color;
+  if (blending_factor > 0.0) {
+
+    int frustum_id = 0;
+    if (selection_mode == 0) {
+      frustum_id = get_id_smallest_distance(gua_camera_position_4);
+    } else if (selection_mode == 1) {
+      frustum_id = get_id_closest_valid_projection(vec4(gua_get_position(), 1.0));
+    }
+
+    vec3 projected_color = get_projected_color(frustum_id);
+    if (projected_color != vec3(0.0)) {
+      gua_out_color = mix(gua_get_color(), projected_color, blending_factor);
+    } else {
+      discard;
+    }
   } else {
     discard;
   }
-  // }
 
 }

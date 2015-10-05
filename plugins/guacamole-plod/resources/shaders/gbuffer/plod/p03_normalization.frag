@@ -222,6 +222,9 @@ void main() {
     gua_world_position = accumulated_position / accumulated_weight;
 
 
+    // vec4 eye_space_pos = gua_view_matrix * vec4(gua_world_position, 1.0);
+    // gl_FragDepth = (eye_space_pos.z - 0.5) * 2.0;
+
 
 #ifdef USE_SS_HOLE_FILLING
   }

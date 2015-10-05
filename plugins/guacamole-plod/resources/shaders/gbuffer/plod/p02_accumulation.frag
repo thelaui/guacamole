@@ -96,7 +96,7 @@ void main() {
   //out_accumulated_normal = vec4(weight * face_forward_normal, gl_FragCoord.z);
   out_accumulated_normal = vec3(weight * face_forward_normal);
   out_accumulated_pbr = vec3(gua_metalness, gua_roughness, gua_emissivity) * weight;
-  out_accumulated_position = vec3(weight * gua_varying_world_position.xyz);
+  out_accumulated_position = weight * gua_world_position.xyz;
 
   out_accumulated_weight_and_depth = vec2(weight, weight * pass_log_depth);
 

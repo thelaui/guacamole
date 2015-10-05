@@ -355,32 +355,28 @@ int main(int argc, char** argv) {
   screen->translate(0.0, 0.0, -focal_length);
 
   auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
-  frustum_vis_pass->set_query_radius(50.0);
+  frustum_vis_pass->set_query_radius(20.0);
   frustum_vis_pass->set_tree_visualization_enabled(false);
   frustum_vis_pass->set_frustum_visualization_enabled(false);
 
-  auto fill_pass = std::make_shared<gua::FullscreenPassDescription>();
-  fill_pass->source_file("data/shaders/background_fill.frag");
+  auto texturing_pass = std::make_shared<gua::FullscreenPassDescription>();
+  texturing_pass->source_file("data/shaders/screen_space_street_texturing.frag");
 
   auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
   screen_space_pick_pass->set_window_name("main_window");
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
-  pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
+  // pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
   pipe->add_pass(frustum_vis_pass);
   // pipe->add_pass(screen_space_pick_pass);
   pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
-  pipe->add_pass(fill_pass);
+  pipe->add_pass(texturing_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
-  pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
-
-  // pipe->set_enable_abuffer(true);
-  // pipe->set_abuffer_size(1500);
-  // pipe->set_blending_termination_threshold(0.99f);
+  // pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
   camera->set_pipeline_description(pipe);
 
@@ -702,7 +698,7 @@ int main(int argc, char** argv) {
 
       // F6 to reload pipeline
       if (action == 1 && key == 295) {
-        fill_pass->touch();
+        texturing_pass->touch();
       }
 
       // F7 for screen shot
@@ -830,7 +826,6 @@ int main(int argc, char** argv) {
     street_material->set_uniform("blending_range",  current_blending_range);
     street_material->set_uniform("blending_mode",   current_blending_mode);
     street_material->set_uniform("selection_mode",  current_selection_mode);
-    street_material->set_uniform("blending_factor", current_blending_factor);
     street_material->set_uniform("pick_pos_and_radius",
                                   gua::math::vec4(current_pick_pos.x,
                                                   current_pick_pos.y,
@@ -839,9 +834,8 @@ int main(int argc, char** argv) {
     street_material->set_uniform("pick_normal", current_pick_normal);
     street_material->set_uniform("lens_enabled", lens_enabled ? 1 : 0);
 
-    int enable_background(0);
-    if (background_fill_enabled == 1 && !navigator_active) enable_background = 1;
-    fill_pass->uniform("enabled", enable_background);
+    texturing_pass->uniform("selection_mode",  current_selection_mode);
+    texturing_pass->uniform("blending_factor", current_blending_factor);
 
     window->process_events();
     if (window->should_close()) {

@@ -247,7 +247,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
 
     accumulation_pass_position_result_ = ctx.render_device
       ->create_texture_2d(render_target_dims,
-                          scm::gl::FORMAT_RG_32F,
+                          scm::gl::FORMAT_RGB_32F,
                           1, 1, 1);
 
     log_to_lin_gua_depth_conversion_pass_fbo_ = ctx.render_device->create_frame_buffer();
