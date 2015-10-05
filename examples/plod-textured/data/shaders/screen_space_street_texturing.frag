@@ -27,9 +27,6 @@ mat4 homography = (mat4(
   -85.0306662046851187, 3.2737730386715316, 0.0, 1.0000000000000000
 ));
 
-vec3 background_color = vec3(0.8, 0.8, 0.8);
-// vec3 background_color = vec3(0.0);
-
 int get_id_smallest_distance(in vec4 position) {
   float minimal_distance = 99999.9;
   int result = 0;
@@ -108,11 +105,9 @@ vec3 get_projected_color(int frustum_id) {
 
 void main() {
 
-  // if (gua_get_depth() >= 1.0 ) {
-  //   discard;
-  // }
-
-  // gua_out_color = background_color;
+  if (gua_get_depth() >= 1.0 ) {
+    discard;
+  }
 
   if (blending_factor > 0.0) {
 
