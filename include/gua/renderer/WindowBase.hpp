@@ -159,6 +159,8 @@ class GUA_DLL WindowBase {
   virtual void finish_frame() const;
 
   virtual void take_screen_shot();
+  virtual bool screen_shot_available() const;
+  virtual void retrieve_screen_shot_data(std::vector<char>& data) const;
 
   /**
    *
@@ -213,7 +215,9 @@ protected:
   mutable int display_count_;
 
   bool take_screen_shot_;
-  std::mutex screen_shot_mutex_;
+  bool screen_shot_available_;
+  mutable std::mutex screen_shot_mutex_;
+  std::vector<char> screen_shot_data_;
 
   gua::math::vec2 mouse_position_;
 

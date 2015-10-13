@@ -78,7 +78,9 @@ WindowBase::WindowBase(Configuration const& configuration)
       warpGL_(nullptr),
       warpBL_(nullptr),
       display_count_(0),
-      take_screen_shot_(false) {}
+      take_screen_shot_(false),
+      screen_shot_available_(false),
+      screen_shot_data_() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -197,6 +199,7 @@ void WindowBase::finish_frame() const {
 void WindowBase::take_screen_shot() {
   std::lock_guard<std::mutex> lock(screen_shot_mutex_);
   take_screen_shot_ = true;
+  screen_shot_available_ = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -279,15 +282,30 @@ void WindowBase::display(std::shared_ptr<Texture> const& texture,
       // auto gl_base_format = scm::gl::util::gl_base_format(texture_2d_ptr->format());
 
       int size = width * height * scm::gl::size_of_format(texture_2d_ptr->format());
-      std::vector<char> data(size);
+      screen_shot_data_.resize(size);
 
-      ctx_.render_context->retrieve_texture_data(texture_2d_ptr, 0, data.data());
+      ctx_.render_context->retrieve_texture_data(texture_2d_ptr, 0, screen_shot_data_.data());
+      screen_shot_available_ = true;
 
     }
   }
 
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+
+bool WindowBase::screen_shot_available() const {
+  std::lock_guard<std::mutex> lock(screen_shot_mutex_);
+  return screen_shot_available_;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void WindowBase::retrieve_screen_shot_data(std::vector<char>& data) const {
+  std::lock_guard<std::mutex> lock(screen_shot_mutex_);
+  data = screen_shot_data_;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 

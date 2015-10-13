@@ -49,6 +49,8 @@
 
 #include <texture_stream/texture_stream.hpp>
 
+#include "opencv2/opencv.hpp"
+
 #include "Navigator.hpp"
 
 struct file_name_comp {
@@ -168,6 +170,7 @@ int main(int argc, char** argv) {
   float current_splat_radius(1.f);
   // scm::math::vec3d global_offset(-485784.23, -145.24, -5374211.66); //france
   scm::math::vec3d global_offset(0.0);
+  bool screen_shot_taken(false);
 
   // create scene graph object
   gua::SceneGraph graph("main_scenegraph");
@@ -704,6 +707,7 @@ int main(int argc, char** argv) {
       // F7 for screen shot
       if (action == 1 && key == 296) {
         window->take_screen_shot();
+        screen_shot_taken = true;
       }
 
       bool position_changed(false);
@@ -769,6 +773,17 @@ int main(int argc, char** argv) {
       );
       // screen->set_world_transform(frusta[current_frustum].get_screen_transform());
       // screen->data.set_size(gua::math::vec2(1.0, 1.0));;
+    }
+
+    if (screen_shot_taken && window->screen_shot_available()) {
+      screen_shot_taken = false;
+      std::vector<char> data;
+      window->retrieve_screen_shot_data(data);
+      cv::Mat screen_shot(resolution.y, resolution.x, CV_32FC3, data.data());
+      cv::flip(screen_shot, screen_shot, 0); //flip around x axis
+      cv::cvtColor(screen_shot, screen_shot, CV_BGR2RGB); //convert from bgr to rgb color space
+      cv::imshow("screen shot", screen_shot);
+      cv::waitKey(0);
     }
 
     picking_enabled = lens_enabled || measurement_enabled;

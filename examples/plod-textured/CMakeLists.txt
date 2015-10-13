@@ -11,6 +11,7 @@ include_directories( ${INCLUDE_PATHS}
                      ${PROJECT_SOURCE_DIR}/include
                      ${GUACAMOLE_PLOD_INCLUDE_DIR}
                      ${TEXTURE_STREAM_INCLUDE_DIRS}
+                     ${OPENCV_INCLUDE_DIRS}
                      ${AWESOMIUM_INCLUDE_DIR}
                      ${GUACAMOLE_GUI_INCLUDE_DIR}
                      ${PBR_INCLUDE_DIRS}

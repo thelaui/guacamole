@@ -6,6 +6,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(PBR_ROOT "/opt/pbr/inst_cb" CACHE PATH "Set to your PLOD install path.")
 include(FindPBR)
 include(find_texture_stream)
+include(find_opencv)
 
 ###############################################################################
 # determine source files
@@ -35,6 +36,7 @@ INCLUDE_DIRECTORIES( ${INCLUDE_PATHS}
                      ${GUACAMOLE_PLOD_INCLUDE_DIR}
                      ${PBR_INCLUDE_DIRS}
                      ${TEXTURE_STREAM_INCLUDE_DIRS}
+                     ${OPENCV_INCLUDE_DIRS}
 )
 
 
@@ -56,6 +58,9 @@ LIST(APPEND INCLUDE_PATHS ${PROTOBUF_INCLUDE_DIRS})
 LIST(APPEND LIB_PATHS ${TEXTURE_STREAM_LIBRARY_DIRS})
 LIST(APPEND INCLUDE_PATHS ${TEXTURE_STREAM_INCLUDE_DIRS})
 
+LIST(APPEND LIB_PATHS ${OPENCV_LIBRARY_DIRS})
+LIST(APPEND INCLUDE_PATHS ${OPENCV_INCLUDE_DIRS})
+
 include(find_protobuf)
 #set(PLOD_ROOT "/opt/pbr/gualod/trunk/pbr" CACHE PATH "Set to your PLOD install path.")
 
@@ -71,6 +76,12 @@ message(STATUS " texture_stream:" )
 message(STATUS "   library: ${TEXTURE_STREAM_LIBRARIES}" )
 message(STATUS "   library path: ${TEXTURE_STREAM_LIBRARY_DIRS}" )
 message(STATUS "   include: ${TEXTURE_STREAM_INCLUDE_DIRS}" )
+message(STATUS "" )
+
+message(STATUS " OpenCV:" )
+message(STATUS "   library: ${OPENCV_LIBRARIES}" )
+message(STATUS "   library path: ${OPENCV_LIBRARY_DIRS}" )
+message(STATUS "   include: ${OPENCV_INCLUDE_DIRS}" )
 message(STATUS "" )
 
 ###############################################################################
@@ -93,6 +104,7 @@ IF (MSVC)
                                         debug ${PBR_RENDERING_LIBRARY_DEBUG}
                                         debug ${PBR_COMMON_LIBRARY_DEBUG}
                                         debug ${TEXTURE_STREAM_LIBRARIES}
+                                        debug ${OPENCV_LIBRARIES}
                                         general guacamole
                        )
 ELSEIF (UNIX)
@@ -101,6 +113,7 @@ ELSEIF (UNIX)
                          ${PBR_RENDERING_LIBRARY}
                          ${PBR_COMMON_LIBRARY}
                          ${TEXTURE_STREAM_LIBRARIES}
+                         ${OPENCV_LIBRARIES}
                          ${PROTOBUF_LIBRARIES}
                        )
 
