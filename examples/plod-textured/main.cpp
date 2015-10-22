@@ -781,7 +781,7 @@ int main(int argc, char** argv) {
       window->retrieve_screen_shot_data(data);
       cv::Mat screen_shot(resolution.y, resolution.x, CV_32FC3, data.data());
       cv::flip(screen_shot, screen_shot, 0); //flip around x axis
-      cv::cvtColor(screen_shot, screen_shot, CV_BGR2RGB); //convert from bgr to rgb color space
+      cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
       cv::imshow("screen shot", screen_shot);
       cv::waitKey(0);
     }
