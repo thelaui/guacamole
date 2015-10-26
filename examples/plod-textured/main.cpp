@@ -268,11 +268,31 @@ int main(int argc, char** argv) {
   auto offset_transform = model_offset->get_world_transform();
 
   /////////////////////////////////////////////////////////////////////////////
+  // load centroid file
+  /////////////////////////////////////////////////////////////////////////////
+
+  if (centroid_file_name != "") {
+    texstr::DSVParser parser;
+    auto centroid_data = parser.read_file(centroid_file_name, ';');
+    if (centroid_data.size() == 2) {
+      auto centroid_values = centroid_data[1];
+      double x,y,z;
+      std::stringstream(centroid_values[0]) >> x;
+      std::stringstream(centroid_values[1]) >> y;
+      std::stringstream(centroid_values[2]) >> z;
+      global_offset = scm::math::vec3d(-x,-y,-z);
+      std::cout << "Loaded centroid " << global_offset << std::endl;
+    }
+
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
   // load frustum files
   /////////////////////////////////////////////////////////////////////////////
 
   std::set<std::string> frustum_files;
   std::vector<texstr::Frustum> frusta;
+  std::stringstream            route_point_stream; // collect all coords to set route on map
 
   for (auto frusta_path_string : frusta_paths_string) {
     boost::filesystem::path frusta_path(frusta_path_string);
@@ -306,24 +326,18 @@ int main(int argc, char** argv) {
     new_frustum.set_capture_time(frustum.get_capture_time());
 
     frusta.push_back(new_frustum);
+
+    auto pos(frustum.get_camera_position());
+    pos = scm::math::vec3d(-(pos.x + global_offset.x),
+                             0.0,
+                             pos.z - global_offset.z
+                            );
+
+    route_point_stream << gua::string_utils::to_string(pos.x) << ";"
+                       << gua::string_utils::to_string(pos.z) << "|";
   }
 
   texstr::FrustumManagement::instance()->register_frusta(frusta);
-
-  if (centroid_file_name != "") {
-    texstr::DSVParser parser;
-    auto centroid_data = parser.read_file(centroid_file_name, ';');
-    if (centroid_data.size() == 2) {
-      auto centroid_values = centroid_data[1];
-      double x,y,z;
-      std::stringstream(centroid_values[0]) >> x;
-      std::stringstream(centroid_values[1]) >> y;
-      std::stringstream(centroid_values[2]) >> z;
-      global_offset = scm::math::vec3d(-x,-y,-z);
-      std::cout << "Loaded centroid " << global_offset << std::endl;
-    }
-
-  }
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
@@ -488,6 +502,7 @@ int main(int argc, char** argv) {
   map->on_loaded.connect([&]() {
     map->add_javascript_callback("set_camera_pos_utm");
     map->call_javascript("init");
+    map->call_javascript("set_route_points", route_point_stream.str());
   });
 
   map->on_javascript_callback.connect([&](std::string const& callback, std::vector<std::string> const& params) {
