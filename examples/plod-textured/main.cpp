@@ -343,8 +343,7 @@ int main(int argc, char** argv) {
   // create scene camera and pipeline
   /////////////////////////////////////////////////////////////////////////////
 
-  auto resolution = is_in_screenshot_mode ? gua::math::vec2ui(1280, 960)
-                                          : gua::math::vec2ui(width, height);
+  auto resolution = gua::math::vec2ui(width, height);
 
   auto camera = graph.add_node<gua::node::CameraNode>("/", "cam");
   camera->config.set_resolution(resolution);
@@ -814,10 +813,30 @@ int main(int argc, char** argv) {
       cv::Mat screen_shot(resolution.y, resolution.x, CV_32FC3, data.data());
       cv::flip(screen_shot, screen_shot, 0); //flip around x axis
       cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
-      cv::imshow("screen shot", screen_shot);
+      screen_shot.convertTo(screen_shot, CV_32FC1);
+      cv::normalize(screen_shot, screen_shot, 0.0, 1.0, cv::NORM_MINMAX);
+      // cv::imshow("screen shot", screen_shot);
+
+      cv::Mat mask;
+      cv::threshold(screen_shot, mask, 0, 1, cv::THRESH_BINARY);
+      mask.convertTo(mask, CV_8U, 255.0);
+      // cv::imshow("mask", mask);
 
       cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
-      cv::imshow("photography", photo);
+      cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
+
+      cv::Mat masked_photo;
+
+      photo.copyTo(masked_photo, mask);
+      masked_photo.convertTo(masked_photo, CV_32FC1, 1.0/255.0);
+      // cv::normalize(photo, photo, 0.0, 1.0, cv::NORM_MINMAX);
+      cv::imshow("photography", masked_photo);
+
+      cv::Mat diff;
+      cv::absdiff(screen_shot, masked_photo, diff);
+      cv::imshow("difference", diff);
+      std::cout << cv::sum(diff) << std::endl;
+
       cv::waitKey(0);
     }
 
