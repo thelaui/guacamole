@@ -576,7 +576,7 @@ int main(int argc, char** argv) {
 
   graph.add_node("/", measurement_text_quad);
 
-  //gui visibility helper lambda
+  //gui visibility helper lambdas
   auto update_gui_visibility = [&](){
     if (!gui_visible) {
       gui_quad->get_tags().add_tag("invisible");
@@ -593,6 +593,18 @@ int main(int argc, char** argv) {
     } else {
       map_quad->get_tags().remove_tag("invisible");
     }
+  };
+
+  auto update_map_marker = [&](){
+    auto pos(frusta[current_frustum].get_camera_position());
+    pos = scm::math::inverse(offset_transform) * pos;
+    pos = scm::math::vec3d(-(pos.x + global_offset.x),
+                             0.0,
+                             pos.z - global_offset.z
+                            );
+    map->call_javascript_arg_vector("set_position_marker_utm",
+                                    {gua::string_utils::to_string(pos.x),
+                                     gua::string_utils::to_string(pos.z)});
   };
 
   /////////////////////////////////////////////////////////////////////////////
@@ -740,16 +752,7 @@ int main(int argc, char** argv) {
         navigator.set_transform(scm::math::mat4f(frusta[current_frustum].get_camera_transform()));
         navigator_active = false;
 
-        // update map marker
-        auto pos(frusta[current_frustum].get_camera_position());
-        pos = scm::math::inverse(offset_transform) * pos;
-        pos = scm::math::vec3d(-(pos.x + global_offset.x),
-                                 0.0,
-                                 pos.z - global_offset.z
-                                );
-        map->call_javascript_arg_vector("set_position_marker_utm",
-                                        {gua::string_utils::to_string(pos.x),
-                                         gua::string_utils::to_string(pos.z)});
+        update_map_marker();
 
         auto ground_transform(scm::math::make_translation(
           frusta[current_frustum].get_camera_position() -
@@ -781,13 +784,27 @@ int main(int argc, char** argv) {
       camera->set_transform(gua::math::mat4(navigator.get_transform()));
       // screen->set_transform(scm::math::make_translation(0.0, 0.0, -0.0061637285428946));
       // screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
+      auto camera_pos(camera->get_world_position());
+      int frustum_id(-1);
+      auto closest_frustum(texstr::FrustumManagement::instance()->get_closest_frustum(
+        scm::math::vec3d(camera_pos.x, camera_pos.y, camera_pos.z),
+        scm::math::vec3d(1.0, 0.0, 1.0),
+        frustum_id
+      ));
+
+      if (frustum_id != -1) {
+        current_frustum = frustum_id;
+        if (frame_count % 50 == 0) {
+          update_map_marker();
+        }
+      }
+
     } else {
       camera->set_transform(
         gua::math::mat4(frusta[current_frustum].get_camera_transform()) *
         scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0)
       );
-      // screen->set_world_transform(frusta[current_frustum].get_screen_transform());
-      // screen->data.set_size(gua::math::vec2(1.0, 1.0));;
+
     }
 
     if (screen_shot_taken && window->screen_shot_available()) {
@@ -798,6 +815,9 @@ int main(int argc, char** argv) {
       cv::flip(screen_shot, screen_shot, 0); //flip around x axis
       cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
       cv::imshow("screen shot", screen_shot);
+
+      cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
+      cv::imshow("photography", photo);
       cv::waitKey(0);
     }
 
