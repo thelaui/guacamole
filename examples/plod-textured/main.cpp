@@ -52,6 +52,7 @@
 #include "opencv2/opencv.hpp"
 
 #include "Navigator.hpp"
+#include "SixDOFOptimizer.hpp"
 
 struct file_name_comp {
   bool operator() (std::string const& lhs, std::string const& rhs) const {
@@ -807,7 +808,85 @@ int main(int argc, char** argv) {
     }
 
     if (screen_shot_taken && window->screen_shot_available()) {
+    // if (screen_shot_taken) {
+      // screen_shot_taken = false;
+
+      // SixDOFOptimizer optimizer;
+
+      // optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
+      // optimizer.position_offset_range = 0.01;
+      // optimizer.position_sampling_steps = 2;
+      // optimizer.rotation_offset_range = 5.0;
+      // optimizer.rotation_sampling_steps = 10;
+
+      // optimizer.error_function = [&](scm::math::mat4f const& new_transform) {
+
+      //   camera->set_transform(gua::math::mat4(new_transform));
+      //   window->take_screen_shot();
+      //   renderer.draw_single_threaded({&graph});
+
+      //   cv::Size blur_kernel(15,15);
+
+      //   std::vector<char> data;
+      //   window->retrieve_screen_shot_data(data);
+      //   cv::Mat screen_shot(resolution.y, resolution.x, CV_32FC3, data.data());
+      //   cv::flip(screen_shot, screen_shot, 0); //flip around x axis
+      //   cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
+      //   screen_shot.convertTo(screen_shot, CV_8UC1, 255.0);
+      //   cv::equalizeHist(screen_shot, screen_shot);
+      //   cv::blur(screen_shot, screen_shot, blur_kernel);
+
+      //   cv::Mat mask;
+      //   cv::threshold(screen_shot, mask, 0, 255, cv::THRESH_BINARY);
+
+      //   cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
+      //   cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
+
+      //   cv::Mat masked_photo;
+
+      //   cv::blur(photo, photo, blur_kernel);
+      //   photo.copyTo(masked_photo, mask);
+      //   masked_photo.convertTo(masked_photo, CV_8UC1);
+      //   cv::equalizeHist(masked_photo, masked_photo);
+
+      //   screen_shot.convertTo(screen_shot, CV_32FC1, 1.0/255.0);
+      //   masked_photo.convertTo(masked_photo, CV_32FC1, 1.0/255.0);
+
+      //   cv::Mat diff;
+      //   cv::absdiff(screen_shot, masked_photo, diff);
+
+      //   double total_error = cv::sum(diff)[0] / (resolution.x * resolution.y);
+      //   return total_error;
+      // };
+
+      // std::cout << frusta[current_frustum].get_camera_transform() << std::endl;
+      // auto optimized_transform = optimizer.run();
+      // std::cout << optimized_transform << std::endl;
+
+      // auto frustum = frusta[current_frustum];
+      // auto new_cam_trans = scm::math::mat4d(optimized_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
+      // auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
+      // auto new_frustum = texstr::Frustum::perspective(
+      //   new_cam_trans,
+      //   new_cam_trans * orig_screen_trans,
+      //   frustum.get_clip_near(),
+      //   frustum.get_clip_far()
+      // );
+
+      // new_frustum.set_homography(frustum.get_homography());
+      // new_frustum.set_image_file_name(frustum.get_image_file_name());
+      // new_frustum.set_image_dimensions(frustum.get_image_dimensions());
+      // new_frustum.set_capture_time(frustum.get_capture_time());
+
+      // frusta[current_frustum] = new_frustum;
+
+      // texstr::FrustumManagement::instance()->reset();
+      // texstr::FrustumManagement::instance()->register_frusta(frusta);
+
       screen_shot_taken = false;
+
+      cv::Size blur_kernel(8,8);
+
       std::vector<char> data;
       window->retrieve_screen_shot_data(data);
       cv::Mat screen_shot(resolution.y, resolution.x, CV_32FC3, data.data());
@@ -815,30 +894,39 @@ int main(int argc, char** argv) {
       cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
       screen_shot.convertTo(screen_shot, CV_8UC1, 255.0);
       cv::equalizeHist(screen_shot, screen_shot);
-      // cv::imshow("screen shot", screen_shot);
+      cv::blur(screen_shot, screen_shot, blur_kernel);
+      cv::imshow("screen shot", screen_shot);
 
       cv::Mat mask;
       cv::threshold(screen_shot, mask, 0, 255, cv::THRESH_BINARY);
-      // cv::imshow("mask", mask);
+      cv::imshow("mask", mask);
 
       cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
       cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
 
       cv::Mat masked_photo;
 
+      cv::blur(photo, photo, blur_kernel);
       photo.copyTo(masked_photo, mask);
       masked_photo.convertTo(masked_photo, CV_8UC1);
       cv::equalizeHist(masked_photo, masked_photo);
-      // cv::imshow("photography", masked_photo);
+      cv::imshow("photography", masked_photo);
 
+      screen_shot.convertTo(screen_shot, CV_32FC1, 1.0/255.0);
+      masked_photo.convertTo(masked_photo, CV_32FC1, 1.0/255.0);
+
+      // calculate zero-mean normalized sum of squared differences
       cv::Mat diff;
-      cv::absdiff(screen_shot, masked_photo, diff);
-      diff.convertTo(diff, CV_32FC1, 1.0/255.0);
+      cv::subtract(screen_shot, masked_photo, diff);
+
+
       cv::imshow("difference", diff);
-      std::cout << cv::sum(diff) << std::endl;
+      std::cout << cv::sum(diff)[0] << std::endl;
 
       cv::waitKey(0);
+
     }
+
 
     picking_enabled = lens_enabled || measurement_enabled;
 
@@ -912,7 +1000,11 @@ int main(int argc, char** argv) {
       window->close();
       loop.stop();
     } else {
-      renderer.queue_draw({&graph});
+      if (is_in_screenshot_mode) {
+        renderer.draw_single_threaded({&graph});
+      } else {
+        renderer.queue_draw({&graph});
+      }
     }
   });
 
