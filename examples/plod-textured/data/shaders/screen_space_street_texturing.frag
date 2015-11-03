@@ -68,6 +68,10 @@ int get_id_closest_valid_projection(in vec4 position) {
   return result;
 }
 
+float get_vector_average(in vec3 vector) {
+  return (vector.x + vector.y + vector.z) / 3.0;
+}
+
 vec3 get_projected_color(int frustum_id) {
   vec3 result = vec3(0.0);
 
@@ -97,6 +101,20 @@ vec3 get_projected_color(int frustum_id) {
       transformed_coord.y = 1.0 - transformed_coord.y;
 
       result = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy).rgb;
+      vec3 original_color = gua_get_color();
+      float closest_distance = abs(get_vector_average(original_color) - get_vector_average(result));
+      for (int x = -3; x <= 3; ++x) {
+        for (int y = -3; y <= 3; ++y) {
+          vec3 match = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy + vec2(x,y)).rgb;
+          float new_distance = abs(get_vector_average(original_color) - get_vector_average(match));
+
+          if (new_distance < closest_distance) {
+            closest_distance = new_distance;
+            result = match;
+
+          }
+        }
+      }
     }
   }
 
