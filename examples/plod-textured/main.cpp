@@ -84,6 +84,7 @@ int main(int argc, char** argv) {
 
   std::vector<std::string> frusta_paths_string({"/home/tosa2305/Desktop/thesis/data/untracked/france/frusta_subset_cam_0"});
   std::vector<std::string> model_paths_string({"/mnt/pitoti/lp/france/20121212/000/pointcloud/xyz/"});
+  std::string optimization_output_path(".");
   int width(1920);
   int height(1080);
   double focal_length(0.005);
@@ -96,6 +97,7 @@ int main(int argc, char** argv) {
     ("help", "print help message")
     ("frusta,f", po::value<std::vector<std::string>>(&frusta_paths_string)->multitoken()->default_value(frusta_paths_string), "specify a path to frustum files")
     ("models,m", po::value<std::vector<std::string>>(&model_paths_string)->multitoken()->default_value(model_paths_string), "specify paths to kdn trees")
+    ("output,o", po::value<std::string>(&optimization_output_path)->default_value(optimization_output_path), "specify path to where optimized frusta shall be stored")
     ("width,w", po::value<int>(&width)->default_value(width), "specify width of the window's resolution")
     ("height,h", po::value<int>(&height)->default_value(height), "specify height of the window's resolution")
     ("focal-length,l", po::value<double>(&focal_length)->default_value(focal_length), "specify the focal length of the used camera in m")
@@ -338,6 +340,14 @@ int main(int argc, char** argv) {
   }
 
   texstr::FrustumManagement::instance()->register_frusta(frusta);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // create optimization output path if necessary
+  /////////////////////////////////////////////////////////////////////////////
+
+  if (boost::filesystem::create_directories(optimization_output_path)) {
+    std::cout << " Created missing directories on path " << optimization_output_path << "." << std::endl;
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // create scene camera and pipeline
@@ -816,8 +826,8 @@ int main(int argc, char** argv) {
       optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
       optimizer.position_offset_range = 0.001;
       optimizer.position_sampling_steps = 5;
-      optimizer.rotation_offset_range = 1.0;
-      optimizer.rotation_sampling_steps = 5;
+      optimizer.rotation_offset_range = 10.0;
+      optimizer.rotation_sampling_steps = 2;
 
       optimizer.error_function = [&](scm::math::mat4f const& new_transform) {
 
@@ -883,6 +893,19 @@ int main(int argc, char** argv) {
       new_frustum.set_image_file_name(frustum.get_image_file_name());
       new_frustum.set_image_dimensions(frustum.get_image_dimensions());
       new_frustum.set_capture_time(frustum.get_capture_time());
+
+      boost::filesystem::path frustum_path(new_frustum.get_image_file_name());
+      std::string out_file_name(optimization_output_path + "/" +
+                                frustum_path.filename().string() + ".frustum");
+
+      std::fstream ofstr(out_file_name, std::ios::out);
+      if (ofstr.good()) {
+        ofstr << texstr::FrustumFactory::to_string(new_frustum) << std::endl;
+
+      } else {
+        std::cout << "Could not open output file " +  out_file_name + "!" << std::endl;
+      }
+      ofstr.close();
 
       frusta[current_frustum] = new_frustum;
 

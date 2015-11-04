@@ -121,6 +121,41 @@ vec3 get_projected_color(int frustum_id) {
   return result;
 }
 
+vec3 get_projected_color_with_current_camera(int frustum_id) {
+  vec3 result = vec3(0.0);
+
+  // check if texture is loaded
+  if (projection_textures[frustum_id] != uvec2(0)) {
+    vec2 resolution = vec2(projection_texture_resolutions[frustum_id].x,
+                           projection_texture_resolutions[frustum_id].y);
+
+    // project fragment position into the projective texture
+    vec4 proj_tex_space_pos = gua_projection_matrix * gua_view_matrix * vec4(gua_get_position(), 1.0);
+
+    float depth = proj_tex_space_pos.z;
+    // perspective division
+    proj_tex_space_pos /= proj_tex_space_pos.w;
+
+    // check if fragment is visible by frustum
+    if (abs(proj_tex_space_pos.x) <  1.0 &&
+        abs(proj_tex_space_pos.y) <  1.0 &&
+        depth                     >= 0.0) {
+
+      vec2 pixel_coords = vec2(resolution.x * (proj_tex_space_pos.x * 0.5 + 0.5),
+                               resolution.y * (1.0 - (proj_tex_space_pos.y * 0.5 + 0.5)));
+      // vec4 transformed_coord = homography * vec4(pixel_coords, 0.0, 1.0);
+      vec4 transformed_coord = homographies[frustum_id] * vec4(pixel_coords, 0.0, 1.0);
+      transformed_coord /= transformed_coord.w;
+      transformed_coord.xy /= resolution;
+      transformed_coord.y = 1.0 - transformed_coord.y;
+
+      result = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy).rgb;
+    }
+  }
+
+  return result;
+}
+
 void main() {
 
   if (gua_get_depth() >= 1.0 ) {
@@ -139,6 +174,7 @@ void main() {
     }
 
     vec3 projected_color = get_projected_color(frustum_id);
+    // vec3 projected_color = get_projected_color_with_current_camera(frustum_id);
     if (projected_color != vec3(0.0)) {
       gua_out_color = mix(gua_get_color(), projected_color, blending_factor);
     } else {
