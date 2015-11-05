@@ -195,6 +195,11 @@
         init_slider("#control-panel .blending_range", "blending_range");
         init_slider("#control-panel .lens_radius", "lens_radius");
 
+        init_slider("#control-panel .position_range", "position_range");
+        init_slider("#control-panel .position_samples", "position_samples");
+        init_slider("#control-panel .rotation_range", "rotation_range");
+        init_slider("#control-panel .rotation_samples", "rotation_samples");
+
 
         $("body").addClass("on");
       }
@@ -206,6 +211,7 @@
           $('#settings-right .side-panel').removeClass("expanded");
           $(this).addClass("expanded");
         });
+        $("body").addClass("on");
 
       });
 
@@ -220,6 +226,8 @@
         <div id="control-panel" class="panel-inner">
 
           <h4><i class="fa fa-cogs"></i> Options</h4>
+
+          <h4 class="highlight">Texturing</h4>
 
           <div class="row">
             <div class="col-xs-5">
@@ -275,6 +283,22 @@
 
           <div class="row">
             <div class="col-xs-5">
+            Fill Background:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableBackgroundFill" type="checkbox" value="">
+                  <span>Enabled</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <h4 class="highlight">Tools</h4>
+
+          <div class="row">
+            <div class="col-xs-5">
             Show Lens:
             </div>
             <div class="col-xs-7">
@@ -309,19 +333,8 @@
 
           </div>
 
-          <div class="row">
-            <div class="col-xs-5">
-            Fill Background:
-            </div>
-            <div class="col-xs-7">
-              <div class="checkbox">
-                <label>
-                  <input id="enableBackgroundFill" type="checkbox" value="">
-                  <span>Enabled</span>
-                </label>
-              </div>
-            </div>
-          </div>
+
+          <h4 class="highlight">Debug</h4>
 
           <div class="row">
             <div class="col-xs-5">
@@ -367,6 +380,53 @@
             </div>
             <div class="col-xs-7">
               <input class="slider splat_radius" data-slider-tooltip="hide" data-slider-id="splat_radius" type="text" data-slider-min="0.1" data-slider-max="2.0" data-slider-step="0.1" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+              Query Radius:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider query_radius" data-slider-tooltip="hide" data-slider-id="query_radius" type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" handle="custom"/>
+            </div>
+          </div>
+
+          <h4 class="highlight">Optimization</h4>
+
+          <div class="row">
+            <div class="col-xs-5">
+              Position Range:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider position_range" data-slider-tooltip="hide" data-slider-id="position_range" type="text" data-slider-min="0.0" data-slider-max="2.0" data-slider-step="0.01" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+              Position Samples:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider position_samples" data-slider-tooltip="hide" data-slider-id="position_samples" type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+              Rotation Range:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider rotation_range" data-slider-tooltip="hide" data-slider-id="rotation_range" type="text" data-slider-min="0.0" data-slider-max="20.0" data-slider-step="0.01" handle="custom"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-5">
+              Rotation Samples:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider rotation_samples" data-slider-tooltip="hide" data-slider-id="rotation_samples" type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" handle="custom"/>
             </div>
           </div>
 

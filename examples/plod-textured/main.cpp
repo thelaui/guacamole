@@ -174,6 +174,13 @@ int main(int argc, char** argv) {
   scm::math::vec3d global_offset(0.0);
   bool screen_shot_taken(false);
 
+  SixDOFOptimizer optimizer;
+
+  optimizer.position_offset_range = 0.001;
+  optimizer.position_sampling_steps = 5;
+  optimizer.rotation_offset_range = 10.0;
+  optimizer.rotation_sampling_steps = 20;
+
   // create scene graph object
   gua::SceneGraph graph("main_scenegraph");
 
@@ -419,11 +426,11 @@ int main(int argc, char** argv) {
   /////////////////////////////////////////////////////////////////////////////
 
   auto gui = std::make_shared<gua::GuiResource>();
-  gui->init("gui", "asset://gua/data/gui/gui.html", gua::math::vec2(330, 760));
+  gui->init("gui", "asset://gua/data/gui/gui.html", gua::math::vec2(350, resolution.y));
 
   auto gui_quad = std::make_shared<gua::node::TexturedScreenSpaceQuadNode>("gui_quad");
   gui_quad->data.texture() = "gui";
-  gui_quad->data.size() = gua::math::vec2ui(330, 760);
+  gui_quad->data.size() = gua::math::vec2ui(350, resolution.y);
   gui_quad->data.anchor() = gua::math::vec2(1.f, 0.f);
 
   graph.add_node("/", gui_quad);
@@ -434,6 +441,10 @@ int main(int argc, char** argv) {
     gui->add_javascript_getter("get_blending_factor", [&](){ return std::to_string(current_blending_factor);});
     gui->add_javascript_getter("get_blending_range", [&](){ return std::to_string(current_blending_range);});
     gui->add_javascript_getter("get_lens_radius", [&](){ return std::to_string(current_lens_radius);});
+    gui->add_javascript_getter("get_position_range", [&](){ return std::to_string(optimizer.position_offset_range);});
+    gui->add_javascript_getter("get_position_samples", [&](){ return std::to_string(optimizer.position_sampling_steps);});
+    gui->add_javascript_getter("get_rotation_range", [&](){ return std::to_string(optimizer.rotation_offset_range);});
+    gui->add_javascript_getter("get_rotation_samples", [&](){ return std::to_string(optimizer.rotation_sampling_steps);});
 
     gui->add_javascript_callback("set_selection_mode_camera");
     gui->add_javascript_callback("set_selection_mode_fragment");
@@ -449,6 +460,10 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_blending_factor");
     gui->add_javascript_callback("set_blending_range");
     gui->add_javascript_callback("set_lens_radius");
+    gui->add_javascript_callback("set_position_range");
+    gui->add_javascript_callback("set_position_samples");
+    gui->add_javascript_callback("set_rotation_range");
+    gui->add_javascript_callback("set_rotation_samples");
 
     gui->call_javascript("init");
   });
@@ -496,15 +511,27 @@ int main(int argc, char** argv) {
     } else if (callback == "set_lens_radius") {
       std::stringstream str(params[0]);
       str >> current_lens_radius;
+    } else if (callback == "set_position_range") {
+      std::stringstream str(params[0]);
+      str >> optimizer.position_offset_range;
+    } else if (callback == "set_position_samples") {
+      std::stringstream str(params[0]);
+      str >> optimizer.position_sampling_steps;
+    } else if (callback == "set_rotation_range") {
+      std::stringstream str(params[0]);
+      str >> optimizer.rotation_offset_range;
+    } else if (callback == "set_rotation_samples") {
+      std::stringstream str(params[0]);
+      str >> optimizer.rotation_sampling_steps;
     }
   });
 
   auto map = std::make_shared<gua::GuiResource>();
-  map->init("map", "asset://gua/data/gui/map.html", gua::math::vec2(430, 760));
+  map->init("map", "asset://gua/data/gui/map.html", gua::math::vec2(430, resolution.y));
 
   auto map_quad = std::make_shared<gua::node::TexturedScreenSpaceQuadNode>("map_quad");
   map_quad->data.texture() = "map";
-  map_quad->data.size() = gua::math::vec2ui(430, 760);
+  map_quad->data.size() = gua::math::vec2ui(430, resolution.y);
   map_quad->data.anchor() = gua::math::vec2(-1.f, 0.f);
 
   graph.add_node("/", map_quad);
@@ -821,21 +848,22 @@ int main(int argc, char** argv) {
     if (screen_shot_taken) {
       screen_shot_taken = false;
 
-      SixDOFOptimizer optimizer;
-
       optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
-      optimizer.position_offset_range = 0.001;
-      optimizer.position_sampling_steps = 5;
-      optimizer.rotation_offset_range = 10.0;
-      optimizer.rotation_sampling_steps = 2;
+
+      cv::Size blur_kernel(15,15);
+
+      cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
+      cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
+      cv::blur(photo, photo, blur_kernel);
 
       optimizer.error_function = [&](scm::math::mat4f const& new_transform) {
 
+        gua::Timer timer;
+        timer.start();
         camera->set_transform(gua::math::mat4(new_transform));
         window->take_screen_shot();
         renderer.draw_single_threaded({&graph});
 
-        cv::Size blur_kernel(15,15);
 
         std::vector<char> data;
         window->retrieve_screen_shot_data(data);
@@ -849,12 +877,8 @@ int main(int argc, char** argv) {
         cv::Mat mask;
         cv::threshold(screen_shot, mask, 0, 255, cv::THRESH_BINARY);
 
-        cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
-        cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
-
         cv::Mat masked_photo;
 
-        cv::blur(photo, photo, blur_kernel);
         photo.copyTo(masked_photo, mask);
         masked_photo.convertTo(masked_photo, CV_8UC1);
         cv::equalizeHist(masked_photo, masked_photo);
@@ -872,6 +896,7 @@ int main(int argc, char** argv) {
         cv::multiply(diff, diff, diff);
 
         double total_error = cv::sum(diff)[0] / (resolution.x * resolution.y);
+        // std::cout << "Time: " << timer.get_elapsed() << std::endl;
         return total_error;
       };
 
@@ -894,9 +919,26 @@ int main(int argc, char** argv) {
       new_frustum.set_image_dimensions(frustum.get_image_dimensions());
       new_frustum.set_capture_time(frustum.get_capture_time());
 
+      frusta[current_frustum] = new_frustum;
+      texstr::FrustumManagement::instance()->reset();
+      texstr::FrustumManagement::instance()->register_frusta(frusta);
+
       boost::filesystem::path frustum_path(new_frustum.get_image_file_name());
       std::string out_file_name(optimization_output_path + "/" +
                                 frustum_path.filename().string() + ".frustum");
+
+      new_cam_trans = scm::math::inverse(offset_transform) * new_cam_trans;
+      new_frustum = texstr::Frustum::perspective(
+        new_cam_trans,
+        new_cam_trans * orig_screen_trans,
+        frustum.get_clip_near(),
+        frustum.get_clip_far()
+      );
+
+      new_frustum.set_homography(frustum.get_homography());
+      new_frustum.set_image_file_name(frustum.get_image_file_name());
+      new_frustum.set_image_dimensions(frustum.get_image_dimensions());
+      new_frustum.set_capture_time(frustum.get_capture_time());
 
       std::fstream ofstr(out_file_name, std::ios::out);
       if (ofstr.good()) {
@@ -907,10 +949,7 @@ int main(int argc, char** argv) {
       }
       ofstr.close();
 
-      frusta[current_frustum] = new_frustum;
 
-      texstr::FrustumManagement::instance()->reset();
-      texstr::FrustumManagement::instance()->register_frusta(frusta);
 
       // screen_shot_taken = false;
 
