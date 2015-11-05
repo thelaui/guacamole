@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
 
   SixDOFOptimizer optimizer;
 
-  optimizer.position_offset_range = 0.001;
+  optimizer.position_offset_range = 0,0;
   optimizer.position_sampling_steps = 5;
   optimizer.rotation_offset_range = 10.0;
   optimizer.rotation_sampling_steps = 20;
@@ -1068,6 +1068,7 @@ int main(int argc, char** argv) {
 
     texturing_pass->uniform("selection_mode",  current_selection_mode);
     texturing_pass->uniform("blending_factor", current_blending_factor);
+    texturing_pass->uniform("clipping_height", float(camera->get_world_position().y - 2.7f));
 
     window->process_events();
     if (window->should_close()) {
