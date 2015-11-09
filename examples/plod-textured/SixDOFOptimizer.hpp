@@ -22,7 +22,8 @@ class SixDOFOptimizer {
     std::function<float(scm::math::mat4f const&)> error_function =
                                         [](scm::math::mat4f const&){return 0.0;};
 
-    scm::math::mat4f const run();
+    void run(scm::math::mat4f& optimal_transform,
+             scm::math::mat4f& optimal_difference);
 
 };
 

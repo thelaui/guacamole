@@ -864,7 +864,6 @@ int main(int argc, char** argv) {
         window->take_screen_shot();
         renderer.draw_single_threaded({&graph});
 
-
         std::vector<char> data;
         window->retrieve_screen_shot_data(data);
         cv::Mat screen_shot(resolution.y, resolution.x, CV_32FC3, data.data());
@@ -900,56 +899,67 @@ int main(int argc, char** argv) {
         return total_error;
       };
 
-      std::cout << frusta[current_frustum].get_camera_transform() << std::endl;
-      auto optimized_transform = optimizer.run();
-      std::cout << optimized_transform << std::endl;
+      scm::math::mat4f optimal_transform(scm::math::mat4f::identity());
+      scm::math::mat4f optimal_difference(scm::math::mat4f::identity());
+      optimizer.run(optimal_transform, optimal_difference);
 
-      auto frustum = frusta[current_frustum];
-      auto new_cam_trans = scm::math::mat4d(optimized_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
-      auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
-      auto new_frustum = texstr::Frustum::perspective(
-        new_cam_trans,
-        new_cam_trans * orig_screen_trans,
-        frustum.get_clip_near(),
-        frustum.get_clip_far()
-      );
+      for (int i(0); i < frusta.size(); ++i) {
+        auto new_cam_trans = scm::math::mat4d::identity();
+        // use optimized transform for current frustum and optimal difference for all others
+        if (i != current_frustum) {
+          auto new_transform = frusta[i].get_camera_transform() * scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0) * scm::math::mat4d(optimal_difference);
+          new_cam_trans = scm::math::mat4d(new_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
+        } else {
+          new_cam_trans = scm::math::mat4d(optimal_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
+        }
 
-      new_frustum.set_homography(frustum.get_homography());
-      new_frustum.set_image_file_name(frustum.get_image_file_name());
-      new_frustum.set_image_dimensions(frustum.get_image_dimensions());
-      new_frustum.set_capture_time(frustum.get_capture_time());
+        auto orig_screen_trans = scm::math::inverse(frusta[i].get_camera_transform()) * frusta[i].get_screen_transform();
+        auto new_frustum = texstr::Frustum::perspective(
+          new_cam_trans,
+          new_cam_trans * orig_screen_trans,
+          frusta[i].get_clip_near(),
+          frusta[i].get_clip_far()
+        );
 
-      frusta[current_frustum] = new_frustum;
+        new_frustum.set_homography(frusta[i].get_homography());
+        new_frustum.set_image_file_name(frusta[i].get_image_file_name());
+        new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
+        new_frustum.set_capture_time(frusta[i].get_capture_time());
+
+        frusta[i] = new_frustum;
+
+        // save to file
+
+        boost::filesystem::path frustum_path(new_frustum.get_image_file_name());
+        std::string out_file_name(optimization_output_path + "/" +
+                                  frustum_path.filename().string() + ".frustum");
+
+        new_cam_trans = scm::math::inverse(offset_transform) * new_cam_trans;
+        new_frustum = texstr::Frustum::perspective(
+          new_cam_trans,
+          new_cam_trans * orig_screen_trans,
+          frusta[i].get_clip_near(),
+          frusta[i].get_clip_far()
+        );
+
+        new_frustum.set_homography(frusta[i].get_homography());
+        new_frustum.set_image_file_name(frusta[i].get_image_file_name());
+        new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
+        new_frustum.set_capture_time(frusta[i].get_capture_time());
+
+        std::fstream ofstr(out_file_name, std::ios::out);
+        if (ofstr.good()) {
+          ofstr << texstr::FrustumFactory::to_string(new_frustum) << std::endl;
+
+        } else {
+          std::cout << "Could not open output file " +  out_file_name + "!" << std::endl;
+        }
+        ofstr.close();
+      }
+
+      // register new frusta
       texstr::FrustumManagement::instance()->reset();
       texstr::FrustumManagement::instance()->register_frusta(frusta);
-
-      boost::filesystem::path frustum_path(new_frustum.get_image_file_name());
-      std::string out_file_name(optimization_output_path + "/" +
-                                frustum_path.filename().string() + ".frustum");
-
-      new_cam_trans = scm::math::inverse(offset_transform) * new_cam_trans;
-      new_frustum = texstr::Frustum::perspective(
-        new_cam_trans,
-        new_cam_trans * orig_screen_trans,
-        frustum.get_clip_near(),
-        frustum.get_clip_far()
-      );
-
-      new_frustum.set_homography(frustum.get_homography());
-      new_frustum.set_image_file_name(frustum.get_image_file_name());
-      new_frustum.set_image_dimensions(frustum.get_image_dimensions());
-      new_frustum.set_capture_time(frustum.get_capture_time());
-
-      std::fstream ofstr(out_file_name, std::ios::out);
-      if (ofstr.good()) {
-        ofstr << texstr::FrustumFactory::to_string(new_frustum) << std::endl;
-
-      } else {
-        std::cout << "Could not open output file " +  out_file_name + "!" << std::endl;
-      }
-      ofstr.close();
-
-
 
       // screen_shot_taken = false;
 
