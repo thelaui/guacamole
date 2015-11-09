@@ -52,7 +52,7 @@
 #include "opencv2/opencv.hpp"
 
 #include "Navigator.hpp"
-#include "SixDOFOptimizer.hpp"
+#include "BruteForceOptimizer.hpp"
 
 struct file_name_comp {
   bool operator() (std::string const& lhs, std::string const& rhs) const {
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
   scm::math::vec3d global_offset(0.0);
   bool screen_shot_taken(false);
 
-  SixDOFOptimizer optimizer;
+  BruteForceOptimizer optimizer;
 
   optimizer.position_offset_range = 0,0;
   optimizer.position_sampling_steps = 5;

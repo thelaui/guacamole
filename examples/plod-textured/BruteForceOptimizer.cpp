@@ -1,4 +1,4 @@
-#include "SixDOFOptimizer.hpp"
+#include "BruteForceOptimizer.hpp"
 
 #include <iostream>
 
@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <fstream>
 
-void SixDOFOptimizer::run(scm::math::mat4f& optimal_transform, scm::math::mat4f& optimal_difference) {
+void BruteForceOptimizer::run(scm::math::mat4f& optimal_transform, scm::math::mat4f& optimal_difference) {
 
   float position_step_size(position_offset_range / float(position_sampling_steps - 1));
   if(position_step_size == 0.f) {

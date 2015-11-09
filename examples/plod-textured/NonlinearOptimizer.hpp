@@ -1,19 +1,13 @@
-#ifndef SIX_DOF_OTIMIZER_HPP
-#define SIX_DOF_OTIMIZER_HPP
+#ifndef NONLINEAR_OTIMIZER_HPP
+#define NONLINEAR_OTIMIZER_HPP
 
 #include <functional>
 
 #include <scm/core/math.h>
 
-class SixDOFOptimizer {
+class NonlinearOptimizer {
 
   public:
-
-    float position_offset_range = 1.0; // in world coordinates
-    int   position_sampling_steps = 2;
-
-    float rotation_offset_range = 1.0; // in degrees
-    int   rotation_sampling_steps = 2;
 
     scm::math::mat4f initial_transform = scm::math::mat4f::identity();
 
@@ -25,6 +19,10 @@ class SixDOFOptimizer {
     void run(scm::math::mat4f& optimal_transform,
              scm::math::mat4f& optimal_difference);
 
+  private:
+
+    std::vector<float> get_descent_direction(scm::math::mat4f const& central_transform) const;
+
 };
 
-#endif  // SIX_DOF_OTIMIZER_HPP
+#endif  // NONLINEAR_OTIMIZER_HPP
