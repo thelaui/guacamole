@@ -29,15 +29,20 @@ namespace gua {
 
   class GUA_PLOD_DLL PLODPassDescription : public PipelinePassDescription {
 
-  public : // typedefs, enums
+  public: // typedefs, enums
 
    friend class Pipeline;
 
-  public :
+  public:
 
     PLODPassDescription();
     std::shared_ptr<PipelinePassDescription> make_copy() const override;
     PipelinePass make_pass(RenderContext const&, SubstitutionMap&) override;
+
+    void set_radius_clamping_enabled(bool enabled);
+
+  protected:
+    bool radius_clamping_enabled_;
 
 };
 

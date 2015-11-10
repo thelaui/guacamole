@@ -59,6 +59,13 @@ std::shared_ptr<PipelinePassDescription> PLODPassDescription::make_copy() const 
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void PLODPassDescription::set_radius_clamping_enabled(bool enabled) {
+  radius_clamping_enabled_ = enabled;
+  touch();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 PipelinePass PLODPassDescription::make_pass(RenderContext const& ctx, SubstitutionMap& substitution_map)
 {
   PipelinePass pass{ *this, ctx, substitution_map };
@@ -66,8 +73,11 @@ PipelinePass PLODPassDescription::make_pass(RenderContext const& ctx, Substituti
   auto renderer = std::make_shared<PLODRenderer>();
   renderer->set_global_substitution_map(substitution_map);
 
-  pass.process_ = [renderer](
+  auto radius_clamping_enabled(radius_clamping_enabled_);
+
+  pass.process_ = [renderer, radius_clamping_enabled](
     PipelinePass& pass, PipelinePassDescription const& desc, Pipeline & pipe) {
+    renderer->set_radius_clamping_enabled(radius_clamping_enabled);
     renderer->render(pipe, desc);
   };
 

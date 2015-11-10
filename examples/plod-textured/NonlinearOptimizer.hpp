@@ -22,6 +22,7 @@ class NonlinearOptimizer {
   private:
 
     std::vector<float> get_descent_direction(scm::math::mat4f const& central_transform) const;
+    // float get_step_length()
 
 };
 

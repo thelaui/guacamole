@@ -53,6 +53,7 @@
 
 #include "Navigator.hpp"
 #include "BruteForceOptimizer.hpp"
+#include "NonlinearOptimizer.hpp"
 
 struct file_name_comp {
   bool operator() (std::string const& lhs, std::string const& rhs) const {
@@ -90,8 +91,8 @@ int main(int argc, char** argv) {
   double focal_length(0.005);
   double screen_width(width * 0.00001);
   double screen_height(height * 0.00001);
-  bool is_in_screenshot_mode(false);
-  std::string centroid_file_name;
+  bool optimization_enabled(false);
+  std::string centroid_file_name("");
 
   desc.add_options()
     ("help", "print help message")
@@ -103,8 +104,8 @@ int main(int argc, char** argv) {
     ("focal-length,l", po::value<double>(&focal_length)->default_value(focal_length), "specify the focal length of the used camera in m")
     ("screen-width", po::value<double>(&screen_width)->default_value(screen_width), "specify the width of the virtual screen in m, i.e. the used camera's sensor width")
     ("screen-height", po::value<double>(&screen_height)->default_value(screen_height), "specify the height of the virtual screen in m, i.e. the used camera's sensor height")
-    ("centroid", po::value<std::string>(&centroid_file_name)->default_value(""), "specify the path to an centroid file name")
-    ("screenshot,s", "toggles the screenshot mode")
+    ("centroid", po::value<std::string>(&centroid_file_name)->default_value(centroid_file_name), "specify the path to an centroid file name")
+    ("optimize", "enable optimization mode")
     ;
 
   po::variables_map vm;
@@ -114,12 +115,12 @@ int main(int argc, char** argv) {
     po::store(parsed_options, vm);
     po::notify(vm);
 
-    is_in_screenshot_mode = vm.count("screenshot");
-
     if (vm.count("help")) {
       std::cout << desc;
       return 0;
     }
+
+    optimization_enabled = vm.count("optimize");
   } catch (std::exception& e) {}
 
   /////////////////////////////////////////////////////////////////////////////
@@ -157,13 +158,13 @@ int main(int argc, char** argv) {
   int current_blending_mode(0);
   int current_selection_mode(0);
   int background_fill_enabled(0);
-  bool gui_visible(!is_in_screenshot_mode);
-  bool map_visible(!is_in_screenshot_mode);
+  bool gui_visible(!optimization_enabled);
+  bool map_visible(!optimization_enabled);
   bool navigator_active(false);
   bool gui_options_active(false);
   bool gui_map_active(false);
   bool picking_enabled(false);
-  float current_blending_factor(is_in_screenshot_mode ? 0.f : 1.f);
+  float current_blending_factor(optimization_enabled ? 0.f : 1.f);
   bool lens_enabled(false);
   bool measurement_enabled(false);
   gua::math::vec2 current_mouse_pos(0.0);
@@ -180,6 +181,8 @@ int main(int argc, char** argv) {
   optimizer.position_sampling_steps = 5;
   optimizer.rotation_offset_range = 10.0;
   optimizer.rotation_sampling_steps = 20;
+
+  NonlinearOptimizer nonlinear_optimizer;
 
   // create scene graph object
   gua::SceneGraph graph("main_scenegraph");
@@ -308,6 +311,7 @@ int main(int argc, char** argv) {
 
     if (is_directory(frusta_path)) {
 
+      std::cout << frusta_path_string << std::endl;
       for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(frusta_path), {})) {
         auto frustum_file_name = entry.path();
         if (frustum_file_name.has_extension() && frustum_file_name.extension() == ".frustum") {
@@ -318,7 +322,6 @@ int main(int argc, char** argv) {
   }
 
   for (auto file : frustum_files){
-
     auto frustum = texstr::FrustumFactory::from_frustum_file(file);
     auto new_cam_trans = offset_transform * frustum.get_camera_transform();
     auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
@@ -368,8 +371,7 @@ int main(int argc, char** argv) {
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
   camera->config.set_output_texture_name("main_buffer");
-  // camera->config.set_far_clip(5000.0f);
-  camera->config.set_far_clip(15.0f);
+  camera->config.set_far_clip(optimization_enabled ? 15.f : 5000.0f);
   camera->config.set_near_clip(0.001f);
   // camera->config.set_far_clip(5.0f);
   // camera->config.set_near_clip(1.f);
@@ -381,7 +383,7 @@ int main(int argc, char** argv) {
   auto screen = graph.add_node<gua::node::ScreenNode>("/cam", "screen");
   screen->data.set_size(gua::math::vec2(screen_width, screen_height));
   // screen->translate(0.0, 0.0, -0.5);
-  // if (is_in_screenshot_mode) {
+  // if (optimization_enabled) {
   //   screen->data.set_size(gua::math::vec2(0.00824895, 0.006197296));
   // } else {
   //   screen->data.set_size(gua::math::vec2(resolution.x, resolution.y) * 0.00001f);
@@ -399,13 +401,16 @@ int main(int argc, char** argv) {
   auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
   screen_space_pick_pass->set_window_name("main_window");
 
+  auto plod_pass = std::make_shared<gua::PLODPassDescription>();
+  plod_pass->set_radius_clamping_enabled(optimization_enabled);
+
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
   // pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
   pipe->add_pass(frustum_vis_pass);
   // pipe->add_pass(screen_space_pick_pass);
   pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
-  pipe->add_pass(std::make_shared<gua::PLODPassDescription>());
+  pipe->add_pass(plod_pass);
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
   pipe->add_pass(texturing_pass);
@@ -460,6 +465,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_blending_factor");
     gui->add_javascript_callback("set_blending_range");
     gui->add_javascript_callback("set_lens_radius");
+    gui->add_javascript_callback("set_optimization_enable");
     gui->add_javascript_callback("set_position_range");
     gui->add_javascript_callback("set_position_samples");
     gui->add_javascript_callback("set_rotation_range");
@@ -477,7 +483,8 @@ int main(int argc, char** argv) {
      || callback == "set_measurement_enable"
      || callback == "set_background_fill_enable"
      || callback == "set_tree_vis_enable"
-     || callback == "set_frustum_vis_enable") {
+     || callback == "set_frustum_vis_enable"
+     || callback == "set_optimization_enable") {
       std::stringstream str(params[0]);
       bool checked;
       str >> checked;
@@ -491,6 +498,7 @@ int main(int argc, char** argv) {
       if (callback == "set_background_fill_enable") background_fill_enabled = checked ? 1 : 0;
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
+      if (callback == "set_optimization_enable") optimization_enabled = checked;
     } else if (callback == "set_query_radius") {
       std::stringstream str(params[0]);
       double query_radius;
@@ -848,7 +856,7 @@ int main(int argc, char** argv) {
     if (screen_shot_taken) {
       screen_shot_taken = false;
 
-      optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
+      nonlinear_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
 
       cv::Size blur_kernel(15,15);
 
@@ -856,7 +864,7 @@ int main(int argc, char** argv) {
       cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
       cv::blur(photo, photo, blur_kernel);
 
-      optimizer.error_function = [&](scm::math::mat4f const& new_transform) {
+      nonlinear_optimizer.error_function = [&](scm::math::mat4f const& new_transform) {
 
         gua::Timer timer;
         timer.start();
@@ -901,11 +909,11 @@ int main(int argc, char** argv) {
 
       scm::math::mat4f optimal_transform(scm::math::mat4f::identity());
       scm::math::mat4f optimal_difference(scm::math::mat4f::identity());
-      optimizer.run(optimal_transform, optimal_difference);
+      nonlinear_optimizer.run(optimal_transform, optimal_difference);
 
-      for (int i(0); i < frusta.size(); ++i) {
+      for (int i(current_frustum); i < frusta.size(); ++i) {
         auto new_cam_trans = scm::math::mat4d::identity();
-        // use optimized transform for current frustum and optimal difference for all others
+        // use optimized transform for current frustum and optimal difference for all subsequent others
         if (i != current_frustum) {
           auto new_transform = frusta[i].get_camera_transform() * scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0) * scm::math::mat4d(optimal_difference);
           new_cam_trans = scm::math::mat4d(new_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
@@ -1063,8 +1071,6 @@ int main(int argc, char** argv) {
       }
     }
 
-
-
     street_material->set_uniform("blending_range",  current_blending_range);
     street_material->set_uniform("blending_mode",   current_blending_mode);
     street_material->set_uniform("selection_mode",  current_selection_mode);
@@ -1079,6 +1085,7 @@ int main(int argc, char** argv) {
     texturing_pass->uniform("selection_mode",  current_selection_mode);
     texturing_pass->uniform("blending_factor", current_blending_factor);
     texturing_pass->uniform("clipping_height", float(camera->get_world_position().y - 2.7f));
+    texturing_pass->uniform("height_clipping_enabled", optimization_enabled ? 1 : 0);
 
     window->process_events();
     if (window->should_close()) {
@@ -1086,7 +1093,7 @@ int main(int argc, char** argv) {
       window->close();
       loop.stop();
     } else {
-      if (is_in_screenshot_mode) {
+      if (optimization_enabled) {
         renderer.draw_single_threaded({&graph});
       } else {
         renderer.queue_draw({&graph});

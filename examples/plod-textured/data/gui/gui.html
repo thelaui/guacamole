@@ -188,6 +188,7 @@
         init_checkbox("#enableMeasurement", "measurement_enable");
         init_checkbox("#enableTreeVis", "tree_vis_enable");
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
+        init_checkbox("#enableOptimization", "optimization_enable");
 
         init_slider("#control-panel .query_radius", "query_radius");
         init_slider("#control-panel .splat_radius", "splat_radius");
@@ -393,6 +394,20 @@
           </div>
 
           <h4 class="highlight">Optimization</h4>
+
+          <div class="row">
+            <div class="col-xs-5">
+            Enabled:
+            </div>
+            <div class="col-xs-7">
+              <div class="checkbox">
+                <label>
+                  <input id="enableOptimization" type="checkbox" value="">
+                  <span></span>
+                </label>
+              </div>
+            </div>
+          </div>
 
           <div class="row">
             <div class="col-xs-5">

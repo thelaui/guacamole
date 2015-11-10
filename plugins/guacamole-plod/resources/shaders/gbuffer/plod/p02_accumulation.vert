@@ -16,6 +16,7 @@ layout (location = 6) in vec3 in_normal;
 
 uniform uint gua_material_id;
 uniform float radius_scaling;
+uniform int   enable_radius_clamping;
 
 out VertexData {
   //output to geometry shader
@@ -30,5 +31,5 @@ out VertexData {
 void main() {
   @include "common_PLOD/PLOD_vertex_pass_through.glsl"
 
-  VertexOut.pass_point_color = vec3(in_r, in_g, in_b); 
+  VertexOut.pass_point_color = vec3(in_r, in_g, in_b);
 }

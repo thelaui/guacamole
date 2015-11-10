@@ -19,6 +19,7 @@ layout (binding=2) uniform projective_texure_block {
 
 uniform int selection_mode;
 uniform float blending_factor;
+uniform int height_clipping_enabled;
 uniform float clipping_height;
 
 mat4 homography = (mat4(
@@ -163,7 +164,7 @@ void main() {
     discard;
   }
 
-  if (gua_get_position().y >= clipping_height) {
+  if (height_clipping_enabled == 1 && gua_get_position().y >= clipping_height) {
     gua_out_color = vec3(0.0);
   } else if (blending_factor > 0.0) {
 

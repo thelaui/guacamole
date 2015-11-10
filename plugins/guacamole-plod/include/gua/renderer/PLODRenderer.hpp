@@ -48,6 +48,7 @@ namespace gua {
 
     void render(Pipeline& pipe, PipelinePassDescription const& desc);
     void set_global_substitution_map(SubstitutionMap const& smap) { global_substitution_map_ = smap; }
+    void set_radius_clamping_enabled(bool enabled) { radius_clamping_enabled_ = enabled; }
 
     void reload_programs();
 
@@ -120,6 +121,7 @@ namespace gua {
 
     bool                                         gpu_resources_already_created_;
     unsigned                                     previous_frame_count_;
+    bool                                         radius_clamping_enabled_;
 
     //context guard
     ////////////////////////////////////////////////////////////////////////////////////
