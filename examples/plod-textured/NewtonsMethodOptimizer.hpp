@@ -1,11 +1,11 @@
-#ifndef NONLINEAR_OTIMIZER_HPP
-#define NONLINEAR_OTIMIZER_HPP
+#ifndef NEWTONS_METHOD_OTIMIZER_HPP
+#define NEWTONS_METHOD_OTIMIZER_HPP
 
 #include <functional>
 
 #include <scm/core/math.h>
 
-class NonlinearOptimizer {
+class NewtonsMethodOptimizer {
 
   public:
 
@@ -21,9 +21,9 @@ class NonlinearOptimizer {
 
   private:
 
-    std::vector<float> get_descent_direction(scm::math::mat4f const& central_transform) const;
+    scm::math::mat<float, 6, 1> get_descent_direction(scm::math::mat4f const& central_transform) const;
     // float get_step_length()
 
 };
 
-#endif  // NONLINEAR_OTIMIZER_HPP
+#endif  // NEWTONS_METHOD_OTIMIZER_HPP

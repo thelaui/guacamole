@@ -53,7 +53,8 @@
 
 #include "Navigator.hpp"
 #include "BruteForceOptimizer.hpp"
-#include "NonlinearOptimizer.hpp"
+#include "SteepestDescentOptimizer.hpp"
+#include "NewtonsMethodOptimizer.hpp"
 
 struct file_name_comp {
   bool operator() (std::string const& lhs, std::string const& rhs) const {
@@ -182,7 +183,7 @@ int main(int argc, char** argv) {
   optimizer.rotation_offset_range = 10.0;
   optimizer.rotation_sampling_steps = 20;
 
-  NonlinearOptimizer nonlinear_optimizer;
+  SteepestDescentOptimizer steepest_descent_optimizer;
 
   // create scene graph object
   gua::SceneGraph graph("main_scenegraph");
@@ -371,7 +372,7 @@ int main(int argc, char** argv) {
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
   camera->config.set_output_texture_name("main_buffer");
-  camera->config.set_far_clip(optimization_enabled ? 15.f : 5000.0f);
+  camera->config.set_far_clip(optimization_enabled ? 10.f : 5000.0f);
   camera->config.set_near_clip(0.001f);
   // camera->config.set_far_clip(5.0f);
   // camera->config.set_near_clip(1.f);
@@ -852,11 +853,10 @@ int main(int argc, char** argv) {
 
     }
 
-    // if (screen_shot_taken && window->screen_shot_available()) {
     if (screen_shot_taken) {
       screen_shot_taken = false;
 
-      nonlinear_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
+      steepest_descent_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
 
       cv::Size blur_kernel(15,15);
 
@@ -864,7 +864,7 @@ int main(int argc, char** argv) {
       cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
       cv::blur(photo, photo, blur_kernel);
 
-      nonlinear_optimizer.error_function = [&](scm::math::mat4f const& new_transform) {
+      steepest_descent_optimizer.error_function = [&](scm::math::mat4f const& new_transform) {
 
         gua::Timer timer;
         timer.start();
@@ -909,7 +909,7 @@ int main(int argc, char** argv) {
 
       scm::math::mat4f optimal_transform(scm::math::mat4f::identity());
       scm::math::mat4f optimal_difference(scm::math::mat4f::identity());
-      nonlinear_optimizer.run(optimal_transform, optimal_difference);
+      steepest_descent_optimizer.run(optimal_transform, optimal_difference);
 
       for (int i(current_frustum); i < frusta.size(); ++i) {
         auto new_cam_trans = scm::math::mat4d::identity();
@@ -968,56 +968,6 @@ int main(int argc, char** argv) {
       // register new frusta
       texstr::FrustumManagement::instance()->reset();
       texstr::FrustumManagement::instance()->register_frusta(frusta);
-
-      // screen_shot_taken = false;
-
-      // cv::Size blur_kernel(8,8);
-
-      // std::vector<char> data;
-      // window->retrieve_screen_shot_data(data);
-      // cv::Mat screen_shot(resolution.y, resolution.x, CV_32FC3, data.data());
-      // cv::flip(screen_shot, screen_shot, 0); //flip around x axis
-      // cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
-      // screen_shot.convertTo(screen_shot, CV_8UC1, 255.0);
-      // // cv::equalizeHist(screen_shot, screen_shot);
-      // cv::blur(screen_shot, screen_shot, blur_kernel);
-      // cv::imshow("screen shot", screen_shot);
-
-      // cv::Mat mask;
-      // cv::threshold(screen_shot, mask, 0, 255, cv::THRESH_BINARY);
-      // cv::imshow("mask", mask);
-
-      // cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
-      // cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
-
-      // cv::Mat masked_photo;
-
-      // cv::blur(photo, photo, blur_kernel);
-      // photo.copyTo(masked_photo, mask);
-      // masked_photo.convertTo(masked_photo, CV_8UC1);
-      // // cv::equalizeHist(masked_photo, masked_photo);
-      // cv::imshow("photography", masked_photo);
-
-      // // screen_shot.convertTo(screen_shot, CV_32FC1, 1.0/255.0);
-      // // masked_photo.convertTo(masked_photo, CV_32FC1, 1.0/255.0);
-
-
-      // // calculate zero-mean normalized sum of squared differences
-
-      // // screen_shot = screen_shot - cv::mean(screen_shot);
-      // // masked_photo = masked_photo - cv::mean(masked_photo);
-
-      // cv::Mat diff;
-      // // cv::subtract(screen_shot, masked_photo, diff);
-      // // cv::multiply(diff, diff, diff);
-      // cv::matchTemplate(masked_photo, screen_shot, diff, CV_TM_CCORR_NORMED);
-
-      // diff.convertTo(diff, CV_8UC1);
-      // cv::imshow("difference", diff);
-      // std::cout << cv::sum(diff)[0] << std::endl;
-
-      // cv::waitKey(0);
-
     }
 
 
@@ -1084,7 +1034,7 @@ int main(int argc, char** argv) {
 
     texturing_pass->uniform("selection_mode",  current_selection_mode);
     texturing_pass->uniform("blending_factor", current_blending_factor);
-    texturing_pass->uniform("clipping_height", float(camera->get_world_position().y - 2.7f));
+    texturing_pass->uniform("clipping_height", float(camera->get_world_position().y - 2.65f));
     texturing_pass->uniform("height_clipping_enabled", optimization_enabled ? 1 : 0);
 
     window->process_events();
