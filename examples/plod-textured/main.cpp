@@ -858,7 +858,7 @@ int main(int argc, char** argv) {
 
       steepest_descent_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
 
-      cv::Size blur_kernel(15,15);
+      cv::Size blur_kernel(10,10);
 
       cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
       cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));

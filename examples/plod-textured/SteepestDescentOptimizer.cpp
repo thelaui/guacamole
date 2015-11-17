@@ -11,12 +11,12 @@ void SteepestDescentOptimizer::run(scm::math::mat4f& optimal_transform, scm::mat
 
   int iteration_count(0);
   bool optimum_reached(false);
+  current_step_length_ = 1.f;
 
   auto current_transform = initial_transform;
   auto current_difference = scm::math::mat4f::identity();
 
-  while (!optimum_reached && iteration_count < 1000) {
-    ++iteration_count;
+  while (!optimum_reached && ++iteration_count <= 50) {
     auto gradient(get_gradient(current_transform));
 
     optimum_reached = gradient == scm::math::mat<float, 6, 1>();
@@ -75,6 +75,9 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
   const float position_offset(0.01f * current_step_length_);
   const float rotation_offset(0.5f * current_step_length_);
 
+  // const float position_offset(0.01f);
+  // const float rotation_offset(0.5f);
+
   auto offset_mat_left(scm::math::mat4f::identity());
   auto offset_mat_right(scm::math::mat4f::identity());
   float left_error(0.f);
@@ -114,7 +117,7 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
   right_error = error_function(central_transform * offset_mat_right);
 
   gradient.data_array[3] = (right_error - left_error) /
-                           (2 * position_offset);
+                           (2 * rotation_offset);
 
   // calculate gradient in y rotation
   offset_mat_left = scm::math::make_rotation(-rotation_offset, 0.f, 1.f, 0.f);
@@ -123,7 +126,7 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
   right_error = error_function(central_transform * offset_mat_right);
 
   gradient.data_array[4] = (right_error - left_error) /
-                           (2 * position_offset);
+                           (2 * rotation_offset);
 
   // calculate gradient in z rotation
   offset_mat_left = scm::math::make_rotation(-rotation_offset, 0.f, 0.f, 1.f);
@@ -132,7 +135,7 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
   right_error = error_function(central_transform * offset_mat_right);
 
   gradient.data_array[5] = (right_error - left_error) /
-                           (2 * position_offset);
+                           (2 * rotation_offset);
 
 
   float gradient_length(0.f);
@@ -143,7 +146,7 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
 
   gradient_length = std::sqrt(gradient_length);
 
-  if (gradient_length <= 0.05f) {
+  if (gradient_length <= 0.001f) {
     return scm::math::mat<float, 6, 1>();
   }
 
@@ -169,7 +172,7 @@ void SteepestDescentOptimizer::update_step_length(
   // phi(0)
   auto central_error(error_function(central_transform));
 
-  while (++iteration_count <= 100 && current_step_length_ >= 0.1) {
+  while (current_step_length_ >= 0.000001f) {
     scm::math::mat4f new_translation(scm::math::make_translation(
       -gradient.data_array[0] * current_step_length_,
       -gradient.data_array[1] * current_step_length_,
@@ -191,7 +194,7 @@ void SteepestDescentOptimizer::update_step_length(
       0.f, 0.f, 1.f
     ));
 
-    current_transform = current_transform * new_translation * new_rot_y * new_rot_x * new_rot_z;
+    current_transform = central_transform * new_translation * new_rot_y * new_rot_x * new_rot_z;
 
     // phi(t_k)
     auto current_error(error_function(current_transform));
@@ -214,6 +217,7 @@ void SteepestDescentOptimizer::update_step_length(
   }
 
   std::cout << "optimal_step_length: " << current_step_length_ << std::endl;
+  // std::cout << "iteration_count: " << iteration_count << std::endl;
 
 }
 
