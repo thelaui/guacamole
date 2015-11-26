@@ -9,6 +9,8 @@
 
 void BruteForceOptimizer::run(scm::math::mat4f& optimal_transform, scm::math::mat4f& optimal_difference) {
 
+  current_photo_ = retrieve_photo();
+
   float position_step_size(position_offset_range / float(position_sampling_steps - 1));
   if(position_step_size == 0.f) {
     position_step_size = 1.f;
@@ -22,6 +24,7 @@ void BruteForceOptimizer::run(scm::math::mat4f& optimal_transform, scm::math::ma
   optimal_transform = initial_transform;
   float lowest_error(std::numeric_limits<float>::max());
   int output_count(0);
+  cv::Mat screen_shot;
 
   for (float x(-position_offset_range * 0.5); x <= position_offset_range * 0.5; x+=position_step_size) {
     for (float y(-position_offset_range * 0.5); y <= position_offset_range * 0.5; y+=position_step_size) {
@@ -40,7 +43,9 @@ void BruteForceOptimizer::run(scm::math::mat4f& optimal_transform, scm::math::ma
               auto current_transform(initial_transform * current_difference);
               // auto current_transform(initial_transform *
               //                        current_y_rot * current_x_rot * current_z_rot);
-              auto current_error(error_function(current_transform));
+
+              screen_shot = retrieve_screen_shot(current_transform);
+              auto current_error(error_function(current_photo_, screen_shot));
               // ofstr << rot_y << " " << rot_z << " " << current_error << std::endl;
               if (current_error < lowest_error) {
                 lowest_error = current_error;

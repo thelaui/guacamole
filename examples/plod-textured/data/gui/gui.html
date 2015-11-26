@@ -188,7 +188,6 @@
         init_checkbox("#enableMeasurement", "measurement_enable");
         init_checkbox("#enableTreeVis", "tree_vis_enable");
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
-        init_checkbox("#enableOptimization", "optimization_enable");
 
         init_slider("#control-panel .query_radius", "query_radius");
         init_slider("#control-panel .splat_radius", "splat_radius");
@@ -384,37 +383,14 @@
             </div>
           </div>
 
-          <div class="row">
-            <div class="col-xs-5">
-              Query Radius:
-            </div>
-            <div class="col-xs-7">
-              <input class="slider query_radius" data-slider-tooltip="hide" data-slider-id="query_radius" type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" handle="custom"/>
-            </div>
-          </div>
-
           <h4 class="highlight">Optimization</h4>
-
-          <div class="row">
-            <div class="col-xs-5">
-            Enabled:
-            </div>
-            <div class="col-xs-7">
-              <div class="checkbox">
-                <label>
-                  <input id="enableOptimization" type="checkbox" value="">
-                  <span></span>
-                </label>
-              </div>
-            </div>
-          </div>
 
           <div class="row">
             <div class="col-xs-5">
               Position Range:
             </div>
             <div class="col-xs-7">
-              <input class="slider position_range" data-slider-tooltip="hide" data-slider-id="position_range" type="text" data-slider-min="0.0" data-slider-max="2.0" data-slider-step="0.01" handle="custom"/>
+              <input class="slider position_range" data-slider-tooltip="hide" data-slider-id="position_range" type="text" data-slider-min="0" data-slider-max="2.0" data-slider-step="0.01" handle="custom"/>
             </div>
           </div>
 
@@ -432,7 +408,7 @@
               Rotation Range:
             </div>
             <div class="col-xs-7">
-              <input class="slider rotation_range" data-slider-tooltip="hide" data-slider-id="rotation_range" type="text" data-slider-min="0.0" data-slider-max="20.0" data-slider-step="0.01" handle="custom"/>
+              <input class="slider rotation_range" data-slider-tooltip="hide" data-slider-id="rotation_range" type="text" data-slider-min="0" data-slider-max="20.0" data-slider-step="0.01" handle="custom"/>
             </div>
           </div>
 

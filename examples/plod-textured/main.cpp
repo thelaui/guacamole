@@ -55,6 +55,7 @@
 #include "BruteForceOptimizer.hpp"
 #include "SteepestDescentOptimizer.hpp"
 #include "NewtonsMethodOptimizer.hpp"
+#include "error_functions.hpp"
 
 struct file_name_comp {
   bool operator() (std::string const& lhs, std::string const& rhs) const {
@@ -176,12 +177,12 @@ int main(int argc, char** argv) {
   scm::math::vec3d global_offset(0.0);
   bool screen_shot_taken(false);
 
-  BruteForceOptimizer optimizer;
+  BruteForceOptimizer brute_force_optimizer;
 
-  optimizer.position_offset_range = 0,0;
-  optimizer.position_sampling_steps = 5;
-  optimizer.rotation_offset_range = 10.0;
-  optimizer.rotation_sampling_steps = 20;
+  brute_force_optimizer.position_offset_range = 0.f;
+  brute_force_optimizer.position_sampling_steps = 5;
+  brute_force_optimizer.rotation_offset_range = 2.f;
+  brute_force_optimizer.rotation_sampling_steps = 2;
 
   SteepestDescentOptimizer steepest_descent_optimizer;
 
@@ -442,15 +443,15 @@ int main(int argc, char** argv) {
   graph.add_node("/", gui_quad);
 
   gui->on_loaded.connect([&]() {
-    gui->add_javascript_getter("get_query_radius", [&](){ return std::to_string(frustum_vis_pass->get_query_radius());});
-    gui->add_javascript_getter("get_splat_radius", [&](){ return std::to_string(current_splat_radius);});
-    gui->add_javascript_getter("get_blending_factor", [&](){ return std::to_string(current_blending_factor);});
-    gui->add_javascript_getter("get_blending_range", [&](){ return std::to_string(current_blending_range);});
-    gui->add_javascript_getter("get_lens_radius", [&](){ return std::to_string(current_lens_radius);});
-    gui->add_javascript_getter("get_position_range", [&](){ return std::to_string(optimizer.position_offset_range);});
-    gui->add_javascript_getter("get_position_samples", [&](){ return std::to_string(optimizer.position_sampling_steps);});
-    gui->add_javascript_getter("get_rotation_range", [&](){ return std::to_string(optimizer.rotation_offset_range);});
-    gui->add_javascript_getter("get_rotation_samples", [&](){ return std::to_string(optimizer.rotation_sampling_steps);});
+    gui->add_javascript_getter("get_query_radius", [&](){ return gua::to_string(frustum_vis_pass->get_query_radius());});
+    gui->add_javascript_getter("get_splat_radius", [&](){ return gua::to_string(current_splat_radius);});
+    gui->add_javascript_getter("get_blending_factor", [&](){ return gua::to_string(current_blending_factor);});
+    gui->add_javascript_getter("get_blending_range", [&](){ return gua::to_string(current_blending_range);});
+    gui->add_javascript_getter("get_lens_radius", [&](){ return gua::to_string(current_lens_radius);});
+    gui->add_javascript_getter("get_position_range", [&](){ return gua::to_string(brute_force_optimizer.position_offset_range);});
+    gui->add_javascript_getter("get_position_samples", [&](){ return gua::to_string(brute_force_optimizer.position_sampling_steps);});
+    gui->add_javascript_getter("get_rotation_range", [&](){ return gua::to_string(brute_force_optimizer.rotation_offset_range);});
+    gui->add_javascript_getter("get_rotation_samples", [&](){ return gua::to_string(brute_force_optimizer.rotation_sampling_steps);});
 
     gui->add_javascript_callback("set_selection_mode_camera");
     gui->add_javascript_callback("set_selection_mode_fragment");
@@ -466,7 +467,6 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_blending_factor");
     gui->add_javascript_callback("set_blending_range");
     gui->add_javascript_callback("set_lens_radius");
-    gui->add_javascript_callback("set_optimization_enable");
     gui->add_javascript_callback("set_position_range");
     gui->add_javascript_callback("set_position_samples");
     gui->add_javascript_callback("set_rotation_range");
@@ -484,8 +484,7 @@ int main(int argc, char** argv) {
      || callback == "set_measurement_enable"
      || callback == "set_background_fill_enable"
      || callback == "set_tree_vis_enable"
-     || callback == "set_frustum_vis_enable"
-     || callback == "set_optimization_enable") {
+     || callback == "set_frustum_vis_enable") {
       std::stringstream str(params[0]);
       bool checked;
       str >> checked;
@@ -499,7 +498,6 @@ int main(int argc, char** argv) {
       if (callback == "set_background_fill_enable") background_fill_enabled = checked ? 1 : 0;
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
-      if (callback == "set_optimization_enable") optimization_enabled = checked;
     } else if (callback == "set_query_radius") {
       std::stringstream str(params[0]);
       double query_radius;
@@ -522,16 +520,16 @@ int main(int argc, char** argv) {
       str >> current_lens_radius;
     } else if (callback == "set_position_range") {
       std::stringstream str(params[0]);
-      str >> optimizer.position_offset_range;
+      str >> brute_force_optimizer.position_offset_range;
     } else if (callback == "set_position_samples") {
       std::stringstream str(params[0]);
-      str >> optimizer.position_sampling_steps;
+      str >> brute_force_optimizer.position_sampling_steps;
     } else if (callback == "set_rotation_range") {
       std::stringstream str(params[0]);
-      str >> optimizer.rotation_offset_range;
+      str >> brute_force_optimizer.rotation_offset_range;
     } else if (callback == "set_rotation_samples") {
       std::stringstream str(params[0]);
-      str >> optimizer.rotation_sampling_steps;
+      str >> brute_force_optimizer.rotation_sampling_steps;
     }
   });
 
@@ -857,17 +855,19 @@ int main(int argc, char** argv) {
       screen_shot_taken = false;
 
       steepest_descent_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
+      brute_force_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
 
       cv::Size blur_kernel(10,10);
 
-      cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
-      cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
-      cv::blur(photo, photo, blur_kernel);
+      // steepest_descent_optimizer.retrieve_photo = [&]() {
+      brute_force_optimizer.retrieve_photo = [&]() {
+        cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
+        cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
+        return photo;
+      };
 
-      steepest_descent_optimizer.error_function = [&](scm::math::mat4f const& new_transform) {
-
-        gua::Timer timer;
-        timer.start();
+      // steepest_descent_optimizer.retrieve_screen_shot = [&](scm::math::mat4f const& new_transform) {
+      brute_force_optimizer.retrieve_screen_shot = [&](scm::math::mat4f const& new_transform) {
         camera->set_transform(gua::math::mat4(new_transform));
         window->take_screen_shot();
         renderer.draw_single_threaded({&graph});
@@ -878,38 +878,18 @@ int main(int argc, char** argv) {
         cv::flip(screen_shot, screen_shot, 0); //flip around x axis
         cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
         screen_shot.convertTo(screen_shot, CV_8UC1, 255.0);
-        cv::equalizeHist(screen_shot, screen_shot);
-        cv::blur(screen_shot, screen_shot, blur_kernel);
-
-        cv::Mat mask;
-        cv::threshold(screen_shot, mask, 0, 255, cv::THRESH_BINARY);
-
-        cv::Mat masked_photo;
-
-        photo.copyTo(masked_photo, mask);
-        masked_photo.convertTo(masked_photo, CV_8UC1);
-        cv::equalizeHist(masked_photo, masked_photo);
-
-        screen_shot.convertTo(screen_shot, CV_32FC1, 1.0/255.0);
-        masked_photo.convertTo(masked_photo, CV_32FC1, 1.0/255.0);
-
-        // calculate zero-mean normalized sum of squared differences
-
-        screen_shot = screen_shot - cv::mean(screen_shot);
-        masked_photo = masked_photo - cv::mean(masked_photo);
-
-        cv::Mat diff;
-        cv::subtract(screen_shot, masked_photo, diff);
-        cv::multiply(diff, diff, diff);
-
-        double total_error = cv::sum(diff)[0] / (resolution.x * resolution.y);
-        // std::cout << "Time: " << timer.get_elapsed() << std::endl;
-        return total_error;
+        // cv::equalizeHist(screen_shot, screen_shot);
+        return screen_shot;
       };
+
+      // steepest_descent_optimizer.error_function = intensity_znssd;
+      // brute_force_optimizer.error_function = intensity_znssd;
+      brute_force_optimizer.error_function = summed_distances_to_closest_line;
 
       scm::math::mat4f optimal_transform(scm::math::mat4f::identity());
       scm::math::mat4f optimal_difference(scm::math::mat4f::identity());
-      steepest_descent_optimizer.run(optimal_transform, optimal_difference);
+      // steepest_descent_optimizer.run(optimal_transform, optimal_difference);
+      brute_force_optimizer.run(optimal_transform, optimal_difference);
 
       for (int i(current_frustum); i < frusta.size(); ++i) {
         auto new_cam_trans = scm::math::mat4d::identity();
