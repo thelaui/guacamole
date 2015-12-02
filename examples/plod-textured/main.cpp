@@ -1016,7 +1016,7 @@ int main(int argc, char** argv) {
 
     texturing_pass->uniform("selection_mode",  current_selection_mode);
     texturing_pass->uniform("blending_factor", current_blending_factor);
-    texturing_pass->uniform("clipping_params", scm::math::vec2f(10.f, float(camera->get_world_position().y - 2.65f)));
+    texturing_pass->uniform("clipping_params", scm::math::vec2f(7.f, float(camera->get_world_position().y - 2.65f)));
     texturing_pass->uniform("clipping_enabled", optimization_enabled ? 1 : 0);
 
     window->process_events();
