@@ -7,48 +7,50 @@
 #include <unistd.h>
 #include <fstream>
 
-void SteepestDescentOptimizer::run(scm::math::mat4f& optimal_transform, scm::math::mat4f& optimal_difference) {
+#include <texture_stream/texture_stream.hpp>
+
+void SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform, scm::math::mat4d& optimal_difference) {
 
   int iteration_count(0);
   bool optimum_reached(false);
   current_step_length_ = 1.f;
 
   auto current_transform = initial_transform;
-  auto current_difference = scm::math::mat4f::identity();
+  auto current_difference = scm::math::mat4d::identity();
 
   current_photo_ = retrieve_photo();
 
-  while (!optimum_reached && ++iteration_count <= 50) {
+  while (!optimum_reached && ++iteration_count <= 1000 && current_step_length_ != 0.0) {
     auto gradient(get_gradient(current_transform));
 
-    optimum_reached = gradient == scm::math::mat<float, 6, 1>();
+    optimum_reached = gradient == scm::math::mat<double, 6, 1>();
 
     if (!optimum_reached) {
       // update step length
       update_step_length(current_transform, gradient);
-      // float step_length = 0.5f;
+      // current_step_length_ = 0.5;
 
       // negative gradient is always a descent direction
 
-      scm::math::mat4f new_translation(scm::math::make_translation(
+      scm::math::mat4d new_translation(scm::math::make_translation(
         -gradient.data_array[0] * current_step_length_,
         -gradient.data_array[1] * current_step_length_,
         -gradient.data_array[2] * current_step_length_
       ));
 
-      scm::math::mat4f new_rot_x(scm::math::make_rotation(
+      scm::math::mat4d new_rot_x(scm::math::make_rotation(
         -gradient.data_array[3] * current_step_length_,
-        1.f, 0.f, 0.f
+        1.0, 0.0, 0.0
       ));
 
-      scm::math::mat4f new_rot_y(scm::math::make_rotation(
+      scm::math::mat4d new_rot_y(scm::math::make_rotation(
         -gradient.data_array[4] * current_step_length_,
-        0.f, 1.f, 0.f
+        0.0, 1.0, 0.0
       ));
 
-      scm::math::mat4f new_rot_z(scm::math::make_rotation(
+      scm::math::mat4d new_rot_z(scm::math::make_rotation(
         -gradient.data_array[5] * current_step_length_,
-        0.f, 0.f, 1.f
+        0.0, 0.0, 1.0
       ));
 
       current_difference = new_translation * new_rot_y * new_rot_x * new_rot_z;
@@ -60,7 +62,7 @@ void SteepestDescentOptimizer::run(scm::math::mat4f& optimal_transform, scm::mat
   }
 
   if (!optimum_reached) {
-    std::cout << "Aborted optimization: Maximum iteration count reached." << std::endl;
+    std::cout << "Aborted optimization: Maximum iteration count reached. " << iteration_count << std::endl;
   }
 
   optimal_transform = current_transform;
@@ -69,27 +71,27 @@ void SteepestDescentOptimizer::run(scm::math::mat4f& optimal_transform, scm::mat
 
 ////////////////////////////////////////////////////////////////////////////////
 
-scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
-                                        scm::math::mat4f const& central_transform) const {
+scm::math::mat<double, 6, 1> SteepestDescentOptimizer::get_gradient(
+                                        scm::math::mat4d const& central_transform) const {
 
-  scm::math::mat<float, 6, 1> gradient;
+  scm::math::mat<double, 6, 1> gradient;
 
-  const float position_offset(0.01f * current_step_length_);
-  const float rotation_offset(0.5f * current_step_length_);
+  // const double position_offset(0.01);
+  // const double rotation_offset(0.5);
 
-  // const float position_offset(0.01f);
-  // const float rotation_offset(0.5f);
+  const double position_offset(0.01 * current_step_length_);
+  const double rotation_offset(0.5 * current_step_length_);
 
   cv::Mat screen_shot;
 
-  auto offset_mat_left(scm::math::mat4f::identity());
-  auto offset_mat_right(scm::math::mat4f::identity());
-  float left_error(0.f);
-  float right_error(0.f);
+  auto offset_mat_left(scm::math::mat4d::identity());
+  auto offset_mat_right(scm::math::mat4d::identity());
+  double left_error(0.0);
+  double right_error(0.0);
 
   // calculate gradient in x direction
-  offset_mat_left = scm::math::make_translation(-position_offset, 0.f, 0.f);
-  offset_mat_right = scm::math::make_translation(position_offset, 0.f, 0.f);
+  offset_mat_left = scm::math::make_translation(-position_offset, 0.0, 0.0);
+  offset_mat_right = scm::math::make_translation(position_offset, 0.0, 0.0);
 
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_left);
   left_error = error_function(current_photo_, screen_shot);
@@ -100,8 +102,8 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
                            (2 * position_offset);
 
   // calculate gradient in y direction
-  offset_mat_left = scm::math::make_translation(0.f, -position_offset, 0.f);
-  offset_mat_right = scm::math::make_translation(0.f, position_offset, 0.f);
+  offset_mat_left = scm::math::make_translation(0.0, -position_offset, 0.0);
+  offset_mat_right = scm::math::make_translation(0.0, position_offset, 0.0);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_left);
   left_error = error_function(current_photo_, screen_shot);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_right);
@@ -111,8 +113,8 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
                            (2 * position_offset);
 
   // calculate gradient in z direction
-  offset_mat_left = scm::math::make_translation(0.f, 0.f, -position_offset);
-  offset_mat_right = scm::math::make_translation(0.f, 0.f, position_offset);
+  offset_mat_left = scm::math::make_translation(0.0, 0.0, -position_offset);
+  offset_mat_right = scm::math::make_translation(0.0, 0.0, position_offset);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_left);
   left_error = error_function(current_photo_, screen_shot);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_right);
@@ -122,8 +124,8 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
                            (2 * position_offset);
 
   // calculate gradient in x rotation
-  offset_mat_left = scm::math::make_rotation(-rotation_offset, 1.f, 0.f, 0.f);
-  offset_mat_right = scm::math::make_rotation(rotation_offset, 1.f, 0.f, 0.f);
+  offset_mat_left = scm::math::make_rotation(-rotation_offset, 1.0, 0.0, 0.0);
+  offset_mat_right = scm::math::make_rotation(rotation_offset, 1.0, 0.0, 0.0);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_left);
   left_error = error_function(current_photo_, screen_shot);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_right);
@@ -133,8 +135,8 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
                            (2 * rotation_offset);
 
   // calculate gradient in y rotation
-  offset_mat_left = scm::math::make_rotation(-rotation_offset, 0.f, 1.f, 0.f);
-  offset_mat_right = scm::math::make_rotation(rotation_offset, 0.f, 1.f, 0.f);
+  offset_mat_left = scm::math::make_rotation(-rotation_offset, 0.0, 1.0, 0.0);
+  offset_mat_right = scm::math::make_rotation(rotation_offset, 0.0, 1.0, 0.0);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_left);
   left_error = error_function(current_photo_, screen_shot);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_right);
@@ -144,8 +146,8 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
                            (2 * rotation_offset);
 
   // calculate gradient in z rotation
-  offset_mat_left = scm::math::make_rotation(-rotation_offset, 0.f, 0.f, 1.f);
-  offset_mat_right = scm::math::make_rotation(rotation_offset, 0.f, 0.f, 1.f);
+  offset_mat_left = scm::math::make_rotation(-rotation_offset, 0.0, 0.0, 1.0);
+  offset_mat_right = scm::math::make_rotation(rotation_offset, 0.0, 0.0, 1.0);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_left);
   left_error = error_function(current_photo_, screen_shot);
   screen_shot = retrieve_screen_shot(central_transform * offset_mat_right);
@@ -155,7 +157,7 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
                            (2 * rotation_offset);
 
 
-  float gradient_length(0.f);
+  double gradient_length(0.0);
 
   for (unsigned int i(0); i < 6; ++i) {
     gradient_length += std::pow(gradient.data_array[i], 2);
@@ -163,8 +165,8 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
 
   gradient_length = std::sqrt(gradient_length);
 
-  if (gradient_length <= 0.005f) {
-    return scm::math::mat<float, 6, 1>();
+  if (gradient_length <= 0.001) {
+    return scm::math::mat<double, 6, 1>();
   }
 
   return gradient;
@@ -173,16 +175,16 @@ scm::math::mat<float, 6, 1> SteepestDescentOptimizer::get_gradient(
 ////////////////////////////////////////////////////////////////////////////////
 
 void SteepestDescentOptimizer::update_step_length(
-                             scm::math::mat4f const& central_transform,
-                             scm::math::mat<float, 6, 1> const& gradient) {
+                             scm::math::mat4d const& central_transform,
+                             scm::math::mat<double, 6, 1> const& gradient) {
 
   // calculate optimal step length according to Armijo rule
 
   int iteration_count(0);
-  float beta(0.9);
-  float epsilon(0.01);
-  current_step_length_ = 1.f;
-  float optimal_step_length(current_step_length_);
+  double beta(0.9);
+  double epsilon(0.01);
+  double previous_step_length(current_step_length_);
+  current_step_length_ = 1.0;
 
   auto current_transform(central_transform);
 
@@ -190,26 +192,29 @@ void SteepestDescentOptimizer::update_step_length(
   cv::Mat screen_shot(retrieve_screen_shot(central_transform));
   auto central_error(error_function(current_photo_, screen_shot));
 
-  while (current_step_length_ >= 0.000001f) {
-    scm::math::mat4f new_translation(scm::math::make_translation(
+  texstr::StringUtils::set_high_precision(std::cout);
+
+  // while (current_step_length_ >= 0.000001) {
+  while (true) {
+    scm::math::mat4d new_translation(scm::math::make_translation(
       -gradient.data_array[0] * current_step_length_,
       -gradient.data_array[1] * current_step_length_,
       -gradient.data_array[2] * current_step_length_
     ));
 
-    scm::math::mat4f new_rot_x(scm::math::make_rotation(
+    scm::math::mat4d new_rot_x(scm::math::make_rotation(
       -gradient.data_array[3] * current_step_length_,
-      1.f, 0.f, 0.f
+      1.0, 0.0, 0.0
     ));
 
-    scm::math::mat4f new_rot_y(scm::math::make_rotation(
+    scm::math::mat4d new_rot_y(scm::math::make_rotation(
       -gradient.data_array[4] * current_step_length_,
-      0.f, 1.f, 0.f
+      0.0, 1.0, 0.0
     ));
 
-    scm::math::mat4f new_rot_z(scm::math::make_rotation(
+    scm::math::mat4d new_rot_z(scm::math::make_rotation(
       -gradient.data_array[5] * current_step_length_,
-      0.f, 0.f, 1.f
+      0.0, 0.0, 1.0
     ));
 
     current_transform = central_transform * new_translation * new_rot_y * new_rot_x * new_rot_z;
@@ -219,7 +224,7 @@ void SteepestDescentOptimizer::update_step_length(
     auto current_error(error_function(current_photo_, screen_shot));
 
     // phi'(0)
-    float phi_derivative(0.f);
+    double phi_derivative(0.f);
     for (int i(0); i < 6; ++i) {
       phi_derivative += gradient.data_array[i] * (-gradient.data_array[i]);
     }
@@ -235,8 +240,11 @@ void SteepestDescentOptimizer::update_step_length(
     }
   }
 
+  if (current_step_length_ == previous_step_length && current_step_length_ != 1.0)  {
+    current_step_length_ = 0.0;
+  }
+
   std::cout << "optimal_step_length: " << current_step_length_ << std::endl;
-  // std::cout << "iteration_count: " << iteration_count << std::endl;
 
 }
 

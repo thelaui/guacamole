@@ -373,7 +373,8 @@ int main(int argc, char** argv) {
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
   camera->config.set_output_texture_name("main_buffer");
-  camera->config.set_far_clip(optimization_enabled ? 10.f : 5000.0f);
+  camera->config.set_far_clip(5000.0f);
+  // camera->config.set_far_clip(10.0f);
   camera->config.set_near_clip(0.001f);
   // camera->config.set_far_clip(5.0f);
   // camera->config.set_near_clip(1.f);
@@ -859,16 +860,16 @@ int main(int argc, char** argv) {
 
       cv::Size blur_kernel(10,10);
 
-      // steepest_descent_optimizer.retrieve_photo = [&]() {
-      brute_force_optimizer.retrieve_photo = [&]() {
+      steepest_descent_optimizer.retrieve_photo = [&]() {
+      // brute_force_optimizer.retrieve_photo = [&]() {
         cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
         cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
         return photo;
       };
 
-      // steepest_descent_optimizer.retrieve_screen_shot = [&](scm::math::mat4f const& new_transform) {
-      brute_force_optimizer.retrieve_screen_shot = [&](scm::math::mat4f const& new_transform) {
-        camera->set_transform(gua::math::mat4(new_transform));
+      steepest_descent_optimizer.retrieve_screen_shot = [&](scm::math::mat4d const& new_transform) {
+      // brute_force_optimizer.retrieve_screen_shot = [&](scm::math::mat4d const& new_transform) {
+        camera->set_transform(new_transform);
         window->take_screen_shot();
         renderer.draw_single_threaded({&graph});
 
@@ -878,18 +879,19 @@ int main(int argc, char** argv) {
         cv::flip(screen_shot, screen_shot, 0); //flip around x axis
         cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
         screen_shot.convertTo(screen_shot, CV_8UC1, 255.0);
-        // cv::equalizeHist(screen_shot, screen_shot);
+        cv::equalizeHist(screen_shot, screen_shot);
         return screen_shot;
       };
 
-      // steepest_descent_optimizer.error_function = intensity_znssd;
+      steepest_descent_optimizer.error_function = intensity_znssd;
       // brute_force_optimizer.error_function = intensity_znssd;
-      brute_force_optimizer.error_function = summed_distances_to_closest_line;
+      // steepest_descent_optimizer.error_function = summed_distances_to_closest_line;
+      // brute_force_optimizer.error_function = summed_distances_to_closest_line;
 
-      scm::math::mat4f optimal_transform(scm::math::mat4f::identity());
-      scm::math::mat4f optimal_difference(scm::math::mat4f::identity());
-      // steepest_descent_optimizer.run(optimal_transform, optimal_difference);
-      brute_force_optimizer.run(optimal_transform, optimal_difference);
+      scm::math::mat4d optimal_transform(scm::math::mat4d::identity());
+      scm::math::mat4d optimal_difference(scm::math::mat4d::identity());
+      steepest_descent_optimizer.run(optimal_transform, optimal_difference);
+      // brute_force_optimizer.run(optimal_transform, optimal_difference);
 
       for (int i(current_frustum); i < frusta.size(); ++i) {
         auto new_cam_trans = scm::math::mat4d::identity();
@@ -946,8 +948,8 @@ int main(int argc, char** argv) {
       }
 
       // register new frusta
-      texstr::FrustumManagement::instance()->reset();
-      texstr::FrustumManagement::instance()->register_frusta(frusta);
+      // texstr::FrustumManagement::instance()->reset();
+      // texstr::FrustumManagement::instance()->register_frusta(frusta);
     }
 
 
@@ -1014,8 +1016,8 @@ int main(int argc, char** argv) {
 
     texturing_pass->uniform("selection_mode",  current_selection_mode);
     texturing_pass->uniform("blending_factor", current_blending_factor);
-    texturing_pass->uniform("clipping_height", float(camera->get_world_position().y - 2.65f));
-    texturing_pass->uniform("height_clipping_enabled", optimization_enabled ? 1 : 0);
+    texturing_pass->uniform("clipping_params", scm::math::vec2f(10.f, float(camera->get_world_position().y - 2.65f)));
+    texturing_pass->uniform("clipping_enabled", optimization_enabled ? 1 : 0);
 
     window->process_events();
     if (window->should_close()) {

@@ -19,8 +19,8 @@ layout (binding=2) uniform projective_texure_block {
 
 uniform int selection_mode;
 uniform float blending_factor;
-uniform int height_clipping_enabled;
-uniform float clipping_height;
+uniform int clipping_enabled;
+uniform vec2 clipping_params; // x: depth, y: height
 
 mat4 homography = (mat4(
   1.0844150096782323, -0.0216027047911971, 0.0, -0.0000027239192071,
@@ -164,26 +164,41 @@ void main() {
     discard;
   }
 
-  if (height_clipping_enabled == 1 && gua_get_position().y >= clipping_height) {
-    gua_out_color = vec3(0.0);
-  } else if (blending_factor > 0.0) {
+  bool fragment_clipped = false;
+  if (clipping_enabled == 1) {
+    if (gua_get_position().y >= clipping_params.y) {
+      gua_out_color = vec3(0.0);
+      fragment_clipped = true;
+    } else {
+      vec4 proj_tex_space_pos = gua_projection_matrix * gua_view_matrix * vec4(gua_get_position(), 1.0);
 
-    int frustum_id = 0;
-    if (selection_mode == 0) {
-      frustum_id = get_id_smallest_distance(gua_camera_position_4);
-    } else if (selection_mode == 1) {
-      frustum_id = get_id_closest_valid_projection(vec4(gua_get_position(), 1.0));
+      if (proj_tex_space_pos.z >= clipping_params.x) {
+        gua_out_color = vec3(0.0);
+        fragment_clipped = true;
+      }
     }
+  }
 
-    vec3 projected_color = get_projected_color(frustum_id);
-    // vec3 projected_color = get_projected_color_with_current_camera(frustum_id);
-    if (projected_color != vec3(0.0)) {
-      gua_out_color = mix(gua_get_color(), projected_color, blending_factor);
+  if (!fragment_clipped) {
+    if (blending_factor > 0.0) {
+
+      int frustum_id = 0;
+      if (selection_mode == 0) {
+        frustum_id = get_id_smallest_distance(gua_camera_position_4);
+      } else if (selection_mode == 1) {
+        frustum_id = get_id_closest_valid_projection(vec4(gua_get_position(), 1.0));
+      }
+
+      vec3 projected_color = get_projected_color(frustum_id);
+      // vec3 projected_color = get_projected_color_with_current_camera(frustum_id);
+      if (projected_color != vec3(0.0)) {
+        gua_out_color = mix(gua_get_color(), projected_color, blending_factor);
+      } else {
+        discard;
+      }
     } else {
       discard;
     }
-  } else {
-    discard;
   }
 
 }
