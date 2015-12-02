@@ -858,17 +858,16 @@ int main(int argc, char** argv) {
       steepest_descent_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
       brute_force_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
 
-      cv::Size blur_kernel(10,10);
+      cv::Size blur_kernel(11,11);
 
-      steepest_descent_optimizer.retrieve_photo = [&]() {
-      // brute_force_optimizer.retrieve_photo = [&]() {
+      auto retrieve_photo = [&]() {
         cv::Mat photo(cv::imread(frusta[current_frustum].get_image_file_name(), CV_LOAD_IMAGE_GRAYSCALE));
         cv::resize(photo, photo, cv::Size(resolution.x, resolution.y));
+        cv::GaussianBlur(photo, photo, blur_kernel, 0.0);
         return photo;
       };
 
-      steepest_descent_optimizer.retrieve_screen_shot = [&](scm::math::mat4d const& new_transform) {
-      // brute_force_optimizer.retrieve_screen_shot = [&](scm::math::mat4d const& new_transform) {
+      auto retrieve_screen_shot= [&](scm::math::mat4d const& new_transform) {
         camera->set_transform(new_transform);
         window->take_screen_shot();
         renderer.draw_single_threaded({&graph});
@@ -879,14 +878,20 @@ int main(int argc, char** argv) {
         cv::flip(screen_shot, screen_shot, 0); //flip around x axis
         cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
         screen_shot.convertTo(screen_shot, CV_8UC1, 255.0);
+        cv::GaussianBlur(screen_shot, screen_shot, blur_kernel, 0.0);
         cv::equalizeHist(screen_shot, screen_shot);
         return screen_shot;
       };
 
-      steepest_descent_optimizer.error_function = intensity_znssd;
-      // brute_force_optimizer.error_function = intensity_znssd;
+      steepest_descent_optimizer.retrieve_photo = retrieve_photo;
+      steepest_descent_optimizer.retrieve_screen_shot = retrieve_screen_shot;
       // steepest_descent_optimizer.error_function = summed_distances_to_closest_line;
-      // brute_force_optimizer.error_function = summed_distances_to_closest_line;
+      steepest_descent_optimizer.error_function = intensity_znssd;
+
+      brute_force_optimizer.retrieve_photo = retrieve_photo;
+      brute_force_optimizer.retrieve_screen_shot = retrieve_screen_shot;
+      brute_force_optimizer.error_function = summed_distances_to_closest_line;
+      // steepest_descent_optimizer.error_function = intensity_znssd;
 
       scm::math::mat4d optimal_transform(scm::math::mat4d::identity());
       scm::math::mat4d optimal_difference(scm::math::mat4d::identity());
@@ -948,8 +953,8 @@ int main(int argc, char** argv) {
       }
 
       // register new frusta
-      // texstr::FrustumManagement::instance()->reset();
-      // texstr::FrustumManagement::instance()->register_frusta(frusta);
+      texstr::FrustumManagement::instance()->reset();
+      texstr::FrustumManagement::instance()->register_frusta(frusta);
     }
 
 

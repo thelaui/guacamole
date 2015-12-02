@@ -13,14 +13,14 @@ void SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform, scm::mat
 
   int iteration_count(0);
   bool optimum_reached(false);
-  current_step_length_ = 1.f;
+  current_step_length_ = 1.0;
 
   auto current_transform = initial_transform;
   auto current_difference = scm::math::mat4d::identity();
 
   current_photo_ = retrieve_photo();
 
-  while (!optimum_reached && ++iteration_count <= 1000 && current_step_length_ != 0.0) {
+  while (!optimum_reached && ++iteration_count <= 100) { // && current_step_length_ != 0.0) {
     auto gradient(get_gradient(current_transform));
 
     optimum_reached = gradient == scm::math::mat<double, 6, 1>();
@@ -53,7 +53,7 @@ void SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform, scm::mat
         0.0, 0.0, 1.0
       ));
 
-      current_difference = new_translation * new_rot_y * new_rot_x * new_rot_z;
+      current_difference = new_translation * new_rot_z *  new_rot_x *  new_rot_y;
       current_transform = current_transform * current_difference;
       optimal_difference *= current_difference;
     } else {
@@ -194,7 +194,6 @@ void SteepestDescentOptimizer::update_step_length(
 
   texstr::StringUtils::set_high_precision(std::cout);
 
-  // while (current_step_length_ >= 0.000001) {
   while (true) {
     scm::math::mat4d new_translation(scm::math::make_translation(
       -gradient.data_array[0] * current_step_length_,
@@ -217,14 +216,14 @@ void SteepestDescentOptimizer::update_step_length(
       0.0, 0.0, 1.0
     ));
 
-    current_transform = central_transform * new_translation * new_rot_y * new_rot_x * new_rot_z;
+    current_transform = central_transform * new_translation * new_rot_z *  new_rot_x *  new_rot_y;;
 
     // phi(t_k)
     screen_shot = retrieve_screen_shot(current_transform);
     auto current_error(error_function(current_photo_, screen_shot));
 
     // phi'(0)
-    double phi_derivative(0.f);
+    double phi_derivative(0.0);
     for (int i(0); i < 6; ++i) {
       phi_derivative += gradient.data_array[i] * (-gradient.data_array[i]);
     }
@@ -240,9 +239,9 @@ void SteepestDescentOptimizer::update_step_length(
     }
   }
 
-  if (current_step_length_ == previous_step_length && current_step_length_ != 1.0)  {
-    current_step_length_ = 0.0;
-  }
+  // if (current_step_length_ == previous_step_length && current_step_length_ != 1.0)  {
+  //   current_step_length_ = 0.0;
+  // }
 
   std::cout << "optimal_step_length: " << current_step_length_ << std::endl;
 
