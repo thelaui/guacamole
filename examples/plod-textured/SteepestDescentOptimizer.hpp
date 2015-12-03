@@ -29,10 +29,16 @@ class SteepestDescentOptimizer {
     void run(scm::math::mat4d& optimal_transform,
              scm::math::mat4d& optimal_difference);
 
+    void run_round_robin(scm::math::mat4d& optimal_transform,
+                         scm::math::mat4d& optimal_difference);
+
   private:
 
     scm::math::mat<double, 6, 1> get_gradient(
                                scm::math::mat4d const& central_transform) const;
+
+    double get_gradient_for_dimension(scm::math::mat4d const& central_transform,
+                                      int dimension) const;
 
     void update_step_length(scm::math::mat4d const& central_transform,
                             scm::math::mat<double, 6, 1> const& gradient);

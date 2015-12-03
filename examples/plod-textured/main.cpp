@@ -55,6 +55,7 @@
 #include "BruteForceOptimizer.hpp"
 #include "SteepestDescentOptimizer.hpp"
 #include "NewtonsMethodOptimizer.hpp"
+#include "ErrorFunctionSampler.hpp"
 #include "error_functions.hpp"
 
 struct file_name_comp {
@@ -179,12 +180,13 @@ int main(int argc, char** argv) {
 
   BruteForceOptimizer brute_force_optimizer;
 
-  brute_force_optimizer.position_offset_range = 0.f;
-  brute_force_optimizer.position_sampling_steps = 5;
-  brute_force_optimizer.rotation_offset_range = 2.f;
-  brute_force_optimizer.rotation_sampling_steps = 2;
+  brute_force_optimizer.position_offset_range = 0.1f;
+  brute_force_optimizer.position_sampling_steps = 3;
+  brute_force_optimizer.rotation_offset_range = 3.f;
+  brute_force_optimizer.rotation_sampling_steps = 3;
 
   SteepestDescentOptimizer steepest_descent_optimizer;
+  ErrorFunctionSampler error_function_sampler;
 
   // create scene graph object
   gua::SceneGraph graph("main_scenegraph");
@@ -857,6 +859,7 @@ int main(int argc, char** argv) {
 
       steepest_descent_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
       brute_force_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
+      error_function_sampler.initial_transform = scm::math::mat4f(camera->get_transform());
 
       cv::Size blur_kernel(11,11);
 
@@ -890,13 +893,20 @@ int main(int argc, char** argv) {
 
       brute_force_optimizer.retrieve_photo = retrieve_photo;
       brute_force_optimizer.retrieve_screen_shot = retrieve_screen_shot;
-      brute_force_optimizer.error_function = summed_distances_to_closest_line;
-      // steepest_descent_optimizer.error_function = intensity_znssd;
+      brute_force_optimizer.error_function = intensity_znssd;
+      // brute_force_optimizer.error_function = summed_distances_to_closest_line;
+
+      error_function_sampler.retrieve_photo = retrieve_photo;
+      error_function_sampler.retrieve_screen_shot = retrieve_screen_shot;
+      error_function_sampler.error_function = intensity_znssd;
 
       scm::math::mat4d optimal_transform(scm::math::mat4d::identity());
       scm::math::mat4d optimal_difference(scm::math::mat4d::identity());
-      steepest_descent_optimizer.run(optimal_transform, optimal_difference);
-      // brute_force_optimizer.run(optimal_transform, optimal_difference);
+      // steepest_descent_optimizer.run(optimal_transform, optimal_difference);
+      brute_force_optimizer.run(optimal_transform, optimal_difference);
+      steepest_descent_optimizer.initial_transform = optimal_transform;
+      steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
+      // error_function_sampler.sample_dimension(0, -0.05, 0.05, 0.0001);
 
       for (int i(current_frustum); i < frusta.size(); ++i) {
         auto new_cam_trans = scm::math::mat4d::identity();
