@@ -43,6 +43,10 @@ class SteepestDescentOptimizer {
     void update_step_length(scm::math::mat4d const& central_transform,
                             scm::math::mat<double, 6, 1> const& gradient);
 
+    void update_step_length_for_dimension(
+                            scm::math::mat4d const& central_transform,
+                            double gradient, int dimension);
+
     double current_step_length_ = 1.f;
 
     cv::Mat current_photo_;

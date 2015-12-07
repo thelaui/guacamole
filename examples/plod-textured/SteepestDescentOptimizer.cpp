@@ -105,35 +105,35 @@ void SteepestDescentOptimizer::run_round_robin(
         std::cout << "Found optimum for " << dimension_names[dimension] << "." << std::endl;
       } else {
 
-        scm::math::mat<double, 6, 1> gradient_vector;
-        for (int i(0); i < 6; ++i) {
-          gradient_vector.data_array[i] = 0.0;
-        }
+        update_step_length_for_dimension(current_transform, gradient, dimension);
 
-        gradient_vector.data_array[dimension] = gradient;
-        update_step_length(current_transform, gradient_vector);
-
-        scm::math::mat4d new_translation(scm::math::mat4d::identity());
-        scm::math::mat4d new_rotation(scm::math::mat4d::identity());
-
-        if (dimension < 3) {
-          // update translation
-          scm::math::vec3d translation_vector(0.0);
-          translation_vector[dimension] = -gradient * current_step_length_;
-
-          new_translation = scm::math::make_translation(translation_vector);
+        if (current_step_length_ == 0.0) {
+          ++optimal_dimension_count;
+          std::cout << "Found smallest step length for " << dimension_names[dimension] << "." << std::endl;
         } else {
-          // update rotation
-          scm::math::vec3d rotation_axis_vector(0.0);
-          rotation_axis_vector[dimension - 3] = 1.0;
 
-          new_rotation = scm::math::make_rotation(-gradient * current_step_length_,
-                                                  rotation_axis_vector);
+          scm::math::mat4d new_translation(scm::math::mat4d::identity());
+          scm::math::mat4d new_rotation(scm::math::mat4d::identity());
+
+          if (dimension < 3) {
+            // update translation
+            scm::math::vec3d translation_vector(0.0);
+            translation_vector[dimension] = -gradient * current_step_length_;
+
+            new_translation = scm::math::make_translation(translation_vector);
+          } else {
+            // update rotation
+            scm::math::vec3d rotation_axis_vector(0.0);
+            rotation_axis_vector[dimension - 3] = 1.0;
+
+            new_rotation = scm::math::make_rotation(-gradient * current_step_length_,
+                                                    rotation_axis_vector);
+          }
+
+          current_difference = new_translation * new_rotation;
+          current_transform = current_transform * current_difference;
+          optimal_difference *= current_difference;
         }
-
-        current_difference = new_translation * new_rotation;
-        current_transform = current_transform * current_difference;
-        optimal_difference *= current_difference;
       }
 
     }
@@ -281,11 +281,94 @@ void SteepestDescentOptimizer::update_step_length(
       0.0, 0.0, 1.0
     ));
 
-    current_transform = central_transform * new_translation * new_rot_z *  new_rot_x *  new_rot_y;;
+    current_transform = central_transform * new_translation * new_rot_z *  new_rot_x *  new_rot_y;
 
     // phi(t_k)
     screen_shot = retrieve_screen_shot(current_transform);
     auto current_error(error_function(current_photo_, screen_shot));
+
+    // std::cout << "phi_derivative: " << phi_derivative << std::endl;
+    // std::cout << "central_error: " << central_error << std::endl;
+    // std::cout << "current_error: " << current_error << std::endl;
+
+    if (current_error <= central_error + epsilon * current_step_length_ * phi_derivative) {
+      break;
+    } else {
+      current_step_length_ *= beta;
+    }
+  }
+
+  // if (current_step_length_ == previous_step_length && current_step_length_ != 1.0)  {
+  //   current_step_length_ = 0.0;
+  // }
+
+  // std::cout << "optimal_step_length: " << current_step_length_ << std::endl;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void SteepestDescentOptimizer::update_step_length_for_dimension(
+                             scm::math::mat4d const& central_transform,
+                             double gradient, int dimension) {
+
+  // calculate optimal step length according to Armijo rule
+
+  double beta(0.9);
+  double epsilon(0.01);
+  double previous_step_length(current_step_length_);
+
+  if (dimension < 3) {
+    // initial step length for translations
+    current_step_length_ = 1.0;
+  } else if (dimension < 6) {
+    // initial step length for rotations
+    current_step_length_ = 1.0;
+  }
+
+  auto current_transform(central_transform);
+
+  // phi(0)
+  cv::Mat screen_shot(retrieve_screen_shot(central_transform));
+  auto central_error(error_function(current_photo_, screen_shot));
+
+  texstr::StringUtils::set_high_precision(std::cout);
+
+  // phi'(0)
+  double phi_derivative(gradient * -gradient);
+
+  while (true) {
+    scm::math::mat4d new_translation(scm::math::mat4d::identity());
+    scm::math::mat4d new_rotation(scm::math::mat4d::identity());
+
+    if (dimension < 3) {
+      scm::math::vec3d translation_vector(0.0);
+      translation_vector[dimension] = -gradient * current_step_length_;
+
+      new_translation = scm::math::make_translation(translation_vector);
+    } else if (dimension < 6) {
+      scm::math::vec3d rotation_axis_vector(0.0);
+      rotation_axis_vector[dimension] = 1.0;
+
+      new_rotation = scm::math::make_rotation(-gradient * current_step_length_,
+                                               rotation_axis_vector);
+    }
+
+    cv::Mat screen_shot_bak(retrieve_screen_shot(current_transform));
+
+    current_transform = central_transform * new_translation * new_rotation;
+
+    // phi(t_k)
+    screen_shot = retrieve_screen_shot(current_transform);
+    auto current_error(error_function(current_photo_, screen_shot));
+
+    cv::absdiff(screen_shot, screen_shot_bak, screen_shot_bak);
+    auto screen_shot_error(cv::sum(screen_shot_bak)[0]);
+    if (screen_shot_error == 0.0) {
+
+      current_step_length_ = 0.0;
+      break;
+    }
 
     // std::cout << "phi_derivative: " << phi_derivative << std::endl;
     // std::cout << "central_error: " << central_error << std::endl;
