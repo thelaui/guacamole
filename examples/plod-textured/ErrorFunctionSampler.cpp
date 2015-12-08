@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <scm/gl_core/math.h>
+#include <gua/math.hpp>
 
 #include <unistd.h>
 #include <fstream>
@@ -24,7 +25,7 @@ void ErrorFunctionSampler::sample_dimension(int dimension, double min, double ma
       current_translation = scm::math::make_translation(translation_vector);
     } else if (dimension < 6) {
       scm::math::vec3d rotation_vector(0.0);
-      rotation_vector[dimension] = 1.0;
+      rotation_vector[dimension - 3] = 1.0;
       current_translation = scm::math::make_rotation(step_value, rotation_vector);
     }
 
@@ -34,6 +35,8 @@ void ErrorFunctionSampler::sample_dimension(int dimension, double min, double ma
     screen_shot = retrieve_screen_shot(current_transform);
     auto current_error(error_function(current_photo_, screen_shot));
     std::cout << step_value << " " << current_error << std::endl;
+    // auto translation(gua::math::get_translation(current_transform));
+    // std::cout << translation << std::endl;
 
   }
 

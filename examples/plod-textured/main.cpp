@@ -857,9 +857,9 @@ int main(int argc, char** argv) {
     if (screen_shot_taken) {
       screen_shot_taken = false;
 
-      steepest_descent_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
-      brute_force_optimizer.initial_transform = scm::math::mat4f(camera->get_transform());
-      error_function_sampler.initial_transform = scm::math::mat4f(camera->get_transform());
+      steepest_descent_optimizer.initial_transform = camera->get_transform();
+      brute_force_optimizer.initial_transform = camera->get_transform();
+      error_function_sampler.initial_transform = camera->get_transform();
 
       cv::Size blur_kernel(11,11);
 
@@ -888,17 +888,19 @@ int main(int argc, char** argv) {
 
       steepest_descent_optimizer.retrieve_photo = retrieve_photo;
       steepest_descent_optimizer.retrieve_screen_shot = retrieve_screen_shot;
-      // steepest_descent_optimizer.error_function = summed_distances_to_closest_line;
       steepest_descent_optimizer.error_function = intensity_znssd;
+      // steepest_descent_optimizer.error_function = blurred_gradient_znssd;
 
       brute_force_optimizer.retrieve_photo = retrieve_photo;
       brute_force_optimizer.retrieve_screen_shot = retrieve_screen_shot;
       brute_force_optimizer.error_function = intensity_znssd;
-      // brute_force_optimizer.error_function = summed_distances_to_closest_line;
+      // brute_force_optimizer.error_function = blurred_gradient_znssd;
 
       error_function_sampler.retrieve_photo = retrieve_photo;
       error_function_sampler.retrieve_screen_shot = retrieve_screen_shot;
       error_function_sampler.error_function = intensity_znssd;
+      // error_function_sampler.error_function = blurred_gradient_znssd;
+
 
       scm::math::mat4d optimal_transform(scm::math::mat4d::identity());
       scm::math::mat4d optimal_difference(scm::math::mat4d::identity());
@@ -906,7 +908,8 @@ int main(int argc, char** argv) {
       brute_force_optimizer.run(optimal_transform, optimal_difference);
       steepest_descent_optimizer.initial_transform = optimal_transform;
       steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
-      // error_function_sampler.sample_dimension(0, -0.05, 0.05, 0.0001);
+      // error_function_sampler.initial_transform = optimal_transform;
+      // error_function_sampler.sample_dimension(0, -0.1, 0.1, 0.01);
 
       for (int i(current_frustum); i < frusta.size(); ++i) {
         auto new_cam_trans = scm::math::mat4d::identity();

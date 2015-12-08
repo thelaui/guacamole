@@ -34,7 +34,7 @@ float intensity_znssd(cv::Mat const& photo, cv::Mat const& screen_shot_in) {
   return total_error;
 }
 
-float summed_distances_to_closest_line(cv::Mat const& photo, cv::Mat const& screen_shot_in) {
+float blurred_gradient_znssd(cv::Mat const& photo, cv::Mat const& screen_shot_in) {
   gua::Timer timer;
   timer.start();
 
@@ -78,7 +78,8 @@ float summed_distances_to_closest_line(cv::Mat const& photo, cv::Mat const& scre
   photo_filtered.copyTo(photo_gradient, mask);
 
   // TODO: What tolerance of error (degree/m) does the chosen blur kernel resamble?
-  cv::Size error_kernel(81,81);
+  // 1° of rotation ~ 14 - 15 px
+  cv::Size error_kernel(11,11);
   cv::GaussianBlur(screen_shot_gradient, screen_shot_gradient, error_kernel, 0.0, 0.0);
   cv::GaussianBlur(photo_gradient, photo_gradient, error_kernel, 0.0, 0.0);
 
