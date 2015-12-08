@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <scm/gl_core/math.h>
+#include <gua/math.hpp>
 
 #include <unistd.h>
 #include <fstream>
@@ -87,6 +88,10 @@ void SteepestDescentOptimizer::run_round_robin(
 
   current_photo_ = retrieve_photo();
 
+  auto initial_translation(gua::math::get_translation(initial_transform));
+
+  std::vector<std::vector<double>> positions_per_dimension(6);
+
   const std::vector<std::string> dimension_names(
     {"trans_x", "trans_y", "trans_z", "rot_x", "rot_y", "rot_z"}
   );
@@ -100,7 +105,6 @@ void SteepestDescentOptimizer::run_round_robin(
       std::cout << "Gradient for " << dimension_names[dimension] << ": " << gradient << std::endl;
 
       if (std::abs(gradient) <= 0.001) {
-        // optimal_dimensions[dimension] = true;
         ++optimal_dimension_count;
         std::cout << "Found optimum for " << dimension_names[dimension] << "." << std::endl;
       } else {
@@ -130,15 +134,21 @@ void SteepestDescentOptimizer::run_round_robin(
                                                     rotation_axis_vector);
           }
 
+
           current_difference = new_translation * new_rotation;
           current_transform = current_transform * current_difference;
           optimal_difference *= current_difference;
+
+          // auto current_translation(gua::math::get_translation(current_transform));
+          // positions_per_dimension[dimension].push_back(
+          //   current_translation[dimension] - initial_translation[dimension]
+          // );
+
         }
       }
 
     }
 
-    // optimum_reached = std::find(optimal_dimensions.begin(), optimal_dimensions.end(), false) == optimal_dimensions.end();
     optimum_reached = optimal_dimension_count == 6;
 
   }
@@ -148,6 +158,14 @@ void SteepestDescentOptimizer::run_round_robin(
   } else {
     std::cout << "Reached optimum after " << iteration_count << " iterations." << std::endl;
   }
+
+  // std::cout << "Travelled positions" << std::endl;
+  // for (int dimension(0); dimension < 6; ++dimension) {
+  //   std::cout << dimension_names[dimension] << std::endl;
+  //   for (int step(0); step < positions_per_dimension[dimension].size(); ++step) {
+  //     std::cout << step + 1 << " " << positions_per_dimension[dimension][step] << std::endl;
+  //   }
+  // }
 
   optimal_transform = current_transform;
 
@@ -348,7 +366,7 @@ void SteepestDescentOptimizer::update_step_length_for_dimension(
       new_translation = scm::math::make_translation(translation_vector);
     } else if (dimension < 6) {
       scm::math::vec3d rotation_axis_vector(0.0);
-      rotation_axis_vector[dimension] = 1.0;
+      rotation_axis_vector[dimension - 3] = 1.0;
 
       new_rotation = scm::math::make_rotation(-gradient * current_step_length_,
                                                rotation_axis_vector);
