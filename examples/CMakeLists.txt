@@ -1,6 +1,7 @@
 # guacamole examples
 
 set(LIB_PATH
+  ${PROJECT_SOURCE_DIR}/lib
   ${SCHISM_LIBRARY_DIRS}
   ${Boost_LIBRARY_DIRS}
   ${BULLET_LIBRARY_DIRS}
@@ -19,10 +20,12 @@ set(LIBS
   ${FBX_LIBRARIES}
   ${ASSIMP_LIBRARIES}
   ${JSON_LIBRARIES}
+  ${LIBUSB_LIBRARIES}
   )
-#link_libraries(${LIBS})
+# link_libraries(${LIBS})
 
 set(INCLUDE_PATHS
+  ${PROJECT_SOURCE_DIR}/externals
   ${SCHISM_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${BULLET_INCLUDE_DIRS}
@@ -69,8 +72,9 @@ IF (GUACAMOLE_EXAMPLES)
 
   # plod example requires plod-plugin
   IF (${PLUGIN_guacamole-plod})
-    add_subdirectory(plod)
-    add_subdirectory(plod-textured)
+    add_subdirectory(plod_textured)
+    add_subdirectory(plod_simple)
+    add_subdirectory(plod_shadows)
   ENDIF (${PLUGIN_guacamole-plod})
 
   # gui example requires gui-plugin

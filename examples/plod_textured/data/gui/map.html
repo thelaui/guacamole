@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-theme.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-slider.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap.colorpickersliders.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-select.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/leaflet.css"/>
+    <link rel="stylesheet" type="text/css" href="third_party/css/jquery-ui-1.10.0.custom.css"/>
+    <link href="gui.css" rel="stylesheet">
+    <link href="map.css" rel="stylesheet">
+
+    <script type="text/javascript" src="third_party/js/jquery-1.10.2.js"></script>
+    <script type="text/javascript" src="third_party/js/jquery-ui-1.10.4.min.js"></script>
+    <script type="text/javascript" src="third_party/js/tinycolor.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap-slider.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap.colorpickersliders.min.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap-select.min.js"></script>
+    <script type="text/javascript" src="third_party/js/leaflet.js"></script>
+    <script type="text/javascript" src="third_party/js/Polyline.encoded.js"></script>
+    <script type="text/javascript" src="third_party/js/proj4.js"></script>
+    <!-- // <script type="text/javascript" src="routeArray.js"></script> -->
+
+
+    <script type="text/javascript">
+      var map;
+      var routeGroup = new L.FeatureGroup();
+      var routeArray = [];
+      // var utm = "+proj=utm +zone=31";
+      var utm = "+proj=utm +zone=33";
+      var wgs84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+      var sourceMarker;
+      var targetMarker;
+      var posMarker;
+
+      function focus_map(lat, lng) {
+        map.setView(L.latLng(lat, lng));
+      }
+
+      function set_position_marker_utm(easting, northing) {
+        var wgs84_coords = proj4(utm, wgs84, [easting, northing]);
+        var lat = parseFloat(wgs84_coords[1]);
+        var lng = parseFloat(wgs84_coords[0]);
+        posMarker.setLatLng(L.latLng(lat, lng));
+        focus_map(lat, lng);
+      }
+
+      function set_route_points(routePointString) {
+        routeArray = [];
+        var routeCoords = routePointString.split("|");
+        var routeCoordsLength = routeCoords.length;
+        for (var i=0; i < routeCoordsLength; ++i) {
+          if (routeCoords[i] != "") {
+            var eastNorth = routeCoords[i].split(";");
+            var wgs84_coords = proj4(utm, wgs84, [eastNorth[0], eastNorth[1]]);
+            var lat = parseFloat(wgs84_coords[1]);
+            var lng = parseFloat(wgs84_coords[0]);
+
+            routeArray.push([lat, lng]);
+          }
+        }
+
+        var polyline = L.polyline(
+          routeArray,
+          {
+            color:'red',
+            smoothFactor: 15.0
+          }
+        ).addTo(routeGroup);
+
+        var bounds = L.latLngBounds([routeArray[0], routeArray[routeArray.length - 1]]).pad(0.5);
+        map.fitBounds(bounds);
+      }
+
+      function init_map() {
+
+         map = L.map('map', {attributionControl: false});
+
+        L.tileLayer('http://api.tiles.mapbox.com/v4/mapbox.streets-satellite/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoidGhlbGF1aSIsImEiOiI3MTFiZTYwMTRkMTYzNmQ2YzZlNWI0MzFlOGY1MWFlYSJ9.YmBcmniJmtGpQfEZ14eOSg', {
+                maxZoom: 18
+        }).addTo(map);
+
+        // create a source and a two target markers and add them to the map
+        var icon = L.icon({
+          iconUrl: 'res/img/marker-icon.png',
+          shadowUrl: 'res/img/marker-shadow.png',
+          iconSize: [25, 41],
+          shadowSize: [41, 41],
+          iconAnchor: [12, 41],
+          shadowAnchor: [10, 41]
+        });
+
+        posMarker = L.marker([0,0], {icon: icon}).addTo(map);
+
+        routeGroup.addTo(map);
+        routeGroup.on('click', function(event) {
+          posMarker.setLatLng(event.latlng);
+          var utm_coords = proj4(wgs84, utm, [event.latlng.lng, event.latlng.lat]);
+          focus_map(event.latlng.lat, event.latlng.lng);
+          gua.set_camera_pos_utm(utm_coords[0], utm_coords[1]);
+        });
+
+        // var polyline = L.polyline(
+        //   window.routeArray,
+        //   {color:'red'}
+        // ).addTo(routeGroup);
+
+        // var url = 'http://osrm.mapzen.com/car/viaroute?';
+        // url += '&loc=' + latlons.src[0] + ',' + latlons.src[1];
+        // url += '&loc=' + latlons.trg[0] + ',' + latlons.trg[1];
+
+        // //Get route from Mapzen
+        // var jqxhr = $.ajax({
+        //   url: url,
+        //   data: {
+        //     instructions: false,
+        //     alt: false
+        //   },
+        //   dataType: 'json'
+        // })
+        // .done(function(data) {
+        //   var polyline = L.polyline(
+        //     L.PolylineUtil.decode(data.route_geometry, 6),
+        //     {color:'red'}
+        //   ).addTo(routeGroup);
+
+        //   var decoded = L.PolylineUtil.decode(data.route_geometry, 6);
+        //   var array_string = "[";
+        //   for (var i = 0; i < decoded.length; ++i) {
+        //     array_string += "[" + decoded[i][0] + "," + decoded[i][1] + "],";
+        //   }
+        //   array_string += "]";
+        //   console.log(array_string);
+        // });
+      }
+
+      function init() {
+        $("body").addClass("on");
+      }
+
+
+      $(document).ready(function() {
+
+        init_map();
+        $('#settings-left .side-panel').hover(function(){
+          $('#settings-left .side-panel').removeClass("expanded");
+          $(this).addClass("expanded");
+        });
+
+        $("body").addClass("on");
+      });
+
+    </script>
+
+  </head>
+  <body>
+
+      <div id="settings-left">
+        <div class="side-panel expanded">
+          <div id="control-panel" class="panel-inner">
+
+            <h4><i class="fa fa-map-marker"></i> Map</h4>
+            <div id="map"></div>
+
+          </div>
+        </div>
+    </div>
+
+  </body>
+</html>

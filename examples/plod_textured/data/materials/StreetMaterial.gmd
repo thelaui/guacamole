@@ -1,0 +1,15 @@
+{
+  "vertex_methods" :
+  [],
+
+  "fragment_methods" :
+  [
+    {
+      "file_name" : "data/materials/ProjectiveTextureFragmentMethod.gpd"
+    },
+    {
+      "file_name" : "data/materials/LensFragmentMethod.gpd"
+    }
+  ]
+
+}
