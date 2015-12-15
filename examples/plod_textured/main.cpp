@@ -36,6 +36,7 @@
 #include <gua/renderer/BBoxPass.hpp>
 #include <gua/renderer/DebugViewPass.hpp>
 #include <gua/renderer/FrustumVisualizationPass.hpp>
+#include <gua/renderer/ComputeImageErrorPass.hpp>
 #include <gua/renderer/TexturedQuadPass.hpp>
 #include <gua/renderer/TexturedScreenSpaceQuadPass.hpp>
 #include <gua/renderer/ScreenSpacePickPass.hpp>
@@ -403,22 +404,21 @@ int main(int argc, char** argv) {
   auto texturing_pass = std::make_shared<gua::FullscreenPassDescription>();
   texturing_pass->source_file("data/shaders/screen_space_street_texturing.frag");
 
-  auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
-  screen_space_pick_pass->set_window_name("main_window");
-
   auto plod_pass = std::make_shared<gua::PLODPassDescription>();
   plod_pass->set_radius_clamping_enabled(optimization_enabled);
+
+  auto image_error_pass = std::make_shared<gua::ComputeImageErrorPassDescription>();
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
   // pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
   pipe->add_pass(frustum_vis_pass);
-  // pipe->add_pass(screen_space_pick_pass);
   pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   pipe->add_pass(plod_pass);
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
   pipe->add_pass(texturing_pass);
+  pipe->add_pass(image_error_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
   // pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 

@@ -153,6 +153,7 @@ void PipelinePass::process(PipelinePassDescription const& desc, Pipeline& pipe) 
 void PipelinePass::upload_program(PipelinePassDescription const& desc, RenderContext const& ctx) {
 
   if (!desc.vertex_shader_.empty() && !desc.fragment_shader_.empty()) {
+
 #ifdef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
     ResourceFactory factory;
     std::string v_shader = desc.vertex_shader_is_file_name_

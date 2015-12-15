@@ -46,7 +46,7 @@ examples/video3d/example-video3d
 examples/stress_test/stress_test
 examples/nice_and_shiny/nice_and_shiny
 examples/plod/example-plod
-examples/plod-textured/example-plod-textured
+examples/plod-textured/example-plod_textured
 examples/projective_texturing/example-projective_texturing
 examples/tiled_shading_test/tiled_shading_test
 examples/transparency/example-transparency
