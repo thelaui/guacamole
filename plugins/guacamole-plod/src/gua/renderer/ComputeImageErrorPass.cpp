@@ -40,6 +40,9 @@ ComputeImageErrorPassDescription::ComputeImageErrorPassDescription()
   fragment_shader_is_file_name_ = false;
   geometry_shader_is_file_name_ = false;
   writes_only_color_buffer_ = true;
+  needs_color_buffer_as_input_ = true;
+  depth_stencil_state_ = boost::make_optional(
+      scm::gl::depth_stencil_state_desc(false, false));
   rendermode_ = RenderMode::Custom;
 
 }
@@ -55,21 +58,45 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
   PipelinePass pass(*this, ctx, substitution_map);
 
-  std::string shader_file("resources/shaders/projective_texturing/compute_image_error.glsl");
+  std::string vertex_pass_trough_shader_file("resources/shaders/common/fullscreen_quad.vert");
+  std::string clipping_shader_file("resources/shaders/projective_texturing/fragment_clip.frag");
+  std::string error_shader_file("resources/shaders/projective_texturing/compute_image_error.glsl");
 
   #ifdef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
       ResourceFactory factory;
-      std::string shader_source = factory.read_shader_file(shader_file);
+      std::string vertex_pass_through_shader_source = factory.read_shader_file(vertex_pass_trough_shader_file);
+      std::string clipping_shader_source = factory.read_shader_file(clipping_shader_file);
+      std::string error_shader_source = factory.read_shader_file(error_shader_file);
   #else
-      std::string shader_source = Resources::lookup_shader(shader_file);
+      std::string vertex_pass_through_shader_source = Resources::lookup_shader(vertex_pass_trough_shader_file);
+      std::string clipping_shader_source = Resources::lookup_shader(clipping_shader_file);
+      std::string error_shader_source = Resources::lookup_shader(error_shader_file);
   #endif
 
-  scm::gl::shader_ptr compute_stage(
-    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, shader_source)
+  scm::gl::shader_ptr vertex_pass_through_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_VERTEX_SHADER, vertex_pass_through_shader_source)
   );
 
-  scm::gl::program_ptr compute_program(
-    ctx.render_device->create_program({compute_stage})
+  scm::gl::shader_ptr fragment_clipping_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, clipping_shader_source)
+  );
+
+  scm::gl::program_ptr clipping_shader_program(
+    ctx.render_device->create_program({
+      vertex_pass_through_stage,
+      fragment_clipping_stage
+    })
+  );
+
+
+  scm::gl::shader_ptr error_compute_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, error_shader_source)
+  );
+
+  scm::gl::program_ptr compute_shader_program(
+    ctx.render_device->create_program({
+      error_compute_stage
+    })
   );
 
   scm::gl::texture_image_ptr output_buffer(
@@ -79,54 +106,72 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
     )
   );
 
+  auto depth_stencil_state(ctx.render_device->create_depth_stencil_state(depth_stencil_state_));
 
   unsigned int invocations_x(ctx.render_window->config.get_resolution().x);
   unsigned int invocations_y(ctx.render_window->config.get_resolution().y);
 
-  pass.process_ = [compute_program, output_buffer,
-                   invocations_x, invocations_y](
+  pass.process_ = [clipping_shader_program, compute_shader_program, output_buffer,
+                   depth_stencil_state, invocations_x, invocations_y](
       PipelinePass &, PipelinePassDescription const&, Pipeline & pipe) {
-
-    RenderContext const& ctx(pipe.get_context());
-
-    scm::gl::context_all_guard(ctx.render_context);
-
-    ctx.render_context->bind_program(compute_program);
-
-    // bind output image
-    ctx.render_context->bind_image(output_buffer, scm::gl::FORMAT_R_32F,
-                                   scm::gl::ACCESS_READ_WRITE,
-                                   0);
-
-    compute_program->uniform_image("output_buffer", 0);
-
 
     auto gbuffer(dynamic_cast<GBuffer*>(pipe.current_viewstate().target));
 
     if (gbuffer) {
 
-      // bind current rendered image
-      auto rendered_image(gbuffer->get_color_buffer());
+      auto color_buffer(gbuffer->get_color_buffer());
+      auto depth_buffer(gbuffer->get_depth_buffer());
 
-      if (rendered_image) {
+      if (color_buffer && depth_buffer) {
 
-        compute_program->uniform("rendered_image", rendered_image->get_handle(ctx));
+        RenderContext const& ctx(pipe.get_context());
 
+        scm::gl::context_all_guard guard(ctx.render_context);
+
+        ////////////// CLIPPING STAGE ////////////////
+
+        gbuffer->bind(ctx, false);
+        gbuffer->set_viewport(ctx);
+
+        ctx.render_context->set_depth_stencil_state(depth_stencil_state, 1);
+        ctx.render_context->bind_program(clipping_shader_program);
+
+        clipping_shader_program->uniform("color_buffer", color_buffer->get_handle(ctx));
+        clipping_shader_program->uniform("depth_buffer", depth_buffer->get_handle(ctx));
 
         ctx.render_context->apply();
 
-        ctx.render_context->dispatch_compute(
-          scm::math::vec3ui(invocations_x, invocations_y, 1u)
-        );
+        pipe.draw_quad();
 
-        scm::float32 texture_data[invocations_x * invocations_y];
+        gbuffer->unbind(ctx);
 
-        ctx.render_context->retrieve_texture_data(output_buffer, 0, texture_data);
+        ////////////// COMPUTE STAGE ////////////////
 
-        // for (int i(0); i < invocations_x * invocations_y; ++i) {
-        //   std::cout << texture_data[i] << std::endl;
-        // }
-        std::cout << texture_data[0] << std::endl;
+        // ctx.render_context->bind_program(compute_shader_program);
+
+        // ctx.render_context->bind_image(output_buffer, scm::gl::FORMAT_R_32F,
+        //                                scm::gl::ACCESS_READ_WRITE,
+        //                                0);
+
+        // compute_shader_program->uniform_image("output_buffer", 0);
+
+        // compute_shader_program->uniform("color_buffer", color_buffer->get_handle(ctx));
+
+
+        // ctx.render_context->apply();
+
+        // ctx.render_context->dispatch_compute(
+        //   scm::math::vec3ui(invocations_x, invocations_y, 1u)
+        // );
+
+        // scm::float32 texture_data[invocations_x * invocations_y];
+
+        // ctx.render_context->retrieve_texture_data(output_buffer, 0, texture_data);
+
+        // // for (int i(0); i < invocations_x * invocations_y; ++i) {
+        // //   std::cout << texture_data[i] << std::endl;
+        // // }
+        // std::cout << texture_data[0] << std::endl;
       }
     }
 

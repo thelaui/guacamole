@@ -21,22 +21,14 @@
 
 @include "shaders/common/header.glsl"
 
-layout(r32f) uniform writeonly image2D output_buffer;
-layout(local_size_x = 1, local_size_y = 1) in;
-
 uniform uvec2 color_buffer;
-uniform uvec2 photo_image;
+uniform uvec2 depth_buffer;
+
+in vec2 gua_quad_coords;
+
+// write outputs
+layout(location=0) out vec3 gua_out_color;
 
 void main() {
-  ivec2 store_pos = ivec2(gl_GlobalInvocationID.xy);
-  vec4 rendered_color = texelFetch(sampler2D(color_buffer), store_pos, 0);
-
-  vec4 out_color = vec4(1.0);
-
-  if (rendered_color.rgb == vec3(0.0)) {
-    out_color = vec4(0.0);
-  }
-
-  imageStore(output_buffer, store_pos, out_color);
+  gua_out_color = texture2D(sampler2D(color_buffer), gua_quad_coords).rgb * vec3(0.5, 0.8, 1.0);
 }
-

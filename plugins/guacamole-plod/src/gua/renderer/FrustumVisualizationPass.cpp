@@ -118,7 +118,7 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
 
     RenderContext const& ctx(pipe.get_context());
 
-    scm::gl::context_all_guard(ctx.render_context);
+    scm::gl::context_all_guard guard(ctx.render_context);
 
     auto gua_frustum(pipe.current_viewstate().frustum);
     auto texstr_frustum(texstr::Frustum::perspective(

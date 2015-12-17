@@ -7,7 +7,7 @@
 // write outputs
 layout(location=0) out vec3 gua_out_color;
 
-layout (binding=2) uniform projective_texure_block {
+layout(binding=2) uniform projective_texure_block {
   mat4  projection_view_mats[64];
   mat4  homographies[64];
   vec4  frustum_positions[64];
@@ -78,6 +78,11 @@ vec3 get_projected_color(int frustum_id) {
   vec3 result = vec3(0.0);
 
   // check if texture is loaded
+  if (projection_textures[frustum_id] == uvec2(0)) {
+    result = vec3(1.0, 0.0, 0.0);
+  }
+
+
   if (projection_textures[frustum_id] != uvec2(0)) {
     vec2 resolution = vec2(projection_texture_resolutions[frustum_id].x,
                            projection_texture_resolutions[frustum_id].y);
@@ -88,7 +93,6 @@ vec3 get_projected_color(int frustum_id) {
     float depth = proj_tex_space_pos.z;
     // perspective division
     proj_tex_space_pos /= proj_tex_space_pos.w;
-
     // check if fragment is visible by frustum
     if (abs(proj_tex_space_pos.x) <  1.0 &&
         abs(proj_tex_space_pos.y) <  1.0 &&
@@ -103,20 +107,6 @@ vec3 get_projected_color(int frustum_id) {
       transformed_coord.y = 1.0 - transformed_coord.y;
 
       result = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy).rgb;
-      // vec3 original_color = gua_get_color();
-      // float closest_distance = abs(get_vector_average(original_color) - get_vector_average(result));
-      // for (int x = -3; x <= 3; ++x) {
-      //   for (int y = -3; y <= 3; ++y) {
-      //     vec3 match = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy + vec2(x,y)).rgb;
-      //     float new_distance = abs(get_vector_average(original_color) - get_vector_average(match));
-
-      //     if (new_distance < closest_distance) {
-      //       closest_distance = new_distance;
-      //       result = match;
-
-      //     }
-      //   }
-      // }
     }
   }
 
@@ -159,7 +149,6 @@ vec3 get_projected_color_with_current_camera(int frustum_id) {
 }
 
 void main() {
-
   if (gua_get_depth() >= 1.0 ) {
     discard;
   }
