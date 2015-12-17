@@ -25,7 +25,7 @@ layout(r32f) uniform writeonly image2D output_buffer;
 layout(local_size_x = 1, local_size_y = 1) in;
 
 uniform uvec2 color_buffer;
-uniform uvec2 photo_image;
+uniform uvec2 photo;
 
 void main() {
   ivec2 store_pos = ivec2(gl_GlobalInvocationID.xy);
@@ -35,6 +35,8 @@ void main() {
 
   if (rendered_color.rgb == vec3(0.0)) {
     out_color = vec4(0.0);
+  } else {
+
   }
 
   imageStore(output_buffer, store_pos, out_color);

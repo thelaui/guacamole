@@ -44,6 +44,7 @@ ComputeImageErrorPassDescription::ComputeImageErrorPassDescription()
   depth_stencil_state_ = boost::make_optional(
       scm::gl::depth_stencil_state_desc(false, false));
   rendermode_ = RenderMode::Custom;
+  uniforms["clipping_parameters"] = gua::math::vec2f(0.0);
 
 }
 
@@ -52,6 +53,21 @@ ComputeImageErrorPassDescription::ComputeImageErrorPassDescription()
 std::shared_ptr<PipelinePassDescription> ComputeImageErrorPassDescription::make_copy() const {
   return std::make_shared<ComputeImageErrorPassDescription>(*this);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+void ComputeImageErrorPassDescription::set_clipping_parameters(gua::math::vec2f const& clipping_parameters) {
+  clipping_parameters_ = clipping_parameters;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+gua::math::vec2f const& ComputeImageErrorPassDescription::get_clipping_parameters() const {
+  return clipping_parameters_;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 
 PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ctx, SubstitutionMap& substitution_map)
 {
@@ -113,13 +129,14 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
   pass.process_ = [clipping_shader_program, compute_shader_program, output_buffer,
                    depth_stencil_state, invocations_x, invocations_y](
-      PipelinePass &, PipelinePassDescription const&, Pipeline & pipe) {
+      PipelinePass &, PipelinePassDescription const& desc, Pipeline & pipe) {
 
     auto gbuffer(dynamic_cast<GBuffer*>(pipe.current_viewstate().target));
 
     if (gbuffer) {
 
       auto color_buffer(gbuffer->get_color_buffer());
+      auto position_buffer(gbuffer->get_position_buffer());
       auto depth_buffer(gbuffer->get_depth_buffer());
 
       if (color_buffer && depth_buffer) {
@@ -136,8 +153,15 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
         ctx.render_context->set_depth_stencil_state(depth_stencil_state, 1);
         ctx.render_context->bind_program(clipping_shader_program);
 
+        // private uniforms
         clipping_shader_program->uniform("color_buffer", color_buffer->get_handle(ctx));
+        clipping_shader_program->uniform("position_buffer", position_buffer->get_handle(ctx));
         clipping_shader_program->uniform("depth_buffer", depth_buffer->get_handle(ctx));
+
+        // user specified uniforms
+        for (auto const& u : desc.uniforms) {
+          u.second.apply(ctx, u.first, clipping_shader_program, 0);
+        }
 
         ctx.render_context->apply();
 
@@ -145,33 +169,60 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
         gbuffer->unbind(ctx);
 
+        // flip read/write buffers to gain access to the currently written
+        // buffer in the compute shader
+        gbuffer->toggle_ping_pong();
+        color_buffer = gbuffer->get_color_buffer();
+
         ////////////// COMPUTE STAGE ////////////////
 
-        // ctx.render_context->bind_program(compute_shader_program);
+        ctx.render_context->bind_program(compute_shader_program);
 
-        // ctx.render_context->bind_image(output_buffer, scm::gl::FORMAT_R_32F,
-        //                                scm::gl::ACCESS_READ_WRITE,
-        //                                0);
+        // bind target buffer
+        ctx.render_context->bind_image(output_buffer, scm::gl::FORMAT_R_32F,
+                                       scm::gl::ACCESS_READ_WRITE,
+                                       0);
 
-        // compute_shader_program->uniform_image("output_buffer", 0);
+        compute_shader_program->uniform_image("output_buffer", 0);
 
-        // compute_shader_program->uniform("color_buffer", color_buffer->get_handle(ctx));
+        // retrieve current photo
+        auto camera_pos(math::get_translation(pipe.current_viewstate().camera.transform));
+        auto closest_frustum(texstr::FrustumManagement::instance()->get_closest_frustum(
+          scm::math::vec3d(camera_pos.x, camera_pos.y, camera_pos.z),
+          scm::math::vec3d(1.0, 0.0, 1.0)
+        ));
+
+        std::shared_ptr<texstr::Texture> photo(nullptr);
+
+        if (closest_frustum) {
+          photo = texstr::TextureManagement::instance()->query_texture(
+            ctx.render_device, ctx.render_context, closest_frustum
+          );
+        }
+
+        // set uniforms
+        compute_shader_program->uniform("color_buffer", color_buffer->get_handle(ctx));
+        compute_shader_program->uniform("photo", photo->get_handle());
 
 
-        // ctx.render_context->apply();
+        ctx.render_context->apply();
 
-        // ctx.render_context->dispatch_compute(
-        //   scm::math::vec3ui(invocations_x, invocations_y, 1u)
-        // );
+        ctx.render_context->dispatch_compute(
+          scm::math::vec3ui(invocations_x, invocations_y, 1u)
+        );
 
-        // scm::float32 texture_data[invocations_x * invocations_y];
+        scm::float32 texture_data[invocations_x * invocations_y];
 
-        // ctx.render_context->retrieve_texture_data(output_buffer, 0, texture_data);
+        ctx.render_context->retrieve_texture_data(output_buffer, 0, texture_data);
 
-        // // for (int i(0); i < invocations_x * invocations_y; ++i) {
-        // //   std::cout << texture_data[i] << std::endl;
-        // // }
-        // std::cout << texture_data[0] << std::endl;
+        // for (int i(0); i < invocations_x * invocations_y; ++i) {
+        //   std::cout << texture_data[i] << std::endl;
+        // }
+        std::cout << texture_data[0] << std::endl;
+
+        // restore gbuffer configuration
+        gbuffer->toggle_ping_pong();
+
       }
     }
 

@@ -417,7 +417,11 @@ int main(int argc, char** argv) {
   pipe->add_pass(plod_pass);
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
-  // pipe->add_pass(image_error_pass);
+
+  if (optimization_enabled) {
+    pipe->add_pass(image_error_pass);
+  }
+
   pipe->add_pass(texturing_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
   // pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
@@ -861,6 +865,8 @@ int main(int argc, char** argv) {
       brute_force_optimizer.initial_transform = camera->get_transform();
       error_function_sampler.initial_transform = camera->get_transform();
 
+      image_error_pass->set_clipping_parameters(gua::math::vec2f(7.f, float(camera->get_world_position().y - 2.65f)));
+
       cv::Size blur_kernel(11,11);
 
       auto retrieve_photo = [&]() {
@@ -1021,21 +1027,21 @@ int main(int argc, char** argv) {
       }
     }
 
-    street_material->set_uniform("blending_range",  current_blending_range);
-    street_material->set_uniform("blending_mode",   current_blending_mode);
-    street_material->set_uniform("selection_mode",  current_selection_mode);
-    street_material->set_uniform("pick_pos_and_radius",
-                                  gua::math::vec4(current_pick_pos.x,
-                                                  current_pick_pos.y,
-                                                  current_pick_pos.z,
-                                                  current_lens_radius));
-    street_material->set_uniform("pick_normal", current_pick_normal);
-    street_material->set_uniform("lens_enabled", lens_enabled ? 1 : 0);
+    // street_material->set_uniform("blending_range",  current_blending_range);
+    // street_material->set_uniform("blending_mode",   current_blending_mode);
+    // street_material->set_uniform("selection_mode",  current_selection_mode);
+    // street_material->set_uniform("pick_pos_and_radius",
+    //                               gua::math::vec4(current_pick_pos.x,
+    //                                               current_pick_pos.y,
+    //                                               current_pick_pos.z,
+    //                                               current_lens_radius));
+    // street_material->set_uniform("pick_normal", current_pick_normal);
+    // street_material->set_uniform("lens_enabled", lens_enabled ? 1 : 0);
 
     texturing_pass->uniform("selection_mode",  current_selection_mode);
     texturing_pass->uniform("blending_factor", current_blending_factor);
-    texturing_pass->uniform("clipping_params", scm::math::vec2f(7.f, float(camera->get_world_position().y - 2.65f)));
-    texturing_pass->uniform("clipping_enabled", optimization_enabled ? 1 : 0);
+
+    image_error_pass->uniforms["clipping_parameters"] = gua::math::vec2f(7.f, float(camera->get_world_position().y - 2.65f));
 
     window->process_events();
     if (window->should_close()) {

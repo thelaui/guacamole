@@ -36,8 +36,13 @@ class GUA_DLL ComputeImageErrorPassDescription : public PipelinePassDescription 
   std::shared_ptr<PipelinePassDescription> make_copy() const override;
   friend class Pipeline;
 
+  void set_clipping_parameters(gua::math::vec2f const& clipping_params);
+  gua::math::vec2f const& get_clipping_parameters() const;
+
  protected:
   PipelinePass make_pass(RenderContext const&, SubstitutionMap&) override;
+
+  gua::math::vec2f clipping_parameters_ = gua::math::vec2f(0.f, 0.f);
 };
 
 }

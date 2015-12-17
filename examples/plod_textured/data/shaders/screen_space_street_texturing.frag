@@ -78,11 +78,6 @@ vec3 get_projected_color(int frustum_id) {
   vec3 result = vec3(0.0);
 
   // check if texture is loaded
-  if (projection_textures[frustum_id] == uvec2(0)) {
-    result = vec3(1.0, 0.0, 0.0);
-  }
-
-
   if (projection_textures[frustum_id] != uvec2(0)) {
     vec2 resolution = vec2(projection_texture_resolutions[frustum_id].x,
                            projection_texture_resolutions[frustum_id].y);
@@ -149,24 +144,13 @@ vec3 get_projected_color_with_current_camera(int frustum_id) {
 }
 
 void main() {
+
   if (gua_get_depth() >= 1.0 ) {
     discard;
   }
 
-  bool fragment_clipped = false;
-  if (clipping_enabled == 1) {
-    if (gua_get_position().y >= clipping_params.y) {
-      gua_out_color = vec3(0.0);
-      fragment_clipped = true;
-    } else {
-      vec4 proj_tex_space_pos = gua_projection_matrix * gua_view_matrix * vec4(gua_get_position(), 1.0);
+  bool fragment_clipped = (gua_get_color() == vec3(0.0));
 
-      if (proj_tex_space_pos.z >= clipping_params.x) {
-        gua_out_color = vec3(0.0);
-        fragment_clipped = true;
-      }
-    }
-  }
 
   if (!fragment_clipped) {
     if (blending_factor > 0.0) {
