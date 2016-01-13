@@ -44,6 +44,7 @@ ComputeImageErrorPassDescription::ComputeImageErrorPassDescription()
   depth_stencil_state_ = boost::make_optional(
       scm::gl::depth_stencil_state_desc(false, false));
   rendermode_ = RenderMode::Custom;
+
   uniforms["clipping_parameters"] = gua::math::vec2f(0.0);
 
 }
@@ -75,23 +76,27 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
   PipelinePass pass(*this, ctx, substitution_map);
 
   std::string vertex_pass_trough_shader_file("resources/shaders/common/fullscreen_quad.vert");
+  std::string debug_pass_trough_shader_file("resources/shaders/projective_texturing/debug_pass_through.frag");
   std::string clipping_shader_file("resources/shaders/projective_texturing/fragment_clip.frag");
-  std::string error_shader_file("resources/shaders/projective_texturing/compute_image_error.glsl");
+  std::string squared_diff_shader_file("resources/shaders/projective_texturing/squared_diff.glsl");
 
   #ifdef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
       ResourceFactory factory;
       std::string vertex_pass_through_shader_source = factory.read_shader_file(vertex_pass_trough_shader_file);
+      std::string debug_pass_through_shader_source = factory.read_shader_file(debug_pass_trough_shader_file);
       std::string clipping_shader_source = factory.read_shader_file(clipping_shader_file);
-      std::string error_shader_source = factory.read_shader_file(error_shader_file);
+      std::string squared_diff_shader_source = factory.read_shader_file(squared_diff_shader_file);
   #else
       std::string vertex_pass_through_shader_source = Resources::lookup_shader(vertex_pass_trough_shader_file);
+      std::string debug_pass_through_shader_source = Resources::lookup_shader(debug_pass_trough_shader_file);
       std::string clipping_shader_source = Resources::lookup_shader(clipping_shader_file);
-      std::string error_shader_source = Resources::lookup_shader(error_shader_file);
+      std::string squared_diff_shader_source = Resources::lookup_shader(squared_diff_shader_file);
   #endif
 
   scm::gl::shader_ptr vertex_pass_through_stage(
     ctx.render_device->create_shader(scm::gl::STAGE_VERTEX_SHADER, vertex_pass_through_shader_source)
   );
+
 
   scm::gl::shader_ptr fragment_clipping_stage(
     ctx.render_device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, clipping_shader_source)
@@ -105,13 +110,13 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
   );
 
 
-  scm::gl::shader_ptr error_compute_stage(
-    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, error_shader_source)
+  scm::gl::shader_ptr squared_diff_compute_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, squared_diff_shader_source)
   );
 
-  scm::gl::program_ptr compute_shader_program(
+  scm::gl::program_ptr squared_diff_compute_shader_program(
     ctx.render_device->create_program({
-      error_compute_stage
+      squared_diff_compute_stage
     })
   );
 
@@ -122,13 +127,42 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
     )
   );
 
+
+
+  scm::gl::shader_ptr debug_pass_through_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, debug_pass_through_shader_source)
+  );
+
+  scm::gl::program_ptr debug_shader_program(
+    ctx.render_device->create_program({
+      vertex_pass_through_stage,
+      debug_pass_through_stage
+    })
+  );
+
   auto depth_stencil_state(ctx.render_device->create_depth_stencil_state(depth_stencil_state_));
 
   unsigned int invocations_x(ctx.render_window->config.get_resolution().x);
   unsigned int invocations_y(ctx.render_window->config.get_resolution().y);
 
-  pass.process_ = [clipping_shader_program, compute_shader_program, output_buffer,
-                   depth_stencil_state, invocations_x, invocations_y](
+  scm::gl::sampler_state_desc sampler_state_desc(scm::gl::FILTER_MIN_MAG_NEAREST,
+    scm::gl::WRAP_MIRRORED_REPEAT,
+    scm::gl::WRAP_MIRRORED_REPEAT);
+
+  auto sampler_state(ctx.render_device->create_sampler_state(sampler_state_desc));
+
+  auto clipped_color_buffer(
+    std::make_shared<Texture2D>(ctx.render_window->config.get_resolution().x,
+                                ctx.render_window->config.get_resolution().y,
+                                scm::gl::FORMAT_RGB_32F, 1, sampler_state_desc));
+
+  auto clipping_pass_target(ctx.render_device->create_frame_buffer());
+  clipping_pass_target->attach_color_buffer(0, clipped_color_buffer->get_buffer(ctx),0,0);
+
+  pass.process_ = [debug_shader_program, clipping_shader_program,
+                   squared_diff_compute_shader_program, output_buffer,
+                   depth_stencil_state, invocations_x, invocations_y,
+                   clipped_color_buffer, clipping_pass_target, sampler_state](
       PipelinePass &, PipelinePassDescription const& desc, Pipeline & pipe) {
 
     auto gbuffer(dynamic_cast<GBuffer*>(pipe.current_viewstate().target));
@@ -145,10 +179,12 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
         scm::gl::context_all_guard guard(ctx.render_context);
 
-        ////////////// CLIPPING STAGE ////////////////
+        ////////////// CLIPPING PASS ////////////////
 
-        gbuffer->bind(ctx, false);
-        gbuffer->set_viewport(ctx);
+        ctx.render_context->set_frame_buffer(clipping_pass_target);
+        ctx.render_context->set_viewport(
+          scm::gl::viewport(scm::math::vec2f(0, 0),
+                            scm::math::vec2f(ctx.render_window->config.get_resolution())));
 
         ctx.render_context->set_depth_stencil_state(depth_stencil_state, 1);
         ctx.render_context->bind_program(clipping_shader_program);
@@ -167,23 +203,17 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
         pipe.draw_quad();
 
-        gbuffer->unbind(ctx);
+        ctx.render_context->reset_framebuffer();
 
-        // flip read/write buffers to gain access to the currently written
-        // buffer in the compute shader
-        gbuffer->toggle_ping_pong();
-        color_buffer = gbuffer->get_color_buffer();
+        // ////////////// COMPUTE PASS ////////////////
 
-        ////////////// COMPUTE STAGE ////////////////
-
-        ctx.render_context->bind_program(compute_shader_program);
+        ctx.render_context->bind_program(squared_diff_compute_shader_program);
 
         // bind target buffer
         ctx.render_context->bind_image(output_buffer, scm::gl::FORMAT_R_32F,
                                        scm::gl::ACCESS_READ_WRITE,
                                        0);
-
-        compute_shader_program->uniform_image("output_buffer", 0);
+        squared_diff_compute_shader_program->uniform_image("output_buffer", 0);
 
         // retrieve current photo
         auto camera_pos(math::get_translation(pipe.current_viewstate().camera.transform));
@@ -201,8 +231,8 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
         }
 
         // set uniforms
-        compute_shader_program->uniform("color_buffer", color_buffer->get_handle(ctx));
-        compute_shader_program->uniform("photo", photo->get_handle());
+        squared_diff_compute_shader_program->uniform("color_buffer", clipped_color_buffer->get_handle(ctx));
+        squared_diff_compute_shader_program->uniform("photo", photo->get_handle());
 
 
         ctx.render_context->apply();
@@ -213,21 +243,36 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
         scm::float32 texture_data[invocations_x * invocations_y];
 
+        // TODO: call glsynch!
+
         ctx.render_context->retrieve_texture_data(output_buffer, 0, texture_data);
 
         // for (int i(0); i < invocations_x * invocations_y; ++i) {
         //   std::cout << texture_data[i] << std::endl;
         // }
-        std::cout << texture_data[0] << std::endl;
+        // std::cout << texture_data[0] << std::endl;
+
+
+        ////////////// DEBUG PASS ////////////////
+
+        gbuffer->bind(ctx, false);
+        gbuffer->set_viewport(ctx);
+
+        ctx.render_context->bind_program(debug_shader_program);
+
+        ctx.render_context->bind_texture(output_buffer, sampler_state, 0u);
+        debug_shader_program->uniform_sampler("in_texture", 0);
+
+        ctx.render_context->apply();
+
+        pipe.draw_quad();
+
+        gbuffer->unbind(ctx);
 
         // restore gbuffer configuration
-        gbuffer->toggle_ping_pong();
-
+        // gbuffer->toggle_ping_pong();
       }
     }
-
-
-
 
 
   };

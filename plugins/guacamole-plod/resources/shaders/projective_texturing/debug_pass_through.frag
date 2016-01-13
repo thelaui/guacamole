@@ -20,13 +20,8 @@
  ******************************************************************************/
 
 @include "shaders/common/header.glsl"
-@include "shaders/common/gua_camera_uniforms.glsl"
 
-uniform uvec2 color_buffer;
-uniform uvec2 position_buffer;
-uniform uvec2 depth_buffer;
-
-uniform vec2 clipping_parameters;
+uniform sampler2D in_texture;
 
 in vec2 gua_quad_coords;
 
@@ -34,23 +29,6 @@ in vec2 gua_quad_coords;
 layout(location=0) out vec3 gua_out_color;
 
 void main() {
-
-  vec3 world_position = texture2D(sampler2D(position_buffer), gua_quad_coords).xyz;
-  gua_out_color = vec3(0.0);
-
-  bool fragment_clipped = false;
-  if (world_position.y >= clipping_parameters.y) {
-    fragment_clipped = true;
-  } else {
-    vec4 proj_tex_space_pos = gua_projection_matrix * gua_view_matrix * vec4(world_position, 1.0);
-
-    if (proj_tex_space_pos.z >= clipping_parameters.x) {
-      fragment_clipped = true;
-    }
-  }
-
-  if (!fragment_clipped) {
-    gua_out_color = texture2D(sampler2D(color_buffer), gua_quad_coords).rgb;
-  }
-
+  gua_out_color = vec3(texture2D(in_texture, gua_quad_coords).r);
+  // gua_out_color = vec3(1.0, 0.0, 0.0);
 }

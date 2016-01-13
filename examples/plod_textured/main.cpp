@@ -422,7 +422,7 @@ int main(int argc, char** argv) {
     pipe->add_pass(image_error_pass);
   }
 
-  pipe->add_pass(texturing_pass);
+  // pipe->add_pass(texturing_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
   // pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
