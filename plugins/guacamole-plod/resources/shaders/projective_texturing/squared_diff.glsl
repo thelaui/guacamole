@@ -21,7 +21,7 @@
 
 @include "shaders/common/header.glsl"
 
-layout(r32f) uniform writeonly image2D output_buffer;
+layout(r32f) uniform writeonly image2D squared_diff_buffer;
 layout(local_size_x = 1, local_size_y = 1) in;
 
 uniform uvec2 color_buffer;
@@ -42,6 +42,6 @@ void main() {
     out_color = vec4(squared_diff);
   }
 
-  imageStore(output_buffer, store_pos, out_color);
+  imageStore(squared_diff_buffer, store_pos, out_color);
 }
 

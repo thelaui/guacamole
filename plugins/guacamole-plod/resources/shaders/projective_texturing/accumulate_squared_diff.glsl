@@ -21,13 +21,22 @@
 
 @include "shaders/common/header.glsl"
 
+layout(r32f) uniform writeonly image2D accumulate_buffer;
+layout(local_size_x = 1, local_size_y = 1) in;
+
 uniform sampler2D input_buffer;
 
-in vec2 gua_quad_coords;
-
-// write outputs
-layout(location=0) out vec3 gua_out_color;
-
 void main() {
-  gua_out_color = vec3(texture2D(input_buffer, gua_quad_coords).r);
+  ivec2 store_pos = ivec2(gl_GlobalInvocationID.xy);
+
+  vec4 accumulated_color = vec4(0.0);
+
+  for (int x = 0; x < 1; ++x) {
+    for (int y = 0; y < 1; ++y) {
+      accumulated_color += texelFetch(input_buffer, store_pos * 2 + ivec2(x,y), 0);
+    }
+  }
+
+  imageStore(accumulate_buffer, store_pos, accumulated_color);
 }
+
