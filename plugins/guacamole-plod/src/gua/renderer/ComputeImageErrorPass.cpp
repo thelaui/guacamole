@@ -79,6 +79,7 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
   std::string debug_pass_trough_shader_file("resources/shaders/projective_texturing/debug_pass_through.frag");
   std::string clipping_shader_file("resources/shaders/projective_texturing/fragment_clip.frag");
   std::string squared_diff_shader_file("resources/shaders/projective_texturing/squared_diff.glsl");
+  std::string gaussian_blur_shader_file("resources/shaders/projective_texturing/gaussian_blur.glsl");
   std::string accumulate_squared_diff_shader_file("resources/shaders/projective_texturing/accumulate_squared_diff.glsl");
 
   #ifdef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
@@ -87,12 +88,14 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
       std::string debug_pass_through_shader_source = factory.read_shader_file(debug_pass_trough_shader_file);
       std::string clipping_shader_source = factory.read_shader_file(clipping_shader_file);
       std::string squared_diff_shader_source = factory.read_shader_file(squared_diff_shader_file);
+      std::string gaussian_blur_shader_source = factory.read_shader_file(gaussian_blur_shader_file);
       std::string accumulate_squared_diff_shader_source = factory.read_shader_file(accumulate_squared_diff_shader_file);
   #else
       std::string vertex_pass_through_shader_source = Resources::lookup_shader(vertex_pass_trough_shader_file);
       std::string debug_pass_through_shader_source = Resources::lookup_shader(debug_pass_trough_shader_file);
       std::string clipping_shader_source = Resources::lookup_shader(clipping_shader_file);
       std::string squared_diff_shader_source = Resources::lookup_shader(squared_diff_shader_file);
+      std::string gaussian_blur_shader_source = Resources::lookup_shader(gaussian_blur_shader_file);
       std::string accumulate_squared_diff_shader_source = Resources::lookup_shader(accumulate_squared_diff_shader_file);
   #endif
 
@@ -123,6 +126,30 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
   );
 
   scm::gl::texture_image_ptr squared_diff_buffer(
+    ctx.render_device->create_texture_2d(
+      ctx.render_window->config.get_resolution(),
+      scm::gl::FORMAT_R_32F, 1
+    )
+  );
+
+  scm::gl::shader_ptr gaussian_blur_compute_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, gaussian_blur_shader_source)
+  );
+
+  scm::gl::program_ptr gaussian_blur_compute_shader_program(
+    ctx.render_device->create_program({
+      gaussian_blur_compute_stage
+    })
+  );
+
+  scm::gl::texture_image_ptr blurred_color_buffer(
+    ctx.render_device->create_texture_2d(
+      ctx.render_window->config.get_resolution(),
+      scm::gl::FORMAT_R_32F, 1
+    )
+  );
+
+  scm::gl::texture_image_ptr blurred_photo(
     ctx.render_device->create_texture_2d(
       ctx.render_window->config.get_resolution(),
       scm::gl::FORMAT_R_32F, 1
@@ -185,11 +212,17 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
   auto clipping_pass_target(ctx.render_device->create_frame_buffer());
   clipping_pass_target->attach_color_buffer(0, clipped_color_buffer->get_buffer(ctx),0,0);
 
+
+  int* display_state(new int(0));
+  int* frame_count(new int(0));
+
   pass.process_ = [debug_shader_program, clipping_shader_program,
                    squared_diff_compute_shader_program, squared_diff_buffer,
+                   gaussian_blur_compute_shader_program, blurred_color_buffer, blurred_photo,
                    accumulate_squared_diff_compute_shader_program, accumulate_buffers,
                    depth_stencil_state, invocations_x, invocations_y,
-                   clipped_color_buffer, clipping_pass_target, sampler_state](
+                   clipped_color_buffer, clipping_pass_target, sampler_state,
+                   display_state, frame_count](
       PipelinePass &, PipelinePassDescription const& desc, Pipeline & pipe) {
 
     auto gbuffer(dynamic_cast<GBuffer*>(pipe.current_viewstate().target));
@@ -206,49 +239,17 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
         scm::gl::context_all_guard guard(ctx.render_context);
 
-        ////////////// CLIPPING PASS ////////////////
 
-        ctx.render_context->set_frame_buffer(clipping_pass_target);
-        ctx.render_context->set_viewport(
-          scm::gl::viewport(scm::math::vec2f(0, 0),
-                            scm::math::vec2f(ctx.render_window->config.get_resolution())));
+        ////////////// INITIAL RETRIEVAL ////////////////
 
-        ctx.render_context->set_depth_stencil_state(depth_stencil_state, 1);
-        ctx.render_context->bind_program(clipping_shader_program);
-
-        // private uniforms
-        clipping_shader_program->uniform("color_buffer", color_buffer->get_handle(ctx));
-        clipping_shader_program->uniform("position_buffer", position_buffer->get_handle(ctx));
-        clipping_shader_program->uniform("depth_buffer", depth_buffer->get_handle(ctx));
-
-        // user specified uniforms
-        for (auto const& u : desc.uniforms) {
-          u.second.apply(ctx, u.first, clipping_shader_program, 0);
-        }
-
-        ctx.render_context->apply();
-
-        pipe.draw_quad();
-
-        ctx.render_context->reset_framebuffer();
-
-        ////////////// SQUARED DIFF PASS ////////////////
-
-        ctx.render_context->bind_program(squared_diff_compute_shader_program);
-
-        // bind target buffer
-        ctx.render_context->bind_image(squared_diff_buffer, scm::gl::FORMAT_R_32F,
-                                       scm::gl::ACCESS_READ_WRITE,
-                                       0);
-        squared_diff_compute_shader_program->uniform_image("squared_diff_buffer", 0);
-
-        // retrieve current photo
+        // retrieve closest frustum
         auto camera_pos(math::get_translation(pipe.current_viewstate().camera.transform));
         auto closest_frustum(texstr::FrustumManagement::instance()->get_closest_frustum(
           scm::math::vec3d(camera_pos.x, camera_pos.y, camera_pos.z),
           scm::math::vec3d(1.0, 0.0, 1.0)
         ));
 
+        // retrieve current photo
         std::shared_ptr<texstr::Texture> photo(nullptr);
 
         if (closest_frustum) {
@@ -257,81 +258,175 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
           );
         }
 
-        // set uniforms
-        squared_diff_compute_shader_program->uniform("color_buffer", clipped_color_buffer->get_handle(ctx));
-        squared_diff_compute_shader_program->uniform("photo", photo->get_handle());
+        if (photo) {
 
+          ////////////// CLIPPING PASS ////////////////
 
-        ctx.render_context->apply();
+          ctx.render_context->set_frame_buffer(clipping_pass_target);
+          ctx.render_context->set_viewport(
+            scm::gl::viewport(scm::math::vec2f(0, 0),
+                              scm::math::vec2f(ctx.render_window->config.get_resolution())));
 
-        ctx.render_context->dispatch_compute(
-          scm::math::vec3ui(invocations_x, invocations_y, 1u)
-        );
+          ctx.render_context->set_depth_stencil_state(depth_stencil_state, 1);
+          ctx.render_context->bind_program(clipping_shader_program);
 
-        ////////////// ACCUMULATION PASS ////////////////
+          // private uniforms
+          clipping_shader_program->uniform("color_buffer", color_buffer->get_handle(ctx));
+          clipping_shader_program->uniform("position_buffer", position_buffer->get_handle(ctx));
+          clipping_shader_program->uniform("depth_buffer", depth_buffer->get_handle(ctx));
 
-        ctx.render_context->bind_program(accumulate_squared_diff_compute_shader_program);
-
-        for (unsigned level(0); level < accumulate_buffers.size(); ++level) {
-        // for (unsigned level(0); level < 1; ++level) {
-
-          // bind target buffer
-          ctx.render_context->bind_image(accumulate_buffers[level],
-                                         scm::gl::FORMAT_R_32F,
-                                         scm::gl::ACCESS_READ_WRITE,
-                                         0);
-          accumulate_squared_diff_compute_shader_program->uniform_image("accumulate_buffer", 0);
-
-          // set uniforms
-          if (level == 0) {
-            ctx.render_context->bind_texture(squared_diff_buffer, sampler_state, 0u);
-          } else {
-            ctx.render_context->bind_texture(accumulate_buffers[level - 1], sampler_state, 0u);
+          // user specified uniforms
+          for (auto const& u : desc.uniforms) {
+            u.second.apply(ctx, u.first, clipping_shader_program, 0);
           }
-
-          accumulate_squared_diff_compute_shader_program->uniform_sampler("input_buffer", 0);
 
           ctx.render_context->apply();
 
-          auto level_resolution(scm::gl::util::mip_level_dimensions(ctx.render_window->config.get_resolution(), level + 1));
+          pipe.draw_quad();
+
+          ctx.render_context->reset_framebuffer();
+
+          ////////////// BLUR PASS ////////////////
+
+          ctx.render_context->bind_program(gaussian_blur_compute_shader_program);
+          gaussian_blur_compute_shader_program->uniform("input_mask", clipped_color_buffer->get_handle(ctx));
+
+          // blur color buffer
+          ctx.render_context->bind_image(blurred_color_buffer, scm::gl::FORMAT_R_32F,
+                                         scm::gl::ACCESS_READ_WRITE,
+                                         0);
+          gaussian_blur_compute_shader_program->uniform_image("target_blurred_buffer", 0);
+
+          // set uniforms
+          gaussian_blur_compute_shader_program->uniform("input_buffer", clipped_color_buffer->get_handle(ctx));
+
+          ctx.render_context->apply();
 
           ctx.render_context->dispatch_compute(
-            scm::math::vec3ui(level_resolution.x, level_resolution.y, 1u)
+            scm::math::vec3ui(invocations_x, invocations_y, 1u)
           );
+
+
+          // blur image
+          ctx.render_context->bind_image(blurred_photo, scm::gl::FORMAT_R_32F,
+                                         scm::gl::ACCESS_READ_WRITE,
+                                         0);
+          gaussian_blur_compute_shader_program->uniform_image("target_blurred_buffer", 0);
+
+          // set uniforms
+          gaussian_blur_compute_shader_program->uniform("input_buffer", photo->get_handle());
+
+          ctx.render_context->apply();
+
+          ctx.render_context->dispatch_compute(
+            scm::math::vec3ui(invocations_x, invocations_y, 1u)
+          );
+
+          ////////////// SQUARED DIFF PASS ////////////////
+
+          ctx.render_context->bind_program(squared_diff_compute_shader_program);
+
+          // bind target buffer
+          ctx.render_context->bind_image(squared_diff_buffer, scm::gl::FORMAT_R_32F,
+                                         scm::gl::ACCESS_READ_WRITE,
+                                         0);
+          squared_diff_compute_shader_program->uniform_image("squared_diff_buffer", 0);
+
+          // set uniforms
+          squared_diff_compute_shader_program->uniform("color_buffer", clipped_color_buffer->get_handle(ctx));
+          squared_diff_compute_shader_program->uniform("photo", photo->get_handle());
+
+
+          ctx.render_context->apply();
+
+          ctx.render_context->dispatch_compute(
+            scm::math::vec3ui(invocations_x, invocations_y, 1u)
+          );
+
+          ////////////// ACCUMULATION PASS ////////////////
+
+          ctx.render_context->bind_program(accumulate_squared_diff_compute_shader_program);
+
+          for (unsigned level(0); level < accumulate_buffers.size(); ++level) {
+
+            // bind target buffer
+            ctx.render_context->bind_image(accumulate_buffers[level],
+                                           scm::gl::FORMAT_R_32F,
+                                           scm::gl::ACCESS_READ_WRITE,
+                                           0);
+            accumulate_squared_diff_compute_shader_program->uniform_image("accumulate_buffer", 0);
+
+            // set uniforms
+            auto input_buffer_res(ctx.render_window->config.get_resolution());
+            if (level == 0) {
+              ctx.render_context->bind_texture(squared_diff_buffer, sampler_state, 0u);
+            } else {
+              ctx.render_context->bind_texture(accumulate_buffers[level - 1], sampler_state, 0u);
+
+              input_buffer_res = scm::gl::util::mip_level_dimensions(ctx.render_window->config.get_resolution(), level);
+            }
+
+            accumulate_squared_diff_compute_shader_program->uniform_sampler("input_buffer", 0);
+            accumulate_squared_diff_compute_shader_program->uniform("input_buffer_res", input_buffer_res);
+
+            ctx.render_context->apply();
+
+            auto level_resolution(scm::gl::util::mip_level_dimensions(ctx.render_window->config.get_resolution(), level + 1));
+
+            ctx.render_context->dispatch_compute(
+              scm::math::vec3ui(level_resolution.x, level_resolution.y, 1u)
+            );
+          }
+
+          ////////////// RETRIEVE RESULT ////////////////
+
+          // scm::float32 texture_data[invocations_x * invocations_y];
+          scm::float32 texture_data[1];
+
+          // TODO: call glsynch!
+
+          ctx.render_context->retrieve_texture_data(accumulate_buffers[accumulate_buffers.size()-1], 0, texture_data);
+
+          // for (int i(0); i < invocations_x * invocations_y; ++i) {
+          //   std::cout << texture_data[i] << std::endl;
+          // }
+
+          // std::cout << texture_data[0] << std::endl;
+
+          ////////////// DEBUG PASS ////////////////
+
+          gbuffer->bind(ctx, false);
+          gbuffer->set_viewport(ctx);
+
+          ctx.render_context->bind_program(debug_shader_program);
+
+          // ctx.render_context->bind_texture(accumulate_buffers[accumulate_buffers.size()-1], sampler_state, 0u);
+          // ctx.render_context->bind_texture(accumulate_buffers[*display_state], sampler_state, 0u);
+
+          // ctx.render_context->bind_texture(squared_diff_buffer, sampler_state, 0u);
+
+          if (*display_state == 0) {
+            std::cout << "blurred" << std::endl;
+            ctx.render_context->bind_texture(blurred_photo, sampler_state, 0u);
+          } else {
+            std::cout << "normal" << std::endl;
+            ctx.render_context->bind_texture(squared_diff_buffer, sampler_state, 0u);
+          }
+
+          debug_shader_program->uniform_sampler("input_buffer", 0);
+
+          if (++(*frame_count) == 20) {
+            *frame_count = 0;
+            // *display_state = ((*display_state) + 1) % accumulate_buffers.size();
+            *display_state = ((*display_state) + 1) % 2;
+          }
+
+          ctx.render_context->apply();
+
+          pipe.draw_quad();
+
+          gbuffer->unbind(ctx);
         }
-
-        ////////////// RETRIEVE RESULT ////////////////
-
-        scm::float32 texture_data[invocations_x * invocations_y];
-
-        // TODO: call glsynch!
-
-        // ctx.render_context->retrieve_texture_data(squared_diff_buffer, 0, texture_data);
-
-        // for (int i(0); i < invocations_x * invocations_y; ++i) {
-        //   std::cout << texture_data[i] << std::endl;
-        // }
-        // std::cout << texture_data[0] << std::endl;
-
-
-        ////////////// DEBUG PASS ////////////////
-
-        gbuffer->bind(ctx, false);
-        gbuffer->set_viewport(ctx);
-
-        ctx.render_context->bind_program(debug_shader_program);
-
-        ctx.render_context->bind_texture(accumulate_buffers[accumulate_buffers.size()-1], sampler_state, 0u);
-        debug_shader_program->uniform_sampler("input_buffer", 0);
-
-        ctx.render_context->apply();
-
-        pipe.draw_quad();
-
-        gbuffer->unbind(ctx);
-
-        // restore gbuffer configuration
-        // gbuffer->toggle_ping_pong();
       }
     }
 

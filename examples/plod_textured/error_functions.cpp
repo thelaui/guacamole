@@ -15,21 +15,22 @@ float intensity_znssd(cv::Mat const& photo, cv::Mat const& screen_shot_in) {
   cv::Mat masked_photo;
   photo.copyTo(masked_photo, mask);
   masked_photo.convertTo(masked_photo, CV_8UC1);
-  cv::equalizeHist(masked_photo, masked_photo);
+  // cv::equalizeHist(masked_photo, masked_photo);
 
   screen_shot.convertTo(screen_shot, CV_32FC1, 1.0/255.0);
   masked_photo.convertTo(masked_photo, CV_32FC1, 1.0/255.0);
 
   // calculate zero-mean normalized sum of squared differences
 
-  screen_shot = screen_shot - cv::mean(screen_shot);
-  masked_photo = masked_photo - cv::mean(masked_photo);
+  // screen_shot = screen_shot - cv::mean(screen_shot);
+  // masked_photo = masked_photo - cv::mean(masked_photo);
 
   cv::Mat diff;
   cv::subtract(screen_shot, masked_photo, diff);
   cv::multiply(diff, diff, diff);
 
-  double total_error = cv::sum(diff)[0] / (screen_shot.size().width * screen_shot.size().height);
+
+  double total_error = cv::sum(diff)[0]; // / (screen_shot.size().width * screen_shot.size().height);
   // std::cout << "Time: " << timer.get_elapsed() << std::endl;
   return total_error;
 }

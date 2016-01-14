@@ -29,19 +29,25 @@ uniform uvec2 photo;
 
 void main() {
   ivec2 store_pos = ivec2(gl_GlobalInvocationID.xy);
-  vec4 rendered_color = texelFetch(sampler2D(color_buffer), store_pos, 0);
-  vec4 photo_color = texelFetch(sampler2D(photo), store_pos * 2, 0);
+  vec2 resolution = gl_NumWorkGroups.xy;
 
-  float rendered_average = (rendered_color.r + rendered_color.g + rendered_color.b)/3.0;
-  float photo_average = (photo_color.r + photo_color.g + photo_color.b)/3.0;
+  if (photo != uvec2(0) && color_buffer != uvec2(0)) {
 
-  vec4 out_color = vec4(rendered_average);
+    vec4 rendered_color = texelFetch(sampler2D(color_buffer), store_pos, 0);
+    vec4 photo_color = texture(sampler2D(photo), store_pos / (1.0 * resolution));
 
-  if (rendered_average != 0.0) {
-    float squared_diff = pow(rendered_average - photo_average, 2);
-    out_color = vec4(squared_diff);
+    float rendered_average = (rendered_color.r + rendered_color.g + rendered_color.b)/3.0;
+    float photo_average = (photo_color.r + photo_color.g + photo_color.b)/3.0;
+
+    vec4 out_color = vec4(photo_average);
+
+    // if (rendered_average != 0.0) {
+    //   float squared_diff = pow(rendered_average - photo_average, 2);
+    //   out_color = vec4(squared_diff);
+    // }
+
+
+    imageStore(squared_diff_buffer, store_pos, out_color);
   }
-
-  imageStore(squared_diff_buffer, store_pos, out_color);
 }
 
