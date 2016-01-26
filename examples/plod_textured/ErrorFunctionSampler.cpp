@@ -32,8 +32,13 @@ void ErrorFunctionSampler::sample_dimension(int dimension, double min, double ma
     auto current_difference(current_translation * current_rotation);
     auto current_transform(initial_transform * current_difference);
 
-    screen_shot = retrieve_screen_shot(current_transform);
-    auto current_error(error_function(current_photo_, screen_shot));
+    double current_error(0.0);
+    if (use_cv_error_function) {
+      screen_shot = retrieve_screen_shot(current_transform);
+      current_error = cv_error_function(current_photo_, screen_shot);
+    } else {
+      current_error = generic_error_function(current_transform);
+    }
     std::cout << step_value << " " << current_error << std::endl;
     // auto translation(gua::math::get_translation(current_transform));
     // std::cout << translation << std::endl;

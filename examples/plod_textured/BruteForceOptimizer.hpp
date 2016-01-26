@@ -25,11 +25,16 @@ class BruteForceOptimizer {
     std::function<cv::Mat(scm::math::mat4d const&)> retrieve_screen_shot =
                                 [](scm::math::mat4d const&){return cv::Mat();};
 
+    bool use_cv_error_function = false;
+
     // the error function has to compute an error based on two images
     // the cv::Mat passed as first argument is a photographic grayscale image,
     // the second is a grayscale screen shot
-    std::function<double(cv::Mat const&, cv::Mat const&)> error_function =
+    std::function<double(cv::Mat const&, cv::Mat const&)> cv_error_function =
                                 [](cv::Mat const&, cv::Mat const&){return 0.0;};
+
+    std::function<double(scm::math::mat4d const&)> generic_error_function =
+                                [](scm::math::mat4d const&){return 0.0;};
 
     void run(scm::math::mat4d& optimal_transform,
              scm::math::mat4d& optimal_difference);

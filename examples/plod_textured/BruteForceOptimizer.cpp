@@ -44,8 +44,14 @@ void BruteForceOptimizer::run(scm::math::mat4d& optimal_transform, scm::math::ma
               // auto current_transform(initial_transform *
               //                        current_y_rot * current_x_rot * current_z_rot);
 
-              screen_shot = retrieve_screen_shot(current_transform);
-              auto current_error(error_function(current_photo_, screen_shot));
+              double current_error(0.0);
+              if (use_cv_error_function) {
+                screen_shot = retrieve_screen_shot(current_transform);
+                current_error = cv_error_function(current_photo_, screen_shot);
+              } else {
+                current_error = generic_error_function(current_transform);
+              }
+
               // ofstr << rot_y << " " << rot_z << " " << current_error << std::endl;
               if (current_error < lowest_error) {
                 lowest_error = current_error;

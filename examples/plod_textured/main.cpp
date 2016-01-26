@@ -417,13 +417,16 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   pipe->add_pass(plod_pass);
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
-  pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
+
+  auto resolve_pass(std::make_shared<gua::ResolvePassDescription>());
+  resolve_pass->background_color(gua::utils::Color3f(0.f, 0.f, 0.f));
+  pipe->add_pass(resolve_pass);
 
   if (optimization_enabled) {
     pipe->add_pass(image_error_pass);
   }
 
-  // pipe->add_pass(texturing_pass);
+  pipe->add_pass(texturing_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
   // pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
@@ -897,20 +900,37 @@ int main(int argc, char** argv) {
         return screen_shot;
       };
 
+      auto intensity_znssd_gpu = [&](scm::math::mat4d const& new_transform) {
+        camera->set_transform(new_transform);
+        renderer.draw_single_threaded({&graph});
+
+        auto error_feedback(gua::PipelinePassFeedbackDatabase::instance()->lookup("ComputeImageErrorPass"));
+        if (error_feedback) {
+          auto casted(std::dynamic_pointer_cast<gua::ComputeImageErrorPassFeedback>(error_feedback));
+
+          return double(casted->image_error);
+        }
+
+        return 0.0;
+      };
+
       steepest_descent_optimizer.retrieve_photo = retrieve_photo;
       steepest_descent_optimizer.retrieve_screen_shot = retrieve_screen_shot;
-      steepest_descent_optimizer.error_function = intensity_znssd;
-      // steepest_descent_optimizer.error_function = blurred_gradient_znssd;
+      steepest_descent_optimizer.cv_error_function = intensity_znssd;
+      // steepest_descent_optimizer.cv_error_function = blurred_gradient_znssd;
+      steepest_descent_optimizer.generic_error_function = intensity_znssd_gpu;
 
       brute_force_optimizer.retrieve_photo = retrieve_photo;
       brute_force_optimizer.retrieve_screen_shot = retrieve_screen_shot;
-      brute_force_optimizer.error_function = intensity_znssd;
-      // brute_force_optimizer.error_function = blurred_gradient_znssd;
+      brute_force_optimizer.cv_error_function = intensity_znssd;
+      // brute_force_optimizer.cv_error_function = blurred_gradient_znssd;
+      brute_force_optimizer.generic_error_function = intensity_znssd_gpu;
 
       error_function_sampler.retrieve_photo = retrieve_photo;
       error_function_sampler.retrieve_screen_shot = retrieve_screen_shot;
-      error_function_sampler.error_function = intensity_znssd;
-      // error_function_sampler.error_function = blurred_gradient_znssd;
+      error_function_sampler.cv_error_function = intensity_znssd;
+      // error_function_sampler.cv_error_function = blurred_gradient_znssd;
+      error_function_sampler.generic_error_function = intensity_znssd_gpu;
 
 
       scm::math::mat4d optimal_transform(scm::math::mat4d::identity());
@@ -918,67 +938,67 @@ int main(int argc, char** argv) {
       // steepest_descent_optimizer.run(optimal_transform, optimal_difference);
       // brute_force_optimizer.run(optimal_transform, optimal_difference);
       // steepest_descent_optimizer.initial_transform = optimal_transform;
-      // steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
+      steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
       // error_function_sampler.initial_transform = optimal_transform;
-      error_function_sampler.sample_dimension(0, 0.0, 0.0, 0.01);
+      // error_function_sampler.sample_dimension(0, 0.0, 0.0, 0.01);
 
-      // for (int i(current_frustum); i < frusta.size(); ++i) {
-      //   auto new_cam_trans = scm::math::mat4d::identity();
-      //   // use optimized transform for current frustum and optimal difference for all subsequent others
-      //   if (i != current_frustum) {
-      //     auto new_transform = frusta[i].get_camera_transform() * scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0) * scm::math::mat4d(optimal_difference);
-      //     new_cam_trans = scm::math::mat4d(new_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
-      //   } else {
-      //     new_cam_trans = scm::math::mat4d(optimal_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
-      //   }
+      for (int i(current_frustum); i < frusta.size(); ++i) {
+        auto new_cam_trans = scm::math::mat4d::identity();
+        // use optimized transform for current frustum and optimal difference for all subsequent others
+        if (i != current_frustum) {
+          auto new_transform = frusta[i].get_camera_transform() * scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0) * scm::math::mat4d(optimal_difference);
+          new_cam_trans = scm::math::mat4d(new_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
+        } else {
+          new_cam_trans = scm::math::mat4d(optimal_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
+        }
 
-      //   auto orig_screen_trans = scm::math::inverse(frusta[i].get_camera_transform()) * frusta[i].get_screen_transform();
-      //   auto new_frustum = texstr::Frustum::perspective(
-      //     new_cam_trans,
-      //     new_cam_trans * orig_screen_trans,
-      //     frusta[i].get_clip_near(),
-      //     frusta[i].get_clip_far()
-      //   );
+        auto orig_screen_trans = scm::math::inverse(frusta[i].get_camera_transform()) * frusta[i].get_screen_transform();
+        auto new_frustum = texstr::Frustum::perspective(
+          new_cam_trans,
+          new_cam_trans * orig_screen_trans,
+          frusta[i].get_clip_near(),
+          frusta[i].get_clip_far()
+        );
 
-      //   new_frustum.set_homography(frusta[i].get_homography());
-      //   new_frustum.set_image_file_name(frusta[i].get_image_file_name());
-      //   new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
-      //   new_frustum.set_capture_time(frusta[i].get_capture_time());
+        new_frustum.set_homography(frusta[i].get_homography());
+        new_frustum.set_image_file_name(frusta[i].get_image_file_name());
+        new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
+        new_frustum.set_capture_time(frusta[i].get_capture_time());
 
-      //   frusta[i] = new_frustum;
+        frusta[i] = new_frustum;
 
-      //   // save to file
+        // save to file
 
-      //   boost::filesystem::path frustum_path(new_frustum.get_image_file_name());
-      //   std::string out_file_name(optimization_output_path + "/" +
-      //                             frustum_path.filename().string() + ".frustum");
+        boost::filesystem::path frustum_path(new_frustum.get_image_file_name());
+        std::string out_file_name(optimization_output_path + "/" +
+                                  frustum_path.filename().string() + ".frustum");
 
-      //   new_cam_trans = scm::math::inverse(offset_transform) * new_cam_trans;
-      //   new_frustum = texstr::Frustum::perspective(
-      //     new_cam_trans,
-      //     new_cam_trans * orig_screen_trans,
-      //     frusta[i].get_clip_near(),
-      //     frusta[i].get_clip_far()
-      //   );
+        new_cam_trans = scm::math::inverse(offset_transform) * new_cam_trans;
+        new_frustum = texstr::Frustum::perspective(
+          new_cam_trans,
+          new_cam_trans * orig_screen_trans,
+          frusta[i].get_clip_near(),
+          frusta[i].get_clip_far()
+        );
 
-      //   new_frustum.set_homography(frusta[i].get_homography());
-      //   new_frustum.set_image_file_name(frusta[i].get_image_file_name());
-      //   new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
-      //   new_frustum.set_capture_time(frusta[i].get_capture_time());
+        new_frustum.set_homography(frusta[i].get_homography());
+        new_frustum.set_image_file_name(frusta[i].get_image_file_name());
+        new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
+        new_frustum.set_capture_time(frusta[i].get_capture_time());
 
-      //   std::fstream ofstr(out_file_name, std::ios::out);
-      //   if (ofstr.good()) {
-      //     ofstr << texstr::FrustumFactory::to_string(new_frustum) << std::endl;
+        std::fstream ofstr(out_file_name, std::ios::out);
+        if (ofstr.good()) {
+          ofstr << texstr::FrustumFactory::to_string(new_frustum) << std::endl;
 
-      //   } else {
-      //     std::cout << "Could not open output file " +  out_file_name + "!" << std::endl;
-      //   }
-      //   ofstr.close();
-      // }
+        } else {
+          std::cout << "Could not open output file " +  out_file_name + "!" << std::endl;
+        }
+        ofstr.close();
+      }
 
-      // // register new frusta
-      // texstr::FrustumManagement::instance()->reset();
-      // texstr::FrustumManagement::instance()->register_frusta(frusta);
+      // register new frusta
+      texstr::FrustumManagement::instance()->reset();
+      texstr::FrustumManagement::instance()->register_frusta(frusta);
     }
 
 

@@ -104,7 +104,7 @@ void SteepestDescentOptimizer::run_round_robin(
       double gradient(get_gradient_for_dimension(current_transform, dimension));
       std::cout << "Gradient for " << dimension_names[dimension] << ": " << gradient << std::endl;
 
-      if (std::abs(gradient) <= 0.001) {
+      if (std::abs(gradient) <= 0.00001) {
         ++optimal_dimension_count;
         std::cout << "Found optimum for " << dimension_names[dimension] << "." << std::endl;
       } else {
@@ -238,12 +238,19 @@ double SteepestDescentOptimizer::get_gradient_for_dimension(
     lookup_distance = 2 * rotation_offset;
   }
 
-  cv::Mat screen_shot;
-  screen_shot = retrieve_screen_shot(central_transform * offset_mat_left);
-  left_error = error_function(current_photo_, screen_shot);
-  screen_shot = retrieve_screen_shot(central_transform * offset_mat_right);
-  right_error = error_function(current_photo_, screen_shot);
+  if (use_cv_error_function) {
+    cv::Mat screen_shot;
+    screen_shot = retrieve_screen_shot(central_transform * offset_mat_left);
+    left_error = cv_error_function(current_photo_, screen_shot);
+    screen_shot = retrieve_screen_shot(central_transform * offset_mat_right);
+    right_error = cv_error_function(current_photo_, screen_shot);
+  } else {
+    left_error = generic_error_function(central_transform * offset_mat_left);
+    right_error = generic_error_function(central_transform * offset_mat_right);
+  }
 
+  std::cout << "right_error " << right_error << std::endl;
+  std::cout << "left_error " << left_error << std::endl;
   gradient = (right_error - left_error) / lookup_distance;
 
   return gradient;
@@ -266,8 +273,14 @@ void SteepestDescentOptimizer::update_step_length(
   auto current_transform(central_transform);
 
   // phi(0)
-  cv::Mat screen_shot(retrieve_screen_shot(central_transform));
-  auto central_error(error_function(current_photo_, screen_shot));
+  double central_error(0.0);
+  cv::Mat screen_shot;
+  if (use_cv_error_function) {
+    screen_shot = retrieve_screen_shot(central_transform);
+    central_error = cv_error_function(current_photo_, screen_shot);
+  } else {
+    central_error = generic_error_function(central_transform);
+  }
 
   texstr::StringUtils::set_high_precision(std::cout);
 
@@ -302,8 +315,14 @@ void SteepestDescentOptimizer::update_step_length(
     current_transform = central_transform * new_translation * new_rot_z *  new_rot_x *  new_rot_y;
 
     // phi(t_k)
-    screen_shot = retrieve_screen_shot(current_transform);
-    auto current_error(error_function(current_photo_, screen_shot));
+    double current_error(0.0);
+
+    if (use_cv_error_function) {
+      screen_shot = retrieve_screen_shot(current_transform);
+      current_error = cv_error_function(current_photo_, screen_shot);
+    } else {
+      current_error = generic_error_function(current_transform);
+    }
 
     // std::cout << "phi_derivative: " << phi_derivative << std::endl;
     // std::cout << "central_error: " << central_error << std::endl;
@@ -347,8 +366,14 @@ void SteepestDescentOptimizer::update_step_length_for_dimension(
   auto current_transform(central_transform);
 
   // phi(0)
-  cv::Mat screen_shot(retrieve_screen_shot(central_transform));
-  auto central_error(error_function(current_photo_, screen_shot));
+  double central_error(0.0);
+  cv::Mat screen_shot;
+  screen_shot = retrieve_screen_shot(central_transform);
+  if (use_cv_error_function) {
+    central_error = cv_error_function(current_photo_, screen_shot);
+  } else {
+    central_error = generic_error_function(central_transform);
+  }
 
   texstr::StringUtils::set_high_precision(std::cout);
 
@@ -377,8 +402,14 @@ void SteepestDescentOptimizer::update_step_length_for_dimension(
     current_transform = central_transform * new_translation * new_rotation;
 
     // phi(t_k)
+    double current_error(0.0);
+
     screen_shot = retrieve_screen_shot(current_transform);
-    auto current_error(error_function(current_photo_, screen_shot));
+    if (use_cv_error_function) {
+      current_error = cv_error_function(current_photo_, screen_shot);
+    } else {
+      current_error = generic_error_function(current_transform);
+    }
 
     cv::absdiff(screen_shot, screen_shot_bak, screen_shot_bak);
     auto screen_shot_error(cv::sum(screen_shot_bak)[0]);

@@ -30,6 +30,13 @@ namespace gua {
 
 class Pipeline;
 
+struct GUA_DLL ComputeImageErrorPassFeedback : public PipelinePassFeedback {
+
+  ComputeImageErrorPassFeedback(float error) : image_error(error) {};
+
+  float image_error = 0.f;
+};
+
 class GUA_DLL ComputeImageErrorPassDescription : public PipelinePassDescription {
  public:
   ComputeImageErrorPassDescription();

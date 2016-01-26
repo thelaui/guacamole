@@ -29,5 +29,6 @@
 #include <gua/databases/TextureDatabase.hpp>
 #include <gua/databases/WindowDatabase.hpp>
 #include <gua/databases/Resources.hpp>
+#include <gua/databases/PipelinePassFeedbackDatabase.hpp>
 
 #endif  // GUA_INCLUDE_DATABASES_HPP

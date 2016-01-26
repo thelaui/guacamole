@@ -26,7 +26,9 @@
 #include <gua/renderer/WindowBase.hpp>
 #include <gua/databases/TextureDatabase.hpp>
 #include <gua/databases/Resources.hpp>
+#include <gua/databases/PipelinePassFeedbackDatabase.hpp>
 #include <gua/utils/Logger.hpp>
+#include <gua/utils/Timer.hpp>
 
 #include <texture_stream/core/core.hpp>
 
@@ -75,12 +77,29 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
   PipelinePass pass(*this, ctx, substitution_map);
 
+
+  auto accumulate_buffer_levels(scm::gl::util::max_mip_levels(ctx.render_window->config.get_resolution()));
+
+  std::vector<scm::gl::texture_image_ptr> accumulate_buffers(accumulate_buffer_levels - 1);
+
+  for (unsigned level(0); level < accumulate_buffers.size(); ++level) {
+
+    auto level_resolution(scm::gl::util::mip_level_dimensions(ctx.render_window->config.get_resolution(), level + 1));
+
+    accumulate_buffers[level] = ctx.render_device->create_texture_2d(
+      level_resolution,
+      scm::gl::FORMAT_R_32F, 1
+    );
+  }
+
+
   std::string vertex_pass_trough_shader_file("resources/shaders/common/fullscreen_quad.vert");
   std::string debug_pass_trough_shader_file("resources/shaders/projective_texturing/debug_pass_through.frag");
   std::string clipping_shader_file("resources/shaders/projective_texturing/fragment_clip.frag");
   std::string squared_diff_shader_file("resources/shaders/projective_texturing/squared_diff.glsl");
   std::string gaussian_blur_shader_file("resources/shaders/projective_texturing/gaussian_blur.glsl");
-  std::string accumulate_squared_diff_shader_file("resources/shaders/projective_texturing/accumulate_squared_diff.glsl");
+  std::string mean_shader_file("resources/shaders/projective_texturing/mean.glsl");
+  std::string accumulate_shader_file("resources/shaders/projective_texturing/accumulate.glsl");
 
   #ifdef GUACAMOLE_RUNTIME_PROGRAM_COMPILATION
       ResourceFactory factory;
@@ -89,14 +108,16 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
       std::string clipping_shader_source = factory.read_shader_file(clipping_shader_file);
       std::string squared_diff_shader_source = factory.read_shader_file(squared_diff_shader_file);
       std::string gaussian_blur_shader_source = factory.read_shader_file(gaussian_blur_shader_file);
-      std::string accumulate_squared_diff_shader_source = factory.read_shader_file(accumulate_squared_diff_shader_file);
+      std::string mean_shader_source = factory.read_shader_file(mean_shader_file);
+      std::string accumulate_shader_source = factory.read_shader_file(accumulate_shader_file);
   #else
       std::string vertex_pass_through_shader_source = Resources::lookup_shader(vertex_pass_trough_shader_file);
       std::string debug_pass_through_shader_source = Resources::lookup_shader(debug_pass_trough_shader_file);
       std::string clipping_shader_source = Resources::lookup_shader(clipping_shader_file);
       std::string squared_diff_shader_source = Resources::lookup_shader(squared_diff_shader_file);
       std::string gaussian_blur_shader_source = Resources::lookup_shader(gaussian_blur_shader_file);
-      std::string accumulate_squared_diff_shader_source = Resources::lookup_shader(accumulate_squared_diff_shader_file);
+      std::string mean_shader_source = Resources::lookup_shader(mean_shader_file);
+      std::string accumulate_shader_source = Resources::lookup_shader(accumulate_shader_file);
   #endif
 
   scm::gl::shader_ptr vertex_pass_through_stage(
@@ -112,24 +133,6 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
       vertex_pass_through_stage,
       fragment_clipping_stage
     })
-  );
-
-
-  scm::gl::shader_ptr squared_diff_compute_stage(
-    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, squared_diff_shader_source)
-  );
-
-  scm::gl::program_ptr squared_diff_compute_shader_program(
-    ctx.render_device->create_program({
-      squared_diff_compute_stage
-    })
-  );
-
-  scm::gl::texture_image_ptr squared_diff_buffer(
-    ctx.render_device->create_texture_2d(
-      ctx.render_window->config.get_resolution(),
-      scm::gl::FORMAT_R_32F, 1
-    )
   );
 
   scm::gl::shader_ptr gaussian_blur_compute_stage(
@@ -156,31 +159,49 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
     )
   );
 
-
-  scm::gl::shader_ptr accumulate_squared_diff_compute_stage(
-    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, accumulate_squared_diff_shader_source)
+  scm::gl::shader_ptr mean_compute_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, mean_shader_source)
   );
 
-  scm::gl::program_ptr accumulate_squared_diff_compute_shader_program(
+  scm::gl::program_ptr mean_compute_shader_program(
     ctx.render_device->create_program({
-      accumulate_squared_diff_compute_stage
+      mean_compute_stage
     })
   );
 
-  auto accumulate_buffer_levels(scm::gl::util::max_mip_levels(ctx.render_window->config.get_resolution()));
-
-  std::vector<scm::gl::texture_image_ptr> accumulate_buffers(accumulate_buffer_levels - 1);
-
-  for (unsigned level(0); level < accumulate_buffers.size(); ++level) {
-
-    auto level_resolution(scm::gl::util::mip_level_dimensions(ctx.render_window->config.get_resolution(), level + 1));
-
-    accumulate_buffers[level] = ctx.render_device->create_texture_2d(
-      level_resolution,
+  scm::gl::texture_image_ptr mean_buffer(
+    ctx.render_device->create_texture_2d(
+      ctx.render_window->config.get_resolution(),
       scm::gl::FORMAT_R_32F, 1
-    );
-  }
+    )
+  );
 
+  scm::gl::shader_ptr squared_diff_compute_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, squared_diff_shader_source)
+  );
+
+  scm::gl::program_ptr squared_diff_compute_shader_program(
+    ctx.render_device->create_program({
+      squared_diff_compute_stage
+    })
+  );
+
+  scm::gl::texture_image_ptr squared_diff_buffer(
+    ctx.render_device->create_texture_2d(
+      ctx.render_window->config.get_resolution(),
+      scm::gl::FORMAT_R_32F, 1
+    )
+  );
+
+  scm::gl::shader_ptr accumulate_compute_stage(
+    ctx.render_device->create_shader(scm::gl::STAGE_COMPUTE_SHADER, accumulate_shader_source)
+  );
+
+  scm::gl::program_ptr accumulate_compute_shader_program(
+    ctx.render_device->create_program({
+      accumulate_compute_stage
+    })
+  );
 
   scm::gl::shader_ptr debug_pass_through_stage(
     ctx.render_device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, debug_pass_through_shader_source)
@@ -219,11 +240,15 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
   pass.process_ = [debug_shader_program, clipping_shader_program,
                    squared_diff_compute_shader_program, squared_diff_buffer,
                    gaussian_blur_compute_shader_program, blurred_color_buffer, blurred_photo,
-                   accumulate_squared_diff_compute_shader_program, accumulate_buffers,
+                   mean_compute_shader_program, mean_buffer,
+                   accumulate_compute_shader_program, accumulate_buffers,
                    depth_stencil_state, invocations_x, invocations_y,
                    clipped_color_buffer, clipping_pass_target, sampler_state,
                    display_state, frame_count](
       PipelinePass &, PipelinePassDescription const& desc, Pipeline & pipe) {
+
+    Timer timer;
+    timer.start();
 
     auto gbuffer(dynamic_cast<GBuffer*>(pipe.current_viewstate().target));
 
@@ -303,7 +328,7 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
           ctx.render_context->apply();
 
           ctx.render_context->dispatch_compute(
-            scm::math::vec3ui(invocations_x, invocations_y, 1u)
+            scm::math::vec3ui(invocations_x / 8, invocations_y / 8, 1u)
           );
 
 
@@ -319,8 +344,62 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
           ctx.render_context->apply();
 
           ctx.render_context->dispatch_compute(
-            scm::math::vec3ui(invocations_x, invocations_y, 1u)
+            scm::math::vec3ui(invocations_x / 8, invocations_y / 8, 1u)
           );
+
+          ////////////// MEAN PASS ////////////////
+
+          // ctx.render_context->bind_program(mean_compute_shader_program);
+
+          // // bind target buffer
+          // ctx.render_context->bind_image(mean_buffer, scm::gl::FORMAT_R_32F,
+          //                                scm::gl::ACCESS_READ_WRITE,
+          //                                0);
+          // mean_compute_shader_program->uniform_image("mean_buffer", 0);
+
+          // ctx.render_context->bind_texture(blurred_color_buffer, sampler_state, 1);
+
+          // // set uniforms
+          // mean_compute_shader_program->uniform_sampler("input_buffer", 1);
+
+          // ctx.render_context->apply();
+
+          // ctx.render_context->dispatch_compute(
+          //   scm::math::vec3ui(invocations_x, invocations_y, 1u)
+          // );
+
+          // ctx.render_context->bind_program(accumulate_compute_shader_program);
+
+          // for (unsigned level(0); level < accumulate_buffers.size(); ++level) {
+
+          //   // bind target buffer
+          //   ctx.render_context->bind_image(accumulate_buffers[level],
+          //                                  scm::gl::FORMAT_R_32F,
+          //                                  scm::gl::ACCESS_READ_WRITE,
+          //                                  0);
+          //   accumulate_compute_shader_program->uniform_image("accumulate_buffer", 0);
+
+          //   // set uniforms
+          //   auto input_buffer_res(ctx.render_window->config.get_resolution());
+          //   if (level == 0) {
+          //     ctx.render_context->bind_texture(mean_buffer, sampler_state, 0u);
+          //   } else {
+          //     ctx.render_context->bind_texture(accumulate_buffers[level - 1], sampler_state, 0u);
+
+          //     input_buffer_res = scm::gl::util::mip_level_dimensions(ctx.render_window->config.get_resolution(), level);
+          //   }
+
+          //   accumulate_compute_shader_program->uniform_sampler("input_buffer", 0);
+          //   accumulate_compute_shader_program->uniform("input_buffer_res", input_buffer_res);
+
+          //   ctx.render_context->apply();
+
+          //   auto level_resolution(scm::gl::util::mip_level_dimensions(ctx.render_window->config.get_resolution(), level + 1));
+
+          //   ctx.render_context->dispatch_compute(
+          //     scm::math::vec3ui(level_resolution.x, level_resolution.y, 1u)
+          //   );
+          // }
 
           ////////////// SQUARED DIFF PASS ////////////////
 
@@ -332,20 +411,26 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
                                          0);
           squared_diff_compute_shader_program->uniform_image("squared_diff_buffer", 0);
 
+          ctx.render_context->bind_texture(blurred_color_buffer, sampler_state, 1);
+          ctx.render_context->bind_texture(blurred_photo, sampler_state, 2);
+
           // set uniforms
-          squared_diff_compute_shader_program->uniform("color_buffer", clipped_color_buffer->get_handle(ctx));
-          squared_diff_compute_shader_program->uniform("photo", photo->get_handle());
+          // squared_diff_compute_shader_program->uniform("color_buffer", clipped_color_buffer->get_handle(ctx));
+          // squared_diff_compute_shader_program->uniform("photo", photo->get_handle());
+
+          squared_diff_compute_shader_program->uniform_sampler("color_buffer", 1);
+          squared_diff_compute_shader_program->uniform_sampler("photo", 2);
 
 
           ctx.render_context->apply();
 
           ctx.render_context->dispatch_compute(
-            scm::math::vec3ui(invocations_x, invocations_y, 1u)
+            scm::math::vec3ui(invocations_x / 8, invocations_y / 8, 1u)
           );
 
           ////////////// ACCUMULATION PASS ////////////////
 
-          ctx.render_context->bind_program(accumulate_squared_diff_compute_shader_program);
+          ctx.render_context->bind_program(accumulate_compute_shader_program);
 
           for (unsigned level(0); level < accumulate_buffers.size(); ++level) {
 
@@ -354,7 +439,7 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
                                            scm::gl::FORMAT_R_32F,
                                            scm::gl::ACCESS_READ_WRITE,
                                            0);
-            accumulate_squared_diff_compute_shader_program->uniform_image("accumulate_buffer", 0);
+            accumulate_compute_shader_program->uniform_image("accumulate_buffer", 0);
 
             // set uniforms
             auto input_buffer_res(ctx.render_window->config.get_resolution());
@@ -366,8 +451,8 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
               input_buffer_res = scm::gl::util::mip_level_dimensions(ctx.render_window->config.get_resolution(), level);
             }
 
-            accumulate_squared_diff_compute_shader_program->uniform_sampler("input_buffer", 0);
-            accumulate_squared_diff_compute_shader_program->uniform("input_buffer_res", input_buffer_res);
+            accumulate_compute_shader_program->uniform_sampler("input_buffer", 0);
+            accumulate_compute_shader_program->uniform("input_buffer_res", input_buffer_res);
 
             ctx.render_context->apply();
 
@@ -380,10 +465,9 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
 
           ////////////// RETRIEVE RESULT ////////////////
 
-          // scm::float32 texture_data[invocations_x * invocations_y];
           scm::float32 texture_data[1];
 
-          // TODO: call glsynch!
+          ctx.render_context->sync();
 
           ctx.render_context->retrieve_texture_data(accumulate_buffers[accumulate_buffers.size()-1], 0, texture_data);
 
@@ -391,46 +475,51 @@ PipelinePass ComputeImageErrorPassDescription::make_pass(RenderContext const& ct
           //   std::cout << texture_data[i] << std::endl;
           // }
 
-          // std::cout << texture_data[0] << std::endl;
+          auto error_value(texture_data[0]);
+          error_value /= float(ctx.render_window->config.get_resolution().x * ctx.render_window->config.get_resolution().y);
+          PipelinePassFeedbackDatabase::instance()->add("ComputeImageErrorPass", std::make_shared<ComputeImageErrorPassFeedback>(error_value));
+
+          // std::cout << "error_value " << error_value << std::endl;
 
           ////////////// DEBUG PASS ////////////////
 
-          gbuffer->bind(ctx, false);
-          gbuffer->set_viewport(ctx);
+          // gbuffer->bind(ctx, false);
+          // gbuffer->set_viewport(ctx);
 
-          ctx.render_context->bind_program(debug_shader_program);
+          // ctx.render_context->bind_program(debug_shader_program);
 
-          // ctx.render_context->bind_texture(accumulate_buffers[accumulate_buffers.size()-1], sampler_state, 0u);
+          // // ctx.render_context->bind_texture(accumulate_buffers[accumulate_buffers.size()-1], sampler_state, 0u);
           // ctx.render_context->bind_texture(accumulate_buffers[*display_state], sampler_state, 0u);
 
-          // ctx.render_context->bind_texture(squared_diff_buffer, sampler_state, 0u);
+          // // ctx.render_context->bind_texture(squared_diff_buffer, sampler_state, 0u);
+          // // ctx.render_context->bind_texture(blurred_photo, sampler_state, 0u);
 
-          if (*display_state == 0) {
-            std::cout << "blurred" << std::endl;
-            ctx.render_context->bind_texture(blurred_photo, sampler_state, 0u);
-          } else {
-            std::cout << "normal" << std::endl;
-            ctx.render_context->bind_texture(squared_diff_buffer, sampler_state, 0u);
-          }
+          // // if (*display_state == 0) {
+          // //   std::cout << "blurred" << std::endl;
+          // //   ctx.render_context->bind_texture(blurred_photo, sampler_state, 0u);
+          // // } else {
+          // //   std::cout << "normal" << std::endl;
+          // //   ctx.render_context->bind_texture(squared_diff_buffer, sampler_state, 0u);
+          // // }
 
-          debug_shader_program->uniform_sampler("input_buffer", 0);
+          // debug_shader_program->uniform_sampler("input_buffer", 0);
 
-          if (++(*frame_count) == 20) {
-            *frame_count = 0;
-            // *display_state = ((*display_state) + 1) % accumulate_buffers.size();
-            *display_state = ((*display_state) + 1) % 2;
-          }
+          // if (++(*frame_count) == 20) {
+          //   *frame_count = 0;
+          //   *display_state = ((*display_state) + 1) % accumulate_buffers.size();
+          //   // *display_state = ((*display_state) + 1) % 2;
+          // }
 
-          ctx.render_context->apply();
+          // ctx.render_context->apply();
 
-          pipe.draw_quad();
+          // pipe.draw_quad();
 
-          gbuffer->unbind(ctx);
+          // gbuffer->unbind(ctx);
         }
       }
     }
 
-
+    // std::cout << timer.get_elapsed() << std::endl;
   };
 
   return pass;

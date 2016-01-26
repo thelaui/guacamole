@@ -36,7 +36,7 @@ enum class RenderMode {
 };
 
 // base class for storing feedback in PipelinePassFeedbackDatabase
-class GUA_DLL PipelinePassFeedback {
+struct GUA_DLL PipelinePassFeedback {
   public:
     virtual ~PipelinePassFeedback() {}
 };

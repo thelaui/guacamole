@@ -22,7 +22,7 @@
 @include "shaders/common/header.glsl"
 
 layout(r32f) uniform writeonly image2D target_blurred_buffer;
-layout(local_size_x = 1, local_size_y = 1) in;
+layout(local_size_x = 8, local_size_y = 8) in;
 
 #define KERNEL_SIZE 5
 
@@ -53,7 +53,7 @@ uniform uvec2 input_mask;
 
 void main() {
   ivec2 store_pos = ivec2(gl_GlobalInvocationID.xy);
-  vec2 resolution = gl_NumWorkGroups.xy;
+  vec2 resolution = gl_NumWorkGroups.xy * gl_WorkGroupSize.xy;
 
   float mask_value = texture(sampler2D(input_mask), store_pos / resolution, 0).r;
 
