@@ -104,9 +104,9 @@ hr {
 }
 
 #settings-bottom {
-    position: absolute;
-    width: 100%;
-    bottom:0;
+  position: absolute;
+  width: 100%;
+  bottom:0;
 }
 
 #settings-bottom .settings-bottom-content {
@@ -118,6 +118,12 @@ hr {
   width: 1200px;
   text-align: center;
   border-radius: 10px 10px 0 0;
+}
+
+#settings-top {
+  position: absolute;
+  width: 100%;
+  background: rgba(40, 40, 40, 0.7);
 }
 
 

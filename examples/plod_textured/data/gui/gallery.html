@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-theme.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-slider.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap.colorpickersliders.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-select.min.css">
+    <link rel="stylesheet" type="text/css" href="third_party/css/jquery-ui-1.10.0.custom.css"/>
+    <link rel="stylesheet" type="text/css" href="third_party/css/swiper.min.css"/>
+    <link href="gui.css" rel="stylesheet">
+    <link href="gallery.css" rel="stylesheet">
+
+    <script type="text/javascript" src="third_party/js/jquery-1.10.2.js"></script>
+    <script type="text/javascript" src="third_party/js/jquery-ui-1.10.4.min.js"></script>
+    <script type="text/javascript" src="third_party/js/tinycolor.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap-slider.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap.colorpickersliders.min.js"></script>
+    <script type="text/javascript" src="third_party/js/bootstrap-select.min.js"></script>
+    <script type="text/javascript" src="third_party/js/swiper.min.js"></script>
+
+
+    <script type="text/javascript">
+
+      var swiper = null;
+
+      function addImage(imagePath) {
+        if (swiper) {
+          var imageString = '<img width="300px" src="' + imagePath + '""></img>';
+          swiper.appendSlide('<div class="swiper-slide cover">' + imageString + '</div>')
+        }
+
+      };
+
+      function init() {
+        $("body").addClass("on");
+
+        swiper = new Swiper ('.swiper-container', {
+          // Optional parameters
+          direction: 'horizontal',
+          loop: true
+        });
+
+        console.log("swiper")
+      }
+
+
+      $(document).ready(function() {
+
+        init();
+        $("body").addClass("on");
+
+        addImage("/mnt/pitoti/lp/berlin/20141114/001/CCD/_cam0_1415953131347_000000.jpg");
+        addImage("/mnt/pitoti/lp/berlin/20141114/001/CCD/_cam0_1415953131347_000000.jpg");
+        addImage("/mnt/pitoti/lp/berlin/20141114/001/CCD/_cam0_1415953131347_000000.jpg");
+      });
+
+    </script>
+
+  </head>
+  <body>
+
+    <div id="settings-top">
+      <div class="swiper-container">
+        <!-- Additional required wrapper -->
+        <div class="swiper-wrapper">
+
+        </div>
+
+      </div>
+    </div>
+
+  </body>
+</html>
