@@ -163,13 +163,17 @@ int main(int argc, char** argv) {
   int background_fill_enabled(0);
   bool gui_visible(!optimization_enabled);
   bool map_visible(!optimization_enabled);
+  bool gallery_visible(true);
   bool navigator_active(false);
   bool gui_options_active(false);
   bool gui_map_active(false);
+  bool gui_gallery_active(false);
+  int gallery_height(300);
   bool picking_enabled(false);
   float current_blending_factor(optimization_enabled ? 0.f : 1.f);
   bool lens_enabled(false);
   bool measurement_enabled(false);
+  bool provenance_enabled(false);
   gua::math::vec2 current_mouse_pos(0.0);
   gua::math::vec3 current_pick_pos(0.0);
   gua::math::vec3 current_pick_normal(0.0);
@@ -375,7 +379,7 @@ int main(int argc, char** argv) {
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
   camera->config.set_output_texture_name("main_buffer");
-  camera->config.set_far_clip(5000.0f);
+  camera->config.set_far_clip(1000.0f);
   // camera->config.set_far_clip(10.0f);
   camera->config.set_near_clip(0.001f);
   // camera->config.set_far_clip(5.0f);
@@ -432,7 +436,7 @@ int main(int argc, char** argv) {
   navigator.set_transform(scm::math::mat4f(frusta[0].get_camera_transform()));
 
   /////////////////////////////////////////////////////////////////////////////
-  // setup gui and map
+  // setup gui
   /////////////////////////////////////////////////////////////////////////////
 
   auto gui = std::make_shared<gua::GuiResource>();
@@ -462,6 +466,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_blending_mode_median");
     gui->add_javascript_callback("set_lens_enable");
     gui->add_javascript_callback("set_measurement_enable");
+    gui->add_javascript_callback("set_provenance_enable");
     gui->add_javascript_callback("set_background_fill_enable");
     gui->add_javascript_callback("set_tree_vis_enable");
     gui->add_javascript_callback("set_frustum_vis_enable");
@@ -485,6 +490,7 @@ int main(int argc, char** argv) {
      || callback == "set_blending_mode_median"
      || callback == "set_lens_enable"
      || callback == "set_measurement_enable"
+     || callback == "set_provenance_enable"
      || callback == "set_background_fill_enable"
      || callback == "set_tree_vis_enable"
      || callback == "set_frustum_vis_enable") {
@@ -496,8 +502,9 @@ int main(int argc, char** argv) {
       if (callback == "set_selection_mode_fragment") current_selection_mode = 1;
       if (callback == "set_blending_mode_average") current_blending_mode = 0;
       if (callback == "set_blending_mode_median") current_blending_mode = 1;
-      if (callback == "set_lens_enable") lens_enabled = checked;;
-      if (callback == "set_measurement_enable") measurement_enabled = checked;;
+      if (callback == "set_lens_enable") lens_enabled = checked;
+      if (callback == "set_measurement_enable") measurement_enabled = checked;
+      if (callback == "set_provenance_enable") provenance_enabled = checked;
       if (callback == "set_background_fill_enable") background_fill_enabled = checked ? 1 : 0;
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
@@ -592,6 +599,21 @@ int main(int argc, char** argv) {
     }
   });
 
+  auto gallery = std::make_shared<gua::GuiResource>();
+  gallery->init("gallery", "asset://gua/data/gui/gallery.html", gua::math::vec2(600, gallery_height));
+
+  auto gallery_quad = std::make_shared<gua::node::TexturedScreenSpaceQuadNode>("gallery_quad");
+  gallery_quad->data.texture() = "gallery";
+  gallery_quad->data.size() = gua::math::vec2ui(600, gallery_height);
+  gallery_quad->data.anchor() = gua::math::vec2(0.f, 1.f);
+
+  graph.add_node("/", gallery_quad);
+
+  gallery->on_loaded.connect([&]() {
+    gallery->add_javascript_callback("addImage");
+    gallery->call_javascript("init");
+  });
+
   //measurement
 
   auto measurement_marker_1(std::make_shared<gua::node::TransformNode>("measurement_marker_1"));
@@ -623,6 +645,22 @@ int main(int argc, char** argv) {
 
   graph.add_node("/", measurement_text_quad);
 
+  auto provenance_marker(std::make_shared<gua::node::TransformNode>("provenance_marker"));
+  graph.add_node("/", provenance_marker);
+  provenance_marker->translate(0.0, 1000.0, 0.0);
+  provenance_marker->get_tags().add_tag("no_pick");
+
+  auto crosshair = std::make_shared<gua::GuiResource>();
+  crosshair->init("crosshair", "asset://gua/data/gui/crosshair.html", gua::math::vec2(100, 100));
+
+  auto crosshair_quad = std::make_shared<gua::node::TexturedQuadNode>("crosshair_quad");
+  crosshair_quad->data.texture() = "crosshair";
+  // crosshair_quad->data.size() = gua::math::vec2(0.01f, 0.01f);
+  crosshair_quad->data.size() = gua::math::vec2(0.1f, 0.1f);
+  crosshair_quad->rotate(90.f, 1.f, 0.f, 0.f);
+  graph.add_node("/provenance_marker", crosshair_quad);
+
+
   //gui visibility helper lambdas
   auto update_gui_visibility = [&](){
     if (!gui_visible) {
@@ -633,6 +671,12 @@ int main(int argc, char** argv) {
       gui_quad->get_tags().remove_tag("invisible");
       measurement_text_quad->get_tags().remove_tag("invisible");
       ruler_quad->get_tags().remove_tag("invisible");
+    }
+
+    if (!gallery_visible) {
+      gallery_quad->get_tags().add_tag("invisible");
+    } else {
+      gallery_quad->get_tags().remove_tag("invisible");
     }
 
     if (!map_visible) {
@@ -677,25 +721,31 @@ int main(int argc, char** argv) {
     gua::math::vec2 hit_pos;
     gui_options_active = false;
     gui_map_active = false;
+    gui_gallery_active = false;
     current_mouse_pos = pos;
 
-    if (gui_visible || map_visible) {
-      if (gui_quad->pixel_to_texcoords(current_mouse_pos, resolution, hit_pos)) {
-        gui->inject_mouse_position_relative(hit_pos);
-        gui_options_active = true;
-      } else if (map_quad->pixel_to_texcoords(current_mouse_pos, resolution, hit_pos)) {
-        map->inject_mouse_position_relative(hit_pos);
-        gui_map_active = true;
-      }
+    if (gui_visible && gui_quad->pixel_to_texcoords(current_mouse_pos, resolution, hit_pos)) {
+      gui->inject_mouse_position_relative(hit_pos);
+      gui_options_active = true;
     }
 
-    if (!gui_options_active && !gui_options_active) {
+    if (map_visible && map_quad->pixel_to_texcoords(current_mouse_pos, resolution, hit_pos)) {
+      map->inject_mouse_position_relative(hit_pos);
+      gui_map_active = true;
+    }
+
+    if (gallery_visible && gallery_quad->pixel_to_texcoords(current_mouse_pos, resolution, hit_pos)) {
+      gallery->inject_mouse_position_relative(hit_pos);
+      gui_gallery_active = true;
+    }
+
+    if (!gui_options_active && !gui_options_active && !gui_gallery_active) {
       navigator.set_mouse_position(gua::math::vec2i(current_mouse_pos));
     }
   });
 
   window->on_button_press.connect([&](int button, int action, int mods){
-    if (!gui_options_active && !gui_map_active) {
+    if (!gui_options_active && !gui_map_active && !gui_gallery_active) {
       if (measurement_enabled) {
         if (action == 1) {
           if (button == 0) {
@@ -726,6 +776,10 @@ int main(int argc, char** argv) {
 
           measurement_text->call_javascript("set_text", gua::to_string(distance) + "m");
         }
+      } else if (provenance_enabled) {
+        if (action == 1) {
+          provenance_marker->translate(current_pick_pos - provenance_marker->get_world_position() + gua::math::vec3(0.0, 0.05, 0.0));
+        }
       } else {
         navigator_active = true;
         navigator.set_mouse_button(button, action);
@@ -734,6 +788,8 @@ int main(int argc, char** argv) {
       gui->inject_mouse_button(gua::Button(button), action, mods);
     } else if (gui_map_active) {
       map->inject_mouse_button(gua::Button(button), action, mods);
+    } else if (gui_gallery_active) {
+      gallery->inject_mouse_button(gua::Button(button), action, mods);
     }
   });
 
@@ -746,6 +802,7 @@ int main(int argc, char** argv) {
   window->on_char.connect([&](unsigned key){
     if (key == 'g') {
       gui_visible = !gui_visible;
+      gallery_visible = !gallery_visible;
 
     } else if (key == 'm') {
       map_visible = !map_visible;
@@ -771,6 +828,7 @@ int main(int argc, char** argv) {
         map->reload();
         ruler->reload();
         measurement_text->reload();
+        gallery->reload();
       }
 
       // F6 to reload pipeline
@@ -808,6 +866,16 @@ int main(int argc, char** argv) {
         pick_proxy_transform->set_world_transform(ground_transform);
 
         std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
+        gallery->call_javascript("clear");
+
+        auto image_dim(frusta[current_frustum].get_image_dimensions());
+        int display_width(gallery_height*image_dim.x / image_dim.y);
+
+        gallery->call_javascript_async(
+          "addImage",
+          frusta[current_frustum].get_image_file_name(),
+          gua::to_string(display_width)
+        );
       }
     }
   });
@@ -971,7 +1039,7 @@ int main(int argc, char** argv) {
     }
 
 
-    picking_enabled = lens_enabled || measurement_enabled;
+    picking_enabled = lens_enabled || measurement_enabled || provenance_enabled;
 
     if (picking_enabled) {
       auto screen_space_pos = current_mouse_pos/gua::math::vec2(resolution.x, resolution.y) - 0.5;

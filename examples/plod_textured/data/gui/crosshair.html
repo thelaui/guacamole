@@ -12,9 +12,7 @@
     <link rel="stylesheet" type="text/css" href="third_party/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap-select.min.css">
     <link rel="stylesheet" type="text/css" href="third_party/css/jquery-ui-1.10.0.custom.css"/>
-    <link rel="stylesheet" type="text/css" href="third_party/css/swiper.min.css"/>
-    <link href="gui.css" rel="stylesheet">
-    <link href="gallery.css" rel="stylesheet">
+    <link href="crosshair.css" rel="stylesheet">
 
     <script type="text/javascript" src="third_party/js/jquery-1.10.2.js"></script>
     <script type="text/javascript" src="third_party/js/jquery-ui-1.10.4.min.js"></script>
@@ -23,45 +21,12 @@
     <script type="text/javascript" src="third_party/js/bootstrap-slider.js"></script>
     <script type="text/javascript" src="third_party/js/bootstrap.colorpickersliders.min.js"></script>
     <script type="text/javascript" src="third_party/js/bootstrap-select.min.js"></script>
-    <script type="text/javascript" src="third_party/js/swiper.min.js"></script>
 
 
     <script type="text/javascript">
 
-      var swiper = null;
-
-      function addImage(imagePath, width) {
-        if (swiper) {
-
-          var imageString = "<div class='image' style='background-image:url(\"../../" + imagePath + "\"); width:" + width + "px'></div>";
-          swiper.appendSlide('<div class="swiper-slide">' + imageString + '</div>')
-        }
-
-      };
-
-      function clear() {
-        swiper.removeAllSlides();
-      };
-
-      function init() {
-        $("body").addClass("on");
-
-        swiper = new Swiper ('.swiper-container', {
-          // Optional parameters
-          direction: 'horizontal',
-          loop: true
-        });
-
-        // addImage("/mnt/pitoti/lp/berlin/20141114/001/CCD/_cam0_1415953131347_000000.jpg", 400);
-        // addImage("/mnt/pitoti/lp/berlin/20141114/001/CCD/_cam0_1415953131347_000000.jpg", 400);
-        // addImage("/mnt/pitoti/lp/berlin/20141114/001/CCD/_cam0_1415953131347_000000.jpg", 400);
-      }
-
-
       $(document).ready(function() {
 
-        // init();
-        $("body").addClass("on");
       });
 
     </script>
@@ -69,15 +34,7 @@
   </head>
   <body>
 
-    <div id="settings-top">
-      <div class="swiper-container">
-        <!-- Additional required wrapper -->
-        <div class="swiper-wrapper">
-
-        </div>
-
-      </div>
-    </div>
+    <div class="crosshair"></div>
 
   </body>
 </html>

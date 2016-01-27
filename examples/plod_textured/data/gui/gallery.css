@@ -3,6 +3,14 @@
   height: 300px;
 }
 
-.cover {
-  object-fit: cover;
+.swiper-slide {
+  text-align: center;
+}
+
+
+.image {
+  display: inline-block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  height: 100%;
 }
