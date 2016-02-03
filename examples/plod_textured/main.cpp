@@ -177,6 +177,7 @@ int main(int argc, char** argv) {
   gua::math::vec2 current_mouse_pos(0.0);
   gua::math::vec3 current_pick_pos(0.0);
   gua::math::vec3 current_pick_normal(0.0);
+  float query_radius(20.f);
   float current_lens_radius(5.f);
   float current_splat_radius(1.f);
   scm::math::vec3d global_offset(0.0);
@@ -265,7 +266,7 @@ int main(int argc, char** argv) {
 
 
   for (auto file : model_files){
-    if (count < max_load_count) {
+    // if (count < max_load_count) {
       // auto node = plod_loader.load_geometry(file + "_node",
       //                                      file,
       //                                      street_material,
@@ -279,9 +280,9 @@ int main(int argc, char** argv) {
       graph.add_node("/transform/model_offset", node);
 
       ++count;
-    } else {
-      break;
-    }
+    // } else {
+    //   break;
+    // }
   }
 
   model_offset->translate(-plod_geometrys[0]->get_bounding_box().center());
@@ -310,51 +311,58 @@ int main(int argc, char** argv) {
   // load frustum files
   /////////////////////////////////////////////////////////////////////////////
 
-  std::set<std::string> frustum_files;
-  std::vector<texstr::Frustum> frusta;
-  std::stringstream            route_point_stream; // collect all coords to set route on map
+  std::vector<std::set<std::string>> frustum_files;
+  std::vector<texstr::Frustum>       frusta;
+  std::vector<std::string>           route_point_strings; // collect all coords to set route on map
 
   for (auto frusta_path_string : frusta_paths_string) {
     boost::filesystem::path frusta_path(frusta_path_string);
 
     if (is_directory(frusta_path)) {
-
       std::cout << frusta_path_string << std::endl;
+      frustum_files.push_back(std::set<std::string>());
       for(auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(frusta_path), {})) {
         auto frustum_file_name = entry.path();
         if (frustum_file_name.has_extension() && frustum_file_name.extension() == ".frustum") {
-          frustum_files.insert(frustum_file_name.string());
+          frustum_files.back().insert(frustum_file_name.string());
         }
       }
     }
   }
 
-  for (auto file : frustum_files){
-    auto frustum = texstr::FrustumFactory::from_frustum_file(file);
-    auto new_cam_trans = offset_transform * frustum.get_camera_transform();
-    auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
-    auto new_frustum = texstr::Frustum::perspective(
-      new_cam_trans,
-      new_cam_trans * orig_screen_trans,
-      frustum.get_clip_near(),
-      frustum.get_clip_far()
-    );
+  for (auto file_set : frustum_files){
 
-    new_frustum.set_homography(frustum.get_homography());
-    new_frustum.set_image_file_name(frustum.get_image_file_name());
-    new_frustum.set_image_dimensions(frustum.get_image_dimensions());
-    new_frustum.set_capture_time(frustum.get_capture_time());
+    std::stringstream route_point_stream;
 
-    frusta.push_back(new_frustum);
+    for (auto file : file_set) {
+      auto frustum = texstr::FrustumFactory::from_frustum_file(file);
+      auto new_cam_trans = offset_transform * frustum.get_camera_transform();
+      auto orig_screen_trans = scm::math::inverse(frustum.get_camera_transform()) * frustum.get_screen_transform();
+      auto new_frustum = texstr::Frustum::perspective(
+        new_cam_trans,
+        new_cam_trans * orig_screen_trans,
+        frustum.get_clip_near(),
+        frustum.get_clip_far()
+      );
 
-    auto pos(frustum.get_camera_position());
-    pos = scm::math::vec3d(-(pos.x + global_offset.x),
-                             0.0,
-                             pos.z - global_offset.z
-                            );
+      new_frustum.set_homography(frustum.get_homography());
+      new_frustum.set_image_file_name(frustum.get_image_file_name());
+      new_frustum.set_image_dimensions(frustum.get_image_dimensions());
+      new_frustum.set_capture_time(frustum.get_capture_time());
 
-    route_point_stream << gua::string_utils::to_string(pos.x) << ";"
-                       << gua::string_utils::to_string(pos.z) << "|";
+      frusta.push_back(new_frustum);
+
+      auto pos(frustum.get_camera_position());
+      pos = scm::math::vec3d(-(pos.x + global_offset.x),
+                               0.0,
+                               pos.z - global_offset.z
+                              );
+
+      route_point_stream << gua::string_utils::to_string(pos.x) << ";"
+                         << gua::string_utils::to_string(pos.z) << "|";
+    }
+
+    route_point_strings.push_back(route_point_stream.str());
   }
 
   texstr::FrustumManagement::instance()->register_frusta(frusta);
@@ -400,7 +408,7 @@ int main(int argc, char** argv) {
   screen->translate(0.0, 0.0, -focal_length);
 
   auto frustum_vis_pass(std::make_shared<gua::FrustumVisualizationPassDescription>());
-  frustum_vis_pass->set_query_radius(20.0);
+  frustum_vis_pass->set_query_radius(query_radius);
   frustum_vis_pass->set_tree_visualization_enabled(false);
   frustum_vis_pass->set_frustum_visualization_enabled(false);
 
@@ -510,7 +518,6 @@ int main(int argc, char** argv) {
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
     } else if (callback == "set_query_radius") {
       std::stringstream str(params[0]);
-      double query_radius;
       str >> query_radius;
       frustum_vis_pass->set_query_radius(query_radius);
     } else if (callback == "set_splat_radius") {
@@ -556,7 +563,9 @@ int main(int argc, char** argv) {
   map->on_loaded.connect([&]() {
     map->add_javascript_callback("set_camera_pos_utm");
     map->call_javascript("init");
-    map->call_javascript("set_route_points", route_point_stream.str());
+    for (auto& route_point_string : route_point_strings) {
+      map->call_javascript("set_route_points", route_point_string);
+    }
   });
 
   map->on_javascript_callback.connect([&](std::string const& callback, std::vector<std::string> const& params) {
@@ -782,7 +791,7 @@ int main(int argc, char** argv) {
 
           texstr::QueryOptions options;
           options.mode = texstr::QueryOptions::RADIUS;
-          options.radius = 30.0;
+          options.radius = query_radius;
 
           texstr::FrustumManagement::instance()->send_query(current_pick_pos, options);
 
@@ -904,7 +913,7 @@ int main(int argc, char** argv) {
         ));
         pick_proxy_transform->set_world_transform(ground_transform);
 
-        // std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
+        std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
 
       }
     }
