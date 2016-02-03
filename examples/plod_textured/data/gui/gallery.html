@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>map</title>
+    <title>gallery</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" type="text/css" href="third_party/css/bootstrap.min.css">
@@ -47,9 +47,11 @@
         $("body").addClass("on");
 
         swiper = new Swiper ('.swiper-container', {
-          // Optional parameters
           direction: 'horizontal',
-          loop: true
+          slidesPerView: 'auto',
+          nextButton: '.button-next',
+          prevButton: '.button-prev',
+          loop: false
         });
 
         // addImage("/mnt/pitoti/lp/berlin/20141114/001/CCD/_cam0_1415953131347_000000.jpg", 400);
@@ -72,9 +74,9 @@
     <div id="settings-top">
       <div class="swiper-container">
         <!-- Additional required wrapper -->
-        <div class="swiper-wrapper">
-
-        </div>
+        <div class="swiper-wrapper"></div>
+        <span class="button button-prev"><i class="fa fa-chevron-left"></i></span>
+        <span class="button button-next"><i class="fa fa-chevron-right"></i></span>
 
       </div>
     </div>

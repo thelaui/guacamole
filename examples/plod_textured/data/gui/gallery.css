@@ -1,6 +1,7 @@
 .swiper-container {
   width: 600px;
   height: 300px;
+  color: black;
 }
 
 .swiper-slide {
@@ -13,4 +14,27 @@
   background-size: contain;
   background-repeat: no-repeat;
   height: 100%;
+}
+
+.button {
+  color: rgb(133, 192, 87);
+  font-size: 3em;
+
+  position: absolute;
+  top: 50%;
+  width: 27px;
+  height: 44px;
+  margin-top: -22px;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.button-prev {
+  left: 10px;
+  right: auto;
+}
+
+.button-next {
+  right: 10px;
+  left: auto;
 }

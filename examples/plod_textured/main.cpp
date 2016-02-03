@@ -656,7 +656,7 @@ int main(int argc, char** argv) {
   auto crosshair_quad = std::make_shared<gua::node::TexturedQuadNode>("crosshair_quad");
   crosshair_quad->data.texture() = "crosshair";
   // crosshair_quad->data.size() = gua::math::vec2(0.01f, 0.01f);
-  crosshair_quad->data.size() = gua::math::vec2(0.1f, 0.1f);
+  crosshair_quad->data.size() = gua::math::vec2(0.5f, 0.5f);
   crosshair_quad->rotate(90.f, 1.f, 0.f, 0.f);
   graph.add_node("/provenance_marker", crosshair_quad);
 
@@ -778,7 +778,46 @@ int main(int argc, char** argv) {
         }
       } else if (provenance_enabled) {
         if (action == 1) {
-          provenance_marker->translate(current_pick_pos - provenance_marker->get_world_position() + gua::math::vec3(0.0, 0.05, 0.0));
+          provenance_marker->translate(current_pick_pos - provenance_marker->get_world_position() + gua::math::vec3(0.0, 0.1, 0.0));
+
+          texstr::QueryOptions options;
+          options.mode = texstr::QueryOptions::RADIUS;
+          options.radius = 30.0;
+
+          texstr::FrustumManagement::instance()->send_query(current_pick_pos, options);
+
+          auto current_frusta = texstr::FrustumManagement::instance()->fetch_frusta();
+
+          if (!current_frusta.empty()) {
+            gallery->call_javascript("clear");
+
+            for (auto frustum : current_frusta) {
+              scm::math::vec4d proj_tex_space_pos(
+                frustum->get_projection_view() *
+                scm::math::vec4d(current_pick_pos.x, current_pick_pos.y, current_pick_pos.z, 1.0)
+              );
+
+              double depth = proj_tex_space_pos.z;
+              // perspective division
+              proj_tex_space_pos /= proj_tex_space_pos.w;
+
+              if (std::abs(proj_tex_space_pos.x) <  1.0 &&
+                  std::abs(proj_tex_space_pos.y) <  1.0 &&
+                  depth                     >= 0.0) {
+
+
+                auto image_dim(frustum->get_image_dimensions());
+                int display_width(gallery_height*image_dim.x / image_dim.y);
+
+                gallery->call_javascript_async(
+                  "addImage",
+                  frustum->get_image_file_name(),
+                  gua::to_string(display_width)
+                );
+
+              }
+            }
+          }
         }
       } else {
         navigator_active = true;
@@ -865,17 +904,8 @@ int main(int argc, char** argv) {
         ));
         pick_proxy_transform->set_world_transform(ground_transform);
 
-        std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
-        gallery->call_javascript("clear");
+        // std::cout << frusta[current_frustum].get_image_file_name() << std::endl;
 
-        auto image_dim(frusta[current_frustum].get_image_dimensions());
-        int display_width(gallery_height*image_dim.x / image_dim.y);
-
-        gallery->call_javascript_async(
-          "addImage",
-          frusta[current_frustum].get_image_file_name(),
-          gua::to_string(display_width)
-        );
       }
     }
   });

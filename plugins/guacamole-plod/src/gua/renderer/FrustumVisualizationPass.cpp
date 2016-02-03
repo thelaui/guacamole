@@ -117,19 +117,14 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
       PipelinePass &, PipelinePassDescription const&, Pipeline & pipe) {
 
     RenderContext const& ctx(pipe.get_context());
+
     auto gua_frustum(pipe.current_viewstate().frustum);
-    auto texstr_frustum(texstr::Frustum::perspective(
-      gua_frustum.get_camera_transform(),
-      gua_frustum.get_screen_transform(),
-      gua_frustum.get_clip_near(),
-      gua_frustum.get_clip_far()
-    ));
 
     texstr::QueryOptions options;
     options.mode = texstr::QueryOptions::RADIUS;
     options.radius = query_radius;
 
-    texstr::FrustumManagement::instance()->send_query(texstr_frustum, options);
+    texstr::FrustumManagement::instance()->send_query(gua_frustum.get_camera_position(), options);
 
     std::vector<texstr::FrustumTree::FrustumNode*> nodes;
 
