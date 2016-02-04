@@ -7,7 +7,7 @@
 
 float clamped_radius = in_radius;
 
-if (enable_radius_clamping == 1 && in_radius > 0.1) {
+if (in_radius > clamping_radius) {
   clamped_radius = 0.0;
 }
 

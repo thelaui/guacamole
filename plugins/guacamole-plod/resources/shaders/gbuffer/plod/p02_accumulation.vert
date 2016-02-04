@@ -16,7 +16,7 @@ layout (location = 6) in vec3 in_normal;
 
 uniform uint gua_material_id;
 uniform float radius_scaling;
-uniform int   enable_radius_clamping;
+uniform float clamping_radius;
 
 out VertexData {
   //output to geometry shader

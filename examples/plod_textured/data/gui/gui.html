@@ -184,7 +184,6 @@
         init_radio("#render_method_blended", "render_method_blended");
 
         init_checkbox("#enableLens", "lens_enable");
-        init_checkbox("#enableBackgroundFill", "background_fill_enable");
         init_checkbox("#enableMeasurement", "measurement_enable");
         init_checkbox("#enableProvenance", "provenance_enable");
         init_checkbox("#enableTreeVis", "tree_vis_enable");
@@ -195,6 +194,7 @@
         init_slider("#control-panel .blending_factor", "blending_factor");
         init_slider("#control-panel .blending_range", "blending_range");
         init_slider("#control-panel .lens_radius", "lens_radius");
+        init_slider("#control-panel .clamping_radius", "clamping_radius");
 
         init_slider("#control-panel .position_range", "position_range");
         init_slider("#control-panel .position_samples", "position_samples");
@@ -248,7 +248,21 @@
                 </label>
               </div>
             </div>
+            <div class="col-xs-5">
+              Blending Factor:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider blending_factor" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="1" data-slider-step="0.1" handle="custom"/>
+            </div>
+            <div class="col-xs-5">
+              Blending Range:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider blending_range" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="5" data-slider-step="1" handle="custom"/>
+            </div>
           </div>
+
+          <h4 class="highlight">Point Clouds</h4>
 
           <div class="row">
             <div class="col-xs-5">
@@ -268,32 +282,14 @@
                 </label>
               </div>
             </div>
-            <div class="col-xs-5">
-              Blending Factor:
-            </div>
-            <div class="col-xs-7">
-              <input class="slider blending_factor" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="1" data-slider-step="0.1" handle="custom"/>
-            </div>
-            <div class="col-xs-5">
-              Blending Range:
-            </div>
-            <div class="col-xs-7">
-              <input class="slider blending_range" data-slider-tooltip="hide" data-slider-id="blending_factor" type="text" data-slider-min="0" data-slider-max="5" data-slider-step="1" handle="custom"/>
-            </div>
-          </div>
 
-          <div class="row">
             <div class="col-xs-5">
-            Fill Background:
+            Clamping Radius:
             </div>
             <div class="col-xs-7">
-              <div class="checkbox">
-                <label>
-                  <input id="enableBackgroundFill" type="checkbox" value="">
-                  <span>Enabled</span>
-                </label>
-              </div>
+              <input class="slider clamping_radius" data-slider-tooltip="hide" data-slider-id="clamping_radius" type="text" data-slider-min="0" data-slider-max="1" data-slider-step="0.01" handle="custom"/>
             </div>
+
           </div>
 
           <h4 class="highlight">Tools</h4>

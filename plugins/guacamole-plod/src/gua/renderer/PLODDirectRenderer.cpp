@@ -111,7 +111,7 @@ PLODDirectRenderer::PLODDirectRenderer() : shaders_loaded_(false),
                                direct_pass_program_(nullptr),
                                current_rendertarget_width_(0),
                                current_rendertarget_height_(0),
-                               radius_clamping_enabled_(false)
+                               clamping_radius_(1.f)
 {
   _load_shaders();
 }
@@ -414,7 +414,7 @@ void PLODDirectRenderer::render(gua::Pipeline& pipe, PipelinePassDescription con
         direct_pass_program_->apply_uniform(ctx, "gua_normal_matrix", math::mat4f(scm_normal_matrix));
 
         direct_pass_program_->apply_uniform(ctx, "radius_scaling", plod_node->get_radius_scale());
-        direct_pass_program_->apply_uniform(ctx, "enable_radius_clamping", radius_clamping_enabled_ ? 1 : 0);
+        direct_pass_program_->apply_uniform(ctx, "clamping_radius", clamping_radius_);
         direct_pass_program_->apply_uniform(ctx, "enable_backface_culling", plod_node->get_enable_backface_culling_by_normal());
 
         ctx.render_context->apply();
@@ -471,7 +471,7 @@ void PLODDirectRenderer::render(gua::Pipeline& pipe, PipelinePassDescription con
         shadow_pass_program_->apply_uniform(ctx, "gua_normal_matrix", math::mat4f(scm_normal_matrix));
 
         shadow_pass_program_->apply_uniform(ctx, "radius_scaling", plod_node->get_radius_scale());
-        shadow_pass_program_->apply_uniform(ctx, "enable_radius_clamping", radius_clamping_enabled_ ? 1 : 0);
+        shadow_pass_program_->apply_uniform(ctx, "clamping_radius", clamping_radius_);
         shadow_pass_program_->apply_uniform(ctx, "enable_backface_culling", plod_node->get_enable_backface_culling_by_normal());
 
         ctx.render_context->apply();

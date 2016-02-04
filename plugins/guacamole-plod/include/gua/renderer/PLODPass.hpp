@@ -44,11 +44,12 @@ namespace gua {
     std::shared_ptr<PipelinePassDescription> make_copy() const override;
     PipelinePass make_pass(RenderContext const&, SubstitutionMap&) override;
 
-    void set_radius_clamping_enabled(bool enabled);
+    void set_clamping_radius(float clamping_radius);
+    float get_clamping_radius() const {return clamping_radius_;};
     void set_render_method(RenderMethod render_method);
 
   protected:
-    bool radius_clamping_enabled_;
+    float clamping_radius_;
     RenderMethod render_method_;
 
 };

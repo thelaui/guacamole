@@ -112,7 +112,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
                                  normalization_pass_program_(nullptr),
                                  current_rendertarget_width_(0),
                                  current_rendertarget_height_(0),
-                                 radius_clamping_enabled_(false)
+                                 clamping_radius_(1.f)
  {
     _load_shaders();
   }
@@ -663,7 +663,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
           depth_pass_program_->apply_uniform(ctx, "gua_normal_matrix", math::mat4f(scm_normal_matrix));
 
           depth_pass_program_->apply_uniform(ctx, "radius_scaling", plod_node->get_radius_scale());
-          depth_pass_program_->apply_uniform(ctx, "enable_radius_clamping", radius_clamping_enabled_ ? 1 : 0);
+          depth_pass_program_->apply_uniform(ctx, "clamping_radius", clamping_radius_);
           depth_pass_program_->apply_uniform(ctx, "enable_backface_culling", plod_node->get_enable_backface_culling_by_normal());
 
           ctx.render_context->apply();
@@ -758,7 +758,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
             current_material_program->apply_uniform(ctx, "gua_model_view_projection_matrix", math::mat4f(scm_model_view_projection_matrix));
             current_material_program->apply_uniform(ctx, "gua_normal_matrix", math::mat4f(scm_normal_matrix));
             current_material_program->apply_uniform(ctx, "radius_scaling", plod_node->get_radius_scale());
-            current_material_program->apply_uniform(ctx, "enable_radius_clamping", radius_clamping_enabled_ ? 1 : 0);
+            current_material_program->apply_uniform(ctx, "clamping_radius", clamping_radius_ ? 1 : 0);
             current_material_program->apply_uniform(ctx, "enable_backface_culling", plod_node->get_enable_backface_culling_by_normal());
 
             plod_node->get_material()->apply_uniforms(ctx, current_material_program.get(), view_id);
@@ -862,7 +862,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
           shadow_pass_program_->apply_uniform(ctx, "gua_normal_matrix", math::mat4f(scm_normal_matrix));
 
           shadow_pass_program_->apply_uniform(ctx, "radius_scaling", plod_node->get_radius_scale());
-          shadow_pass_program_->apply_uniform(ctx, "enable_radius_clamping", radius_clamping_enabled_ ? 1 : 0);
+          shadow_pass_program_->apply_uniform(ctx, "clamping_radius", clamping_radius_ ? 1 : 0);
           shadow_pass_program_->apply_uniform(ctx, "enable_backface_culling", plod_node->get_enable_backface_culling_by_normal());
 
           ctx.render_context->apply();

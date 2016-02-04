@@ -160,7 +160,6 @@ int main(int argc, char** argv) {
   int current_blending_range(0);
   gua::PLODPassDescription::RenderMethod current_rendering_method(gua::PLODPassDescription::RenderMethod::DIRECT);
   int current_selection_mode(0);
-  int background_fill_enabled(0);
   bool gui_visible(!optimization_enabled);
   bool map_visible(!optimization_enabled);
   bool gallery_visible(true);
@@ -416,8 +415,7 @@ int main(int argc, char** argv) {
   texturing_pass->source_file("data/shaders/screen_space_street_texturing.frag");
 
   auto plod_pass = std::make_shared<gua::PLODPassDescription>();
-  plod_pass->set_radius_clamping_enabled(optimization_enabled);
-  // plod_pass->set_radius_clamping_enabled(true);
+  plod_pass->set_clamping_radius(optimization_enabled ? 0.1f : 1.f);
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
@@ -460,6 +458,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_getter("get_blending_factor", [&](){ return gua::to_string(current_blending_factor);});
     gui->add_javascript_getter("get_blending_range", [&](){ return gua::to_string(current_blending_range);});
     gui->add_javascript_getter("get_lens_radius", [&](){ return gua::to_string(current_lens_radius);});
+    gui->add_javascript_getter("get_clamping_radius", [&](){ return gua::to_string(plod_pass->get_clamping_radius());});
     gui->add_javascript_getter("get_position_range", [&](){ return gua::to_string(brute_force_optimizer.position_offset_range);});
     gui->add_javascript_getter("get_position_samples", [&](){ return gua::to_string(brute_force_optimizer.position_sampling_steps);});
     gui->add_javascript_getter("get_rotation_range", [&](){ return gua::to_string(brute_force_optimizer.rotation_offset_range);});
@@ -480,6 +479,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_blending_factor");
     gui->add_javascript_callback("set_blending_range");
     gui->add_javascript_callback("set_lens_radius");
+    gui->add_javascript_callback("set_clamping_radius");
     gui->add_javascript_callback("set_position_range");
     gui->add_javascript_callback("set_position_samples");
     gui->add_javascript_callback("set_rotation_range");
@@ -496,7 +496,6 @@ int main(int argc, char** argv) {
      || callback == "set_lens_enable"
      || callback == "set_measurement_enable"
      || callback == "set_provenance_enable"
-     || callback == "set_background_fill_enable"
      || callback == "set_tree_vis_enable"
      || callback == "set_frustum_vis_enable") {
       std::stringstream str(params[0]);
@@ -515,7 +514,6 @@ int main(int argc, char** argv) {
       if (callback == "set_lens_enable") lens_enabled = checked;
       if (callback == "set_measurement_enable") measurement_enabled = checked;
       if (callback == "set_provenance_enable") provenance_enabled = checked;
-      if (callback == "set_background_fill_enable") background_fill_enabled = checked ? 1 : 0;
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
     } else if (callback == "set_query_radius") {
@@ -528,6 +526,11 @@ int main(int argc, char** argv) {
       for (auto& node : plod_geometrys) {
         node->set_radius_scale(current_splat_radius);
       }
+    } else if (callback == "set_clamping_radius") {
+      std::stringstream str(params[0]);
+      float clamping_radius;
+      str >> clamping_radius;
+      plod_pass->set_clamping_radius(clamping_radius);
     } else if (callback == "set_blending_factor") {
       std::stringstream str(params[0]);
       str >> current_blending_factor;
@@ -948,11 +951,9 @@ int main(int argc, char** argv) {
         frustum_id
       ));
 
-      if (frustum_id != -1) {
+      if (frustum_id != -1 && frustum_id != current_frustum) {
         current_frustum = frustum_id;
-        if (frame_count % 50 == 0) {
-          update_map_marker();
-        }
+        update_map_marker();
       }
 
     } else {

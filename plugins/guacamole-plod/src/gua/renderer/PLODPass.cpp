@@ -50,7 +50,7 @@ PLODPassDescription::PLODPassDescription()
   writes_only_color_buffer_ = false;
   enable_for_shadows_ = true;
   rendermode_ = RenderMode::Custom;
-  radius_clamping_enabled_ = false;
+  clamping_radius_ = 1.f;
   render_method_ = RenderMethod::DIRECT;
 }
 
@@ -62,8 +62,8 @@ std::shared_ptr<PipelinePassDescription> PLODPassDescription::make_copy() const 
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void PLODPassDescription::set_radius_clamping_enabled(bool enabled) {
-  radius_clamping_enabled_ = enabled;
+void PLODPassDescription::set_clamping_radius(float clamping_radius) {
+  clamping_radius_ = clamping_radius;
   touch();
 }
 
@@ -84,15 +84,15 @@ PipelinePass PLODPassDescription::make_pass(RenderContext const& ctx, Substituti
   auto blended_renderer = std::make_shared<PLODRenderer>();
   blended_renderer->set_global_substitution_map(substitution_map);
 
-  auto radius_clamping_enabled(radius_clamping_enabled_);
+  auto clamping_radius(clamping_radius_);
   auto render_method(render_method_);
-  pass.process_ = [direct_renderer, blended_renderer, radius_clamping_enabled, render_method](
+  pass.process_ = [direct_renderer, blended_renderer, clamping_radius, render_method](
     PipelinePass& pass, PipelinePassDescription const& desc, Pipeline & pipe) {
     if (render_method == RenderMethod::DIRECT) {
-      direct_renderer->set_radius_clamping_enabled(radius_clamping_enabled);
+      direct_renderer->set_clamping_radius(clamping_radius);
       direct_renderer->render(pipe, desc);
     } else if (render_method == RenderMethod::BLENDED) {
-      blended_renderer->set_radius_clamping_enabled(radius_clamping_enabled);
+      blended_renderer->set_clamping_radius(clamping_radius);
       blended_renderer->render(pipe, desc);
     }
   };
