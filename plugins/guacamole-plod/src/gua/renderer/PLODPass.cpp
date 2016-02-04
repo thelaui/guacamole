@@ -24,6 +24,7 @@
 // guacamole headers
 #include <gua/renderer/PLODResource.hpp>
 #include <gua/renderer/PLODRenderer.hpp>
+#include <gua/renderer/PLODDirectRenderer.hpp>
 #include <gua/renderer/Pipeline.hpp>
 #include <gua/databases.hpp>
 #include <gua/utils/Logger.hpp>
@@ -49,6 +50,8 @@ PLODPassDescription::PLODPassDescription()
   writes_only_color_buffer_ = false;
   enable_for_shadows_ = true;
   rendermode_ = RenderMode::Custom;
+  radius_clamping_enabled_ = false;
+  render_method_ = RenderMethod::DIRECT;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,19 +69,32 @@ void PLODPassDescription::set_radius_clamping_enabled(bool enabled) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void PLODPassDescription::set_render_method(RenderMethod render_method) {
+  render_method_ = render_method;
+  touch();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 PipelinePass PLODPassDescription::make_pass(RenderContext const& ctx, SubstitutionMap& substitution_map)
 {
   PipelinePass pass{ *this, ctx, substitution_map };
 
-  auto renderer = std::make_shared<PLODRenderer>();
-  renderer->set_global_substitution_map(substitution_map);
+  auto direct_renderer = std::make_shared<PLODDirectRenderer>();
+  auto blended_renderer = std::make_shared<PLODRenderer>();
+  blended_renderer->set_global_substitution_map(substitution_map);
 
   auto radius_clamping_enabled(radius_clamping_enabled_);
-
-  pass.process_ = [renderer, radius_clamping_enabled](
+  auto render_method(render_method_);
+  pass.process_ = [direct_renderer, blended_renderer, radius_clamping_enabled, render_method](
     PipelinePass& pass, PipelinePassDescription const& desc, Pipeline & pipe) {
-    renderer->set_radius_clamping_enabled(radius_clamping_enabled);
-    renderer->render(pipe, desc);
+    if (render_method == RenderMethod::DIRECT) {
+      direct_renderer->set_radius_clamping_enabled(radius_clamping_enabled);
+      direct_renderer->render(pipe, desc);
+    } else if (render_method == RenderMethod::BLENDED) {
+      blended_renderer->set_radius_clamping_enabled(radius_clamping_enabled);
+      blended_renderer->render(pipe, desc);
+    }
   };
 
   return pass;

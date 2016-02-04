@@ -180,8 +180,8 @@
         init_radio("#selection_mode_camera", "selection_mode_camera");
         init_radio("#selection_mode_fragment", "selection_mode_fragment");
 
-        init_radio("#blending_mode_average", "blending_mode_average");
-        init_radio("#blending_mode_median", "blending_mode_median");
+        init_radio("#render_method_direct", "render_method_direct");
+        init_radio("#render_method_blended", "render_method_blended");
 
         init_checkbox("#enableLens", "lens_enable");
         init_checkbox("#enableBackgroundFill", "background_fill_enable");
@@ -252,19 +252,19 @@
 
           <div class="row">
             <div class="col-xs-5">
-            Blending Mode:
+            Render Method:
             </div>
             <div class="col-xs-7">
               <div class="radio">
                 <label>
-                  <input type="radio" name="blendingModeRadios" id="blending_mode_average" value="" checked>
-                  <span>Average</span>
+                  <input type="radio" name="renderMethodRadios" id="render_method_direct" value="" checked>
+                  <span>Direct</span>
                 </label>
               </div>
               <div class="radio">
                 <label>
-                  <input type="radio" name="blendingModeRadios" id="blending_mode_median" value="">
-                  <span>Median</span>
+                  <input type="radio" name="renderMethodRadios" id="render_method_blended" value="">
+                  <span>Blended</span>
                 </label>
               </div>
             </div>

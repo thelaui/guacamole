@@ -21,6 +21,9 @@ uniform int selection_mode;
 uniform float blending_factor;
 uniform int clipping_enabled;
 uniform vec2 clipping_params; // x: depth, y: height
+uniform int lens_enabled;
+uniform vec4 pick_pos_and_radius;
+uniform vec3 pick_normal;
 
 mat4 homography = (mat4(
   1.0844150096782323, -0.0216027047911971, 0.0, -0.0000027239192071,
@@ -158,6 +161,125 @@ vec3 get_projected_color_with_current_camera(int frustum_id) {
   return result;
 }
 
+float gamma        = 0.80;
+float intensity_max = 255.0;
+
+float get_distance_to_plane(in vec3 plane_point, in vec3 plane_normal,
+                            in vec3 query_point) {
+
+  return dot(plane_normal, (query_point - plane_point));
+
+}
+
+float round(float d) {
+  return floor(d + 0.5);
+}
+
+float adjust(float color, float factor) {
+  if (color == 0.0){
+    return 0.0;
+  }
+  else{
+    float res = round(intensity_max * pow(color * factor, gamma));
+    return min(255.0, max(0.0, res));
+  }
+}
+
+vec3 wavelength_to_rgb(float wavelength) {
+  float red, green, blue;
+  float factor;
+
+  if(380.0 <= wavelength && wavelength <= 440.0){
+    red   = -(wavelength - 440.0) / (440.0 - 380.0);
+    green = 0.0;
+    blue  = 1.0;
+  }
+  else if(440.0 < wavelength && wavelength <= 490.0){
+    red   = 0.0;
+    green = (wavelength - 440.0) / (490.0 - 440.0);
+    blue  = 1.0;
+  }
+  else if(490.0 < wavelength && wavelength <= 510.0){
+    red   = 0.0;
+    green = 1.0;
+    blue  = -(wavelength - 510.0) / (510.0 - 490.0);
+  }
+  else if(510.0 < wavelength && wavelength <= 580.0){
+    red   = (wavelength - 510.0) / (580.0 - 510.0);
+    green = 1.0;
+    blue  = 0.0;
+  }
+  else if(580.0 < wavelength && wavelength <= 645.0){
+    red   = 1.0;
+    green = -(wavelength - 645.0) / (645.0 - 580.0);
+    blue  = 0.0;
+  }
+  else if(645.0 < wavelength && wavelength <= 780.0){
+    red   = 1.0;
+    green = 0.0;
+    blue  = 0.0;
+  }
+  else{
+    red   = 0.0;
+    green = 0.0;
+    blue  = 0.0;
+  }
+
+
+  if(380.0 <= wavelength && wavelength <= 420.0){
+    factor = 0.3 + 0.7*(wavelength - 380.0) / (420.0 - 380.0);
+  }
+  else if(420.0 < wavelength && wavelength <= 701.0){
+    factor = 1.0;
+  }
+  else if(701.0 < wavelength && wavelength <= 780.0){
+    factor = 0.3 + 0.7*(780.0 - wavelength) / (780.0 - 701.0);
+  }
+  else{
+    factor = 0.0;
+  }
+  float r = adjust(red,   factor);
+  float g = adjust(green, factor);
+  float b = adjust(blue,  factor);
+  return vec3(r/255.0,g/255.0,b/255.0);
+}
+
+float get_wave_length_from_data_point(float value, float min_value, float max_value) {
+  float min_visible_wave_length = 380.0; //350.0;
+  float max_visible_wave_length = 780.0; //650.0;
+  //Convert data value in the range of min_values..max_values to the
+  //range 350..780
+  return (value - min_value) / (max_value-min_value) *
+         (max_visible_wave_length - min_visible_wave_length) +
+         min_visible_wave_length;
+}
+
+void apply_lens() {
+
+  vec3 lens_color = vec3(0.0);
+  float radial_fade = 0.0;
+
+  if (lens_enabled == 1) {
+    float distance_to_pick = length(pick_pos_and_radius.xyz - gua_get_position().xyz);
+
+    if (distance_to_pick < pick_pos_and_radius.w) {
+      radial_fade = 1.0 - pow(distance_to_pick / pick_pos_and_radius.w, 3);
+      // radial_fade = 1.0;
+
+      vec3 binormal = vec3(pick_normal.y, -pick_normal.x, 0.0);
+      binormal = normalize(binormal);
+
+      float d = dot(binormal, gua_get_normal());
+
+      lens_color = wavelength_to_rgb(get_wave_length_from_data_point(d, -1.0, 1.0));
+      // lens_color = vec3(1.0, 0.0, 0.0);
+    }
+  }
+
+  gua_out_color = mix(gua_out_color, lens_color, radial_fade);
+
+}
+
 void main() {
 
   if (gua_get_depth() >= 1.0 ) {
@@ -193,6 +315,7 @@ void main() {
       // vec3 projected_color = get_projected_color_with_current_camera(frustum_id);
       if (projected_color != vec3(0.0)) {
         gua_out_color = mix(gua_get_color(), projected_color, blending_factor);
+        apply_lens();
       } else {
         discard;
       }

@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
 
   int current_frustum(0);
   int current_blending_range(0);
-  int current_blending_mode(0);
+  gua::PLODPassDescription::RenderMethod current_rendering_method(gua::PLODPassDescription::RenderMethod::DIRECT);
   int current_selection_mode(0);
   int background_fill_enabled(0);
   bool gui_visible(!optimization_enabled);
@@ -387,9 +387,9 @@ int main(int argc, char** argv) {
   camera->config.set_scene_graph_name("main_scenegraph");
   camera->config.set_output_window_name("main_window");
   camera->config.set_output_texture_name("main_buffer");
-  camera->config.set_far_clip(1000.0f);
+  camera->config.set_far_clip(250.0f);
   // camera->config.set_far_clip(10.0f);
-  camera->config.set_near_clip(0.001f);
+  camera->config.set_near_clip(0.1f);
   // camera->config.set_far_clip(5.0f);
   // camera->config.set_near_clip(1.f);
   // camera->config.set_enable_frustum_culling(false);
@@ -415,17 +415,14 @@ int main(int argc, char** argv) {
   auto texturing_pass = std::make_shared<gua::FullscreenPassDescription>();
   texturing_pass->source_file("data/shaders/screen_space_street_texturing.frag");
 
-  auto screen_space_pick_pass(std::make_shared<gua::ScreenSpacePickPassDescription>());
-  screen_space_pick_pass->set_window_name("main_window");
-
   auto plod_pass = std::make_shared<gua::PLODPassDescription>();
   plod_pass->set_radius_clamping_enabled(optimization_enabled);
+  // plod_pass->set_radius_clamping_enabled(true);
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
   // pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
   pipe->add_pass(frustum_vis_pass);
-  // pipe->add_pass(screen_space_pick_pass);
   pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   pipe->add_pass(plod_pass);
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
@@ -470,8 +467,8 @@ int main(int argc, char** argv) {
 
     gui->add_javascript_callback("set_selection_mode_camera");
     gui->add_javascript_callback("set_selection_mode_fragment");
-    gui->add_javascript_callback("set_blending_mode_average");
-    gui->add_javascript_callback("set_blending_mode_median");
+    gui->add_javascript_callback("set_render_method_direct");
+    gui->add_javascript_callback("set_render_method_blended");
     gui->add_javascript_callback("set_lens_enable");
     gui->add_javascript_callback("set_measurement_enable");
     gui->add_javascript_callback("set_provenance_enable");
@@ -494,8 +491,8 @@ int main(int argc, char** argv) {
   gui->on_javascript_callback.connect([&](std::string const& callback, std::vector<std::string> const& params) {
     if (callback == "set_selection_mode_camera"
      || callback == "set_selection_mode_fragment"
-     || callback == "set_blending_mode_average"
-     || callback == "set_blending_mode_median"
+     || callback == "set_render_method_direct"
+     || callback == "set_render_method_blended"
      || callback == "set_lens_enable"
      || callback == "set_measurement_enable"
      || callback == "set_provenance_enable"
@@ -508,8 +505,13 @@ int main(int argc, char** argv) {
 
       if (callback == "set_selection_mode_camera") current_selection_mode = 0;
       if (callback == "set_selection_mode_fragment") current_selection_mode = 1;
-      if (callback == "set_blending_mode_average") current_blending_mode = 0;
-      if (callback == "set_blending_mode_median") current_blending_mode = 1;
+      if (callback == "set_render_method_direct") {
+        plod_pass->set_render_method(gua::PLODPassDescription::RenderMethod::DIRECT);
+      }
+
+      if (callback == "set_render_method_blended") {
+        plod_pass->set_render_method(gua::PLODPassDescription::RenderMethod::BLENDED);
+      }
       if (callback == "set_lens_enable") lens_enabled = checked;
       if (callback == "set_measurement_enable") measurement_enabled = checked;
       if (callback == "set_provenance_enable") provenance_enabled = checked;
@@ -1128,16 +1130,13 @@ int main(int argc, char** argv) {
       }
     }
 
-    street_material->set_uniform("blending_range",  current_blending_range);
-    street_material->set_uniform("blending_mode",   current_blending_mode);
-    street_material->set_uniform("selection_mode",  current_selection_mode);
-    street_material->set_uniform("pick_pos_and_radius",
-                                  gua::math::vec4(current_pick_pos.x,
-                                                  current_pick_pos.y,
-                                                  current_pick_pos.z,
-                                                  current_lens_radius));
-    street_material->set_uniform("pick_normal", current_pick_normal);
-    street_material->set_uniform("lens_enabled", lens_enabled ? 1 : 0);
+    texturing_pass->uniform("pick_pos_and_radius",
+                                  scm::math::vec4f(current_pick_pos.x,
+                                                   current_pick_pos.y,
+                                                   current_pick_pos.z,
+                                                   current_lens_radius));
+    texturing_pass->uniform("pick_normal", scm::math::vec3f(current_pick_normal));
+    texturing_pass->uniform("lens_enabled", lens_enabled ? 1 : 0);
 
     texturing_pass->uniform("selection_mode",  current_selection_mode);
     texturing_pass->uniform("blending_factor", current_blending_factor);

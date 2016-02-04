@@ -35,14 +35,21 @@ namespace gua {
 
   public:
 
+    enum RenderMethod {
+      DIRECT,
+      BLENDED
+    };
+
     PLODPassDescription();
     std::shared_ptr<PipelinePassDescription> make_copy() const override;
     PipelinePass make_pass(RenderContext const&, SubstitutionMap&) override;
 
     void set_radius_clamping_enabled(bool enabled);
+    void set_render_method(RenderMethod render_method);
 
   protected:
     bool radius_clamping_enabled_;
+    RenderMethod render_method_;
 
 };
 
