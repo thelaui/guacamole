@@ -158,7 +158,6 @@ int main(int argc, char** argv) {
 
   int current_frustum(0);
   int current_blending_range(0);
-  gua::PLODPassDescription::RenderMethod current_rendering_method(gua::PLODPassDescription::RenderMethod::DIRECT);
   int current_selection_mode(0);
   bool gui_visible(!optimization_enabled);
   bool map_visible(!optimization_enabled);
@@ -417,6 +416,9 @@ int main(int argc, char** argv) {
   auto plod_pass = std::make_shared<gua::PLODPassDescription>();
   plod_pass->set_clamping_radius(optimization_enabled ? 0.1f : 1.f);
 
+  auto resolve_pass = std::make_shared<gua::ResolvePassDescription>();
+  resolve_pass->background_color(gua::utils::Color3f(0.5f, 0.5f, 0.5f));
+
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
   // pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
@@ -424,7 +426,7 @@ int main(int argc, char** argv) {
   pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   pipe->add_pass(plod_pass);
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
-  pipe->add_pass(std::make_shared<gua::ResolvePassDescription>());
+  pipe->add_pass(resolve_pass);
   pipe->add_pass(texturing_pass);
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
   // pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
@@ -471,7 +473,6 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_lens_enable");
     gui->add_javascript_callback("set_measurement_enable");
     gui->add_javascript_callback("set_provenance_enable");
-    gui->add_javascript_callback("set_background_fill_enable");
     gui->add_javascript_callback("set_tree_vis_enable");
     gui->add_javascript_callback("set_frustum_vis_enable");
     gui->add_javascript_callback("set_query_radius");

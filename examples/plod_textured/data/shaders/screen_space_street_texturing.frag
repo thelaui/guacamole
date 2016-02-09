@@ -9,7 +9,6 @@ layout(location=0) out vec3 gua_out_color;
 
 layout (binding=2) uniform projective_texure_block {
   mat4  projection_view_mats[64];
-  mat4  homographies[64];
   vec4  frustum_positions[64];
   vec4  projection_texture_resolutions[64];
   uvec2 projection_textures[64];
@@ -25,20 +24,13 @@ uniform int lens_enabled;
 uniform vec4 pick_pos_and_radius;
 uniform vec3 pick_normal;
 
-mat4 homography = (mat4(
-  1.0844150096782323, -0.0216027047911971, 0.0, -0.0000027239192071,
-  0.2705041248015606, 1.1905118212355421, 0.0, 0.0003194544730919,
-  0.0, 0.0, 1.0, 0.0,
-  -85.0306662046851187, 3.2737730386715316, 0.0, 1.0000000000000000
-));
-
 int get_id_smallest_distance(in vec4 position) {
   float minimal_distance = 99999.9;
   int result = 0;
   for (int i = 0; i < frustum_count; ++i) {
-    float distance = length(position - frustum_positions[i]);
-    if (distance < minimal_distance) {
-      minimal_distance = distance;
+    float current_distance = length(position - frustum_positions[i]);
+    if (current_distance < minimal_distance) {
+      minimal_distance = current_distance;
       result = i;
     }
   }
@@ -51,8 +43,8 @@ int get_id_closest_valid_projection(in vec4 position) {
   int result = 0;
   for (int i = 0; i < frustum_count; ++i) {
     if (projection_textures[i] != uvec2(0)) {
-      float distance = length(position - frustum_positions[i]);
-      if (distance < minimal_distance) {
+      float current_distance = length(position - frustum_positions[i]);
+      if (current_distance < minimal_distance) {
         vec4 proj_tex_space_pos = projection_view_mats[i] * position;
 
         float depth = proj_tex_space_pos.z;
@@ -63,7 +55,7 @@ int get_id_closest_valid_projection(in vec4 position) {
             abs(proj_tex_space_pos.y) <  1.0 &&
             depth                     >= 0.0) {
 
-          minimal_distance = distance;
+          minimal_distance = current_distance;
           result = i;
         }
       }
@@ -97,29 +89,7 @@ vec3 get_projected_color(int frustum_id) {
         abs(proj_tex_space_pos.y) <  1.0 &&
         depth                     >= 0.0) {
 
-      vec2 pixel_coords = vec2(resolution.x * (proj_tex_space_pos.x * 0.5 + 0.5),
-                               resolution.y * (1.0 - (proj_tex_space_pos.y * 0.5 + 0.5)));
-      // vec4 transformed_coord = homography * vec4(pixel_coords, 0.0, 1.0);
-      vec4 transformed_coord = homographies[frustum_id] * vec4(pixel_coords, 0.0, 1.0);
-      transformed_coord /= transformed_coord.w;
-      transformed_coord.xy /= resolution;
-      transformed_coord.y = 1.0 - transformed_coord.y;
-
-      result = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy).rgb;
-      // vec3 original_color = gua_get_color();
-      // float closest_distance = abs(get_vector_average(original_color) - get_vector_average(result));
-      // for (int x = -3; x <= 3; ++x) {
-      //   for (int y = -3; y <= 3; ++y) {
-      //     vec3 match = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy + vec2(x,y)).rgb;
-      //     float new_distance = abs(get_vector_average(original_color) - get_vector_average(match));
-
-      //     if (new_distance < closest_distance) {
-      //       closest_distance = new_distance;
-      //       result = match;
-
-      //     }
-      //   }
-      // }
+      result = texture(sampler2D(projection_textures[frustum_id]), proj_tex_space_pos.xy * 0.5 + 0.5).rgb;
     }
   }
 
@@ -146,15 +116,7 @@ vec3 get_projected_color_with_current_camera(int frustum_id) {
         abs(proj_tex_space_pos.y) <  1.0 &&
         depth                     >= 0.0) {
 
-      vec2 pixel_coords = vec2(resolution.x * (proj_tex_space_pos.x * 0.5 + 0.5),
-                               resolution.y * (1.0 - (proj_tex_space_pos.y * 0.5 + 0.5)));
-      // vec4 transformed_coord = homography * vec4(pixel_coords, 0.0, 1.0);
-      vec4 transformed_coord = homographies[frustum_id] * vec4(pixel_coords, 0.0, 1.0);
-      transformed_coord /= transformed_coord.w;
-      transformed_coord.xy /= resolution;
-      transformed_coord.y = 1.0 - transformed_coord.y;
-
-      result = texture(sampler2D(projection_textures[frustum_id]), transformed_coord.xy).rgb;
+      result = texture(sampler2D(projection_textures[frustum_id]), proj_tex_space_pos.xy * 0.5 + 0.5).rgb;
     }
   }
 
@@ -272,7 +234,6 @@ void apply_lens() {
       float d = dot(binormal, gua_get_normal());
 
       lens_color = wavelength_to_rgb(get_wave_length_from_data_point(d, -1.0, 1.0));
-      // lens_color = vec3(1.0, 0.0, 0.0);
     }
   }
 

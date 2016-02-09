@@ -360,7 +360,6 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
 
   ///////////////////////////////////////////////////////////////////////////////
   void PLODRenderer::render(gua::Pipeline& pipe, PipelinePassDescription const& desc) {
-
     RenderContext const& ctx(pipe.get_context());
 
     ///////////////////////////////////////////////////////////////////////////
@@ -758,7 +757,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
             current_material_program->apply_uniform(ctx, "gua_model_view_projection_matrix", math::mat4f(scm_model_view_projection_matrix));
             current_material_program->apply_uniform(ctx, "gua_normal_matrix", math::mat4f(scm_normal_matrix));
             current_material_program->apply_uniform(ctx, "radius_scaling", plod_node->get_radius_scale());
-            current_material_program->apply_uniform(ctx, "clamping_radius", clamping_radius_ ? 1 : 0);
+            current_material_program->apply_uniform(ctx, "clamping_radius", clamping_radius_);
             current_material_program->apply_uniform(ctx, "enable_backface_culling", plod_node->get_enable_backface_culling_by_normal());
 
             plod_node->get_material()->apply_uniforms(ctx, current_material_program.get(), view_id);
@@ -862,7 +861,7 @@ bool PLODRenderer::_intersects(scm::gl::boxf const& bbox,
           shadow_pass_program_->apply_uniform(ctx, "gua_normal_matrix", math::mat4f(scm_normal_matrix));
 
           shadow_pass_program_->apply_uniform(ctx, "radius_scaling", plod_node->get_radius_scale());
-          shadow_pass_program_->apply_uniform(ctx, "clamping_radius", clamping_radius_ ? 1 : 0);
+          shadow_pass_program_->apply_uniform(ctx, "clamping_radius", clamping_radius_);
           shadow_pass_program_->apply_uniform(ctx, "enable_backface_culling", plod_node->get_enable_backface_culling_by_normal());
 
           ctx.render_context->apply();
