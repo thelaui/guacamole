@@ -58,6 +58,8 @@ int get_id_closest_valid_projection(in vec4 position) {
           minimal_distance = current_distance;
           result = i;
         }
+      } else {
+        break;
       }
     }
   }
