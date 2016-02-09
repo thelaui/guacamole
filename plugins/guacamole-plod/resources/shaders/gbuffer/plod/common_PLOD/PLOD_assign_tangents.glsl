@@ -8,7 +8,7 @@
 float clamped_radius = in_radius;
 
 if (in_radius > clamping_radius) {
-  clamped_radius = 0.0;
+  clamped_radius = clamping_radius;
 }
 
 VertexOut.pass_ms_u = normalize(ms_u) * radius_scaling * clamped_radius;

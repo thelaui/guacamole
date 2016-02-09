@@ -58,17 +58,11 @@ int get_id_closest_valid_projection(in vec4 position) {
           minimal_distance = current_distance;
           result = i;
         }
-      } else {
-        break;
       }
     }
   }
 
   return result;
-}
-
-float get_vector_average(in vec3 vector) {
-  return (vector.x + vector.y + vector.z) / 3.0;
 }
 
 vec3 get_projected_color(int frustum_id) {
