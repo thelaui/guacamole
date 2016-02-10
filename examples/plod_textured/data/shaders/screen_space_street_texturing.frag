@@ -239,46 +239,45 @@ void apply_lens() {
 
 void main() {
 
-  if (gua_get_depth() >= 1.0 ) {
-    discard;
-  }
+  gua_out_color = gua_get_color();
 
-  bool fragment_clipped = false;
-  if (clipping_enabled == 1) {
-    if (gua_get_position().y >= clipping_params.y) {
-      gua_out_color = vec3(0.0);
-      fragment_clipped = true;
-    } else {
-      vec4 proj_tex_space_pos = gua_projection_matrix * gua_view_matrix * vec4(gua_get_position(), 1.0);
+  if (gua_get_depth() < 1.0 ) {
 
-      if (proj_tex_space_pos.z >= clipping_params.x) {
+    bool fragment_clipped = false;
+    if (clipping_enabled == 1) {
+      if (gua_get_position().y >= clipping_params.y) {
         gua_out_color = vec3(0.0);
         fragment_clipped = true;
-      }
-    }
-  }
-
-  if (!fragment_clipped) {
-    if (blending_factor > 0.0) {
-
-      int frustum_id = 0;
-      if (selection_mode == 0) {
-        frustum_id = get_id_smallest_distance(gua_camera_position_4);
-      } else if (selection_mode == 1) {
-        frustum_id = get_id_closest_valid_projection(vec4(gua_get_position(), 1.0));
-      }
-
-      vec3 projected_color = get_projected_color(frustum_id);
-      // vec3 projected_color = get_projected_color_with_current_camera(frustum_id);
-      if (projected_color != vec3(0.0)) {
-        gua_out_color = mix(gua_get_color(), projected_color, blending_factor);
-        apply_lens();
       } else {
-        discard;
+        vec4 proj_tex_space_pos = gua_projection_matrix * gua_view_matrix * vec4(gua_get_position(), 1.0);
+
+        if (proj_tex_space_pos.z >= clipping_params.x) {
+          gua_out_color = vec3(0.0);
+          fragment_clipped = true;
+        }
       }
-    } else {
-      discard;
+    }
+
+    if (!fragment_clipped) {
+      if (blending_factor > 0.0) {
+
+        int frustum_id = 0;
+        if (selection_mode == 0) {
+          frustum_id = get_id_smallest_distance(gua_camera_position_4);
+        } else if (selection_mode == 1) {
+          frustum_id = get_id_closest_valid_projection(vec4(gua_get_position(), 1.0));
+        }
+
+        vec3 projected_color = get_projected_color(frustum_id);
+        // vec3 projected_color = get_projected_color_with_current_camera(frustum_id);
+        if (projected_color != vec3(0.0)) {
+          gua_out_color = mix(gua_get_color(), projected_color, blending_factor);
+        }
+      }
+
+      apply_lens();
     }
   }
+
 
 }
