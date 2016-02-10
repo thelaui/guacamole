@@ -172,6 +172,7 @@ int main(int argc, char** argv) {
   float current_blending_factor(optimization_enabled ? 0.f : 1.f);
   bool lens_enabled(false);
   bool measurement_enabled(false);
+  bool measurement_dragging(false);
   bool provenance_enabled(false);
   gua::math::vec2 current_mouse_pos(0.0);
   gua::math::vec3 current_pick_pos(0.0);
@@ -460,7 +461,6 @@ int main(int argc, char** argv) {
     gui->add_javascript_getter("get_splat_radius", [&](){ return gua::to_string(current_splat_radius);});
     gui->add_javascript_getter("get_blending_factor", [&](){ return gua::to_string(current_blending_factor);});
     gui->add_javascript_getter("get_blending_range", [&](){ return gua::to_string(current_blending_range);});
-    gui->add_javascript_getter("get_lens_radius", [&](){ return gua::to_string(current_lens_radius);});
     gui->add_javascript_getter("get_clamping_radius", [&](){ return gua::to_string(plod_pass->get_clamping_radius());});
     gui->add_javascript_getter("get_position_range", [&](){ return gua::to_string(brute_force_optimizer.position_offset_range);});
     gui->add_javascript_getter("get_position_samples", [&](){ return gua::to_string(brute_force_optimizer.position_sampling_steps);});
@@ -471,9 +471,10 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_selection_mode_fragment");
     gui->add_javascript_callback("set_render_method_direct");
     gui->add_javascript_callback("set_render_method_blended");
-    gui->add_javascript_callback("set_lens_enable");
-    gui->add_javascript_callback("set_measurement_enable");
-    gui->add_javascript_callback("set_provenance_enable");
+    gui->add_javascript_callback("set_tool_none");
+    gui->add_javascript_callback("set_tool_lens");
+    gui->add_javascript_callback("set_tool_measurement");
+    gui->add_javascript_callback("set_tool_provenance");
     gui->add_javascript_callback("set_tree_vis_enable");
     gui->add_javascript_callback("set_frustum_vis_enable");
     gui->add_javascript_callback("set_query_radius");
@@ -495,9 +496,10 @@ int main(int argc, char** argv) {
      || callback == "set_selection_mode_fragment"
      || callback == "set_render_method_direct"
      || callback == "set_render_method_blended"
-     || callback == "set_lens_enable"
-     || callback == "set_measurement_enable"
-     || callback == "set_provenance_enable"
+     || callback == "set_tool_none"
+     || callback == "set_tool_lens"
+     || callback == "set_tool_measurement"
+     || callback == "set_tool_provenance"
      || callback == "set_tree_vis_enable"
      || callback == "set_frustum_vis_enable") {
       std::stringstream str(params[0]);
@@ -513,9 +515,26 @@ int main(int argc, char** argv) {
       if (callback == "set_render_method_blended") {
         plod_pass->set_render_method(gua::PLODPassDescription::RenderMethod::BLENDED);
       }
-      if (callback == "set_lens_enable") lens_enabled = checked;
-      if (callback == "set_measurement_enable") measurement_enabled = checked;
-      if (callback == "set_provenance_enable") provenance_enabled = checked;
+      if (callback == "set_tool_none") {
+        lens_enabled = false;
+        measurement_enabled = false;
+        provenance_enabled = false;
+      }
+      if (callback == "set_tool_lens") {
+        lens_enabled = checked;
+        measurement_enabled = false;
+        provenance_enabled = false;
+      }
+      if (callback == "set_tool_measurement") {
+        measurement_enabled = checked;
+        lens_enabled = false;
+        provenance_enabled = false;
+      }
+      if (callback == "set_tool_provenance")  {
+        provenance_enabled = checked;
+        measurement_enabled = false;
+        lens_enabled = false;
+      }
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
     } else if (callback == "set_query_radius") {
@@ -763,37 +782,19 @@ int main(int argc, char** argv) {
   window->on_button_press.connect([&](int button, int action, int mods){
     if (!gui_options_active && !gui_map_active && !gui_gallery_active) {
       if (measurement_enabled) {
-        if (action == 1) {
-          if (button == 0) {
-            measurement_marker_1->translate(current_pick_pos - measurement_marker_1->get_world_position());
-          } else if (button == 1) {
-            measurement_marker_2->translate(current_pick_pos - measurement_marker_2->get_world_position());
+        if (button == 0) {
+          if (action == 1) {
+            if (!measurement_dragging) {
+              measurement_marker_1->translate(current_pick_pos - measurement_marker_1->get_world_position());
+              measurement_marker_2->translate(current_pick_pos - measurement_marker_2->get_world_position());
+            }
+            measurement_dragging = true;
+          } else if (action == 0) {
+            measurement_dragging = false;
           }
-          auto marker_to_marker(measurement_marker_2->get_world_position() - measurement_marker_1->get_world_position());
-          auto distance(scm::math::length(marker_to_marker));
-
-          auto new_transform(scm::math::make_look_at_matrix_inv(
-                              measurement_marker_1->get_world_position(),
-                              measurement_marker_2->get_world_position(),
-                              gua::math::vec3(0.0, 1.0, 0.0))
-                             );
-
-          ruler_offset->set_world_transform(new_transform);
-          ruler_quad->data.size().x = distance;
-
-          ruler_quad->set_transform(
-            scm::math::make_translation(
-              0.0,
-              ruler_quad->data.size().y * 0.5,
-              -ruler_quad->data.size().x * 0.5
-            ) *
-            scm::math::make_rotation(90.0, 0.0, 1.0, 0.0)
-          );
-
-          measurement_text->call_javascript("set_text", gua::to_string(distance) + "m");
         }
       } else if (provenance_enabled) {
-        if (action == 1) {
+        if (action == 1 && button == 0) {
           provenance_marker->translate(current_pick_pos - provenance_marker->get_world_position() + gua::math::vec3(0.0, 0.1, 0.0));
 
           texstr::QueryOptions options;
@@ -845,7 +846,9 @@ int main(int argc, char** argv) {
             }
           }
         }
-      } else {
+      }
+
+      if (button == 1) {
         navigator_active = true;
         navigator.set_mouse_button(button, action);
       }
@@ -861,6 +864,9 @@ int main(int argc, char** argv) {
   window->on_scroll.connect([&](gua::math::vec2 const& scroll){
     if (gui_map_active) {
       map->inject_mouse_wheel(scroll);
+    } else if (lens_enabled) {
+
+      current_lens_radius = std::max(0.1f, std::min(10.f, current_lens_radius + float(scroll.y) * 0.1f));
     }
   });
 
@@ -974,6 +980,32 @@ int main(int argc, char** argv) {
         scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0)
       );
 
+    }
+
+    if (measurement_dragging) {
+      measurement_marker_2->translate(current_pick_pos - measurement_marker_2->get_world_position());
+      auto marker_to_marker(measurement_marker_2->get_world_position() - measurement_marker_1->get_world_position());
+      auto distance(scm::math::length(marker_to_marker));
+
+      auto new_transform(scm::math::make_look_at_matrix_inv(
+                          measurement_marker_1->get_world_position(),
+                          measurement_marker_2->get_world_position(),
+                          gua::math::vec3(0.0, 1.0, 0.0))
+                         );
+
+      ruler_offset->set_world_transform(new_transform);
+      ruler_quad->data.size().x = distance;
+
+      ruler_quad->set_transform(
+        scm::math::make_translation(
+          0.0,
+          ruler_quad->data.size().y * 0.5,
+          -ruler_quad->data.size().x * 0.5
+        ) *
+        scm::math::make_rotation(90.0, 0.0, 1.0, 0.0)
+      );
+
+      measurement_text->call_javascript("set_text", gua::to_string(distance) + "m");
     }
 
     if (screen_shot_taken) {

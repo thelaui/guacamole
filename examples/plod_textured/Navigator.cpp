@@ -115,7 +115,7 @@ void Navigator::set_key_press(gua::Key key, int action) {
 
 void Navigator::set_mouse_button(int button, int state) {
   switch (button) {
-    case 0:
+    case 1:
       mlb_pressed_ = state == 1;
       break;
   }

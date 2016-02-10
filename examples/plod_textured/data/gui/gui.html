@@ -137,9 +137,11 @@
         init_radio("#render_method_direct", "render_method_direct");
         init_radio("#render_method_blended", "render_method_blended");
 
-        init_checkbox("#enableLens", "lens_enable");
-        init_checkbox("#enableMeasurement", "measurement_enable");
-        init_checkbox("#enableProvenance", "provenance_enable");
+        init_radio("#tool_none", "tool_none");
+        init_radio("#tool_lens", "tool_lens");
+        init_radio("#tool_measurement", "tool_measurement");
+        init_radio("#tool_provenance", "tool_provenance");
+
         init_checkbox("#enableTreeVis", "tree_vis_enable");
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
 
@@ -147,7 +149,6 @@
         init_slider("#control-panel .splat_radius", "splat_radius");
         init_slider("#control-panel .blending_factor", "blending_factor");
         init_slider("#control-panel .blending_range", "blending_range");
-        init_slider("#control-panel .lens_radius", "lens_radius");
         init_slider("#control-panel .clamping_radius", "clamping_radius");
 
         init_slider("#control-panel .position_range", "position_range");
@@ -268,55 +269,35 @@
 
           <div class="row">
             <div class="col-xs-5">
-            Show Lens:
+            Selected Tool:
             </div>
             <div class="col-xs-7">
-              <div class="checkbox">
+              <div class="radio">
                 <label>
-                  <input id="enableLens" type="checkbox" value="">
-                  <span>Enabled</span>
+                  <input type="radio" name="toolRadios" id="tool_none" value="" checked>
+                  <span>None</span>
+                </label>
+              </div>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="toolRadios" id="tool_lens" value="">
+                  <span>Lens</span>
+                </label>
+              </div>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="toolRadios" id="tool_measurement" value="">
+                  <span>Measurement</span>
+                </label>
+              </div>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="toolRadios" id="tool_provenance" value="">
+                  <span>Provenance</span>
                 </label>
               </div>
             </div>
-
-            <div class="col-xs-5">
-            Lens Radius:
-            </div>
-            <div class="col-xs-7">
-              <input class="slider lens_radius" data-slider-tooltip="hide" data-slider-id="lens_radius" type="text" data-slider-min="0" data-slider-max="10" data-slider-step="0.1" handle="custom"/>
-            </div>
           </div>
-
-          <div class="row">
-            <div class="col-xs-5">
-            Measurement:
-            </div>
-            <div class="col-xs-7">
-              <div class="checkbox">
-                <label>
-                  <input id="enableMeasurement" type="checkbox" value="">
-                  <span>Enabled</span>
-                </label>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="row">
-            <div class="col-xs-5">
-            Provenance:
-            </div>
-            <div class="col-xs-7">
-              <div class="checkbox">
-                <label>
-                  <input id="enableProvenance" type="checkbox" value="">
-                  <span>Enabled</span>
-                </label>
-              </div>
-            </div>
-
-          </div>
-
 
           <h4 class="highlight">Debug</h4>
 

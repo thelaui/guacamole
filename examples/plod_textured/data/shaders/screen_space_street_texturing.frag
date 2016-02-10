@@ -271,7 +271,7 @@ void main() {
         vec3 projected_color = get_projected_color(frustum_id);
         // vec3 projected_color = get_projected_color_with_current_camera(frustum_id);
         if (projected_color != vec3(0.0)) {
-          gua_out_color = mix(gua_get_color(), projected_color, blending_factor);
+          gua_out_color = mix(gua_out_color, projected_color, blending_factor);
         }
       }
 
