@@ -15,6 +15,7 @@
     <link rel="stylesheet" type="text/css" href="third_party/css/swiper.min.css"/>
     <link href="gui.css" rel="stylesheet">
     <link href="gallery.css" rel="stylesheet">
+    <link href="crosshair.css" rel="stylesheet">
 
     <script type="text/javascript" src="third_party/js/jquery-1.10.2.js"></script>
     <script type="text/javascript" src="third_party/js/jquery-ui-1.10.4.min.js"></script>
@@ -25,16 +26,22 @@
     <script type="text/javascript" src="third_party/js/bootstrap-select.min.js"></script>
     <script type="text/javascript" src="third_party/js/swiper.min.js"></script>
 
-
     <script type="text/javascript">
 
       var swiper = null;
 
-      function addImage(imagePath, width) {
+      function addImage(imagePath, width, crosshairPosX, crosshairPosY) {
         if (swiper) {
 
           var imageString = "<div class='image' style='background-image:url(\"../../" + imagePath + "\"); width:" + width + "px'></div>";
-          swiper.appendSlide('<div class="swiper-slide">' + imageString + '</div>')
+
+          var shiftedPosX = parseInt(crosshairPosX) - 7;
+          var shiftedPosY = parseInt(crosshairPosY) - 7;
+
+          var crosshairString = "<div class='crosshair' style='position:absolute; top:" + shiftedPosY + "px; left:" + shiftedPosX + "px; width: 15px; height: 15px;'></div>";
+
+          swiper.appendSlide('<div class="swiper-slide">' + imageString + crosshairString + '</div>');
+
         }
 
       };

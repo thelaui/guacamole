@@ -47,52 +47,6 @@
         return {func: func, selector: parent_selector + " ." + func};
       }
 
-      function add_texture_select(parent_selector, func, label) {
-
-        var texture_button_popover = "";
-        var count = textures.length;
-        for (var i = 0; i < count; i++) {
-          texture_button_popover += '<div data-texture="' + textures[i] + '" style="background-image:url(../../' + textures[i] + '); margin-right:4px; height: 40px; width: 30%;" class="btn btn-default btn-image ' + func + '_button"></div>';
-        }
-
-        $(parent_selector).append(
-          '<div class="row">' +
-            '<div class="col-xs-6">' +
-              label + ':' +
-            '</div>' +
-            '<div class="col-xs-6">' +
-              '<div class="btn btn-default btn-image texture_button ' + func + '" data-toggle="popover" data-placement="left" title="Select Texture" style="height: 20px; width: 100%; padding:0"></div>' +
-            '</div>' +
-          '</div>'
-        );
-
-        $(parent_selector + ' .' + func).popover({container:"body", html:true});
-        $(parent_selector + ' .' + func).data('bs.popover').options.content = texture_button_popover;
-
-        return {func: func, selector: parent_selector + " ." + func};
-      }
-
-      function add_color_picker_group(parent_selector, func1, func2, func3, label) {
-
-        $(parent_selector).append(
-          '<div class="row">' +
-            '<div class="col-xs-6">' +
-              label + ':' +
-            '</div>' +
-            '<div class="col-xs-6">' +
-              '<div class="btn btn-default ' + func1 + '" style="height: 20px; width: 30%; padding:0">' +
-              '</div>' +
-              '<div class="btn btn-default ' + func2 + '" style="height: 20px; width: 30%; margin-left:5%; margin-right:5%; padding:0">' +
-              '</div>' +
-              '<div class="btn btn-default ' + func3 + '" style="height: 20px; width: 30%; padding:0">' +
-              '</div>' +
-            '</div>' +
-          '</div>'
-        );
-
-        return [init_color_picker(parent_selector, func1), init_color_picker(parent_selector, func2), init_color_picker(parent_selector, func3)];
-      }
-
       function add_slider(parent_selector, func, label, min, max, step) {
         $(parent_selector).append(
           '<div class="row">' +

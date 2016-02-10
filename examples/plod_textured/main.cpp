@@ -166,6 +166,7 @@ int main(int argc, char** argv) {
   bool gui_options_active(false);
   bool gui_map_active(false);
   bool gui_gallery_active(false);
+  int gallery_width(600);
   int gallery_height(300);
   bool picking_enabled(false);
   float current_blending_factor(optimization_enabled ? 0.f : 1.f);
@@ -423,11 +424,11 @@ int main(int argc, char** argv) {
 
   // pipe->add_pass(std::make_shared<gua::TriMeshPassDescription>());
   pipe->add_pass(frustum_vis_pass);
-  pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   pipe->add_pass(plod_pass);
   pipe->add_pass(std::make_shared<gua::LightVisibilityPassDescription>());
   pipe->add_pass(resolve_pass);
   pipe->add_pass(texturing_pass);
+  pipe->add_pass(std::make_shared<gua::TexturedQuadPassDescription>());
   pipe->add_pass(std::make_shared<gua::TexturedScreenSpaceQuadPassDescription>());
   // pipe->add_pass(std::make_shared<gua::DebugViewPassDescription>());
 
@@ -615,11 +616,11 @@ int main(int argc, char** argv) {
   });
 
   auto gallery = std::make_shared<gua::GuiResource>();
-  gallery->init("gallery", "asset://gua/data/gui/gallery.html", gua::math::vec2(600, gallery_height));
+  gallery->init("gallery", "asset://gua/data/gui/gallery.html", gua::math::vec2(gallery_width, gallery_height));
 
   auto gallery_quad = std::make_shared<gua::node::TexturedScreenSpaceQuadNode>("gallery_quad");
   gallery_quad->data.texture() = "gallery";
-  gallery_quad->data.size() = gua::math::vec2ui(600, gallery_height);
+  gallery_quad->data.size() = gua::math::vec2ui(gallery_width, gallery_height);
   gallery_quad->data.anchor() = gua::math::vec2(0.f, 1.f);
 
   graph.add_node("/", gallery_quad);
@@ -818,16 +819,26 @@ int main(int argc, char** argv) {
 
               if (std::abs(proj_tex_space_pos.x) <  1.0 &&
                   std::abs(proj_tex_space_pos.y) <  1.0 &&
-                  depth                     >= 0.0) {
+                  depth                          >= 0.0) {
 
 
                 auto image_dim(frustum->get_image_dimensions());
                 int display_width(gallery_height*image_dim.x / image_dim.y);
 
+                int offset_x((gallery_width - display_width) / 2);
+
+                scm::math::vec2ui crosshair_pos(
+                  display_width * (proj_tex_space_pos.x * 0.5 + 0.5) + offset_x,
+                  gallery_height - gallery_height * (proj_tex_space_pos.y * 0.5 + 0.5)
+                );
+
+
                 gallery->call_javascript_async(
                   "addImage",
                   frustum->get_image_file_name(),
-                  gua::to_string(display_width)
+                  gua::to_string(display_width),
+                  crosshair_pos.x,
+                  crosshair_pos.y
                 );
 
               }
