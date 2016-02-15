@@ -57,6 +57,7 @@
 #include "NewtonsMethodOptimizer.hpp"
 #include "ErrorFunctionSampler.hpp"
 #include "error_functions.hpp"
+#include "classification_functions.hpp"
 
 struct file_name_comp {
   bool operator() (std::string const& lhs, std::string const& rhs) const {
@@ -161,7 +162,7 @@ int main(int argc, char** argv) {
   int current_selection_mode(0);
   bool gui_visible(!optimization_enabled);
   bool map_visible(!optimization_enabled);
-  bool gallery_visible(true);
+  bool gallery_visible(!optimization_enabled);
   bool navigator_active(false);
   bool gui_options_active(false);
   bool gui_map_active(false);
@@ -181,7 +182,7 @@ int main(int argc, char** argv) {
   float current_lens_radius(5.f);
   float current_splat_radius(1.f);
   scm::math::vec3d global_offset(0.0);
-  bool screen_shot_taken(false);
+  bool optimziation_triggered(false);
 
   BruteForceOptimizer brute_force_optimizer;
 
@@ -419,7 +420,12 @@ int main(int argc, char** argv) {
   plod_pass->set_clamping_radius(optimization_enabled ? 0.1f : 1.f);
 
   auto resolve_pass = std::make_shared<gua::ResolvePassDescription>();
-  resolve_pass->background_color(gua::utils::Color3f(0.5f, 0.5f, 0.5f));
+
+  if (optimization_enabled) {
+    resolve_pass->background_color(gua::utils::Color3f(0.f, 0.f, 0.f));
+  } else {
+    resolve_pass->background_color(gua::utils::Color3f(1.f, 1.f, 1.f));
+  }
 
   auto pipe = std::make_shared<gua::PipelineDescription>();
 
@@ -910,7 +916,7 @@ int main(int argc, char** argv) {
       // F7 for screen shot
       if (action == 1 && key == 296) {
         // window->take_screen_shot();
-        screen_shot_taken = true;
+        optimziation_triggered = true;
       }
 
       bool position_changed(false);
@@ -1008,8 +1014,8 @@ int main(int argc, char** argv) {
       measurement_text->call_javascript("set_text", gua::to_string(distance) + "m");
     }
 
-    if (screen_shot_taken) {
-      screen_shot_taken = false;
+    if (optimziation_triggered) {
+      optimziation_triggered = false;
 
       steepest_descent_optimizer.initial_transform = camera->get_transform();
       brute_force_optimizer.initial_transform = camera->get_transform();
@@ -1043,6 +1049,7 @@ int main(int argc, char** argv) {
       steepest_descent_optimizer.retrieve_photo = retrieve_photo;
       steepest_descent_optimizer.retrieve_screen_shot = retrieve_screen_shot;
       steepest_descent_optimizer.error_function = intensity_znssd;
+      steepest_descent_optimizer.classification_function = intensity_threshold;
       // steepest_descent_optimizer.error_function = blurred_gradient_znssd;
 
       brute_force_optimizer.retrieve_photo = retrieve_photo;
@@ -1059,69 +1066,69 @@ int main(int argc, char** argv) {
       scm::math::mat4d optimal_transform(scm::math::mat4d::identity());
       scm::math::mat4d optimal_difference(scm::math::mat4d::identity());
       // steepest_descent_optimizer.run(optimal_transform, optimal_difference);
-      brute_force_optimizer.run(optimal_transform, optimal_difference);
-      steepest_descent_optimizer.initial_transform = optimal_transform;
+      // brute_force_optimizer.run(optimal_transform, optimal_difference);
+      // steepest_descent_optimizer.initial_transform = optimal_transform;
       steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
       // error_function_sampler.initial_transform = optimal_transform;
       // error_function_sampler.sample_dimension(0, -0.1, 0.1, 0.01);
 
-      for (int i(current_frustum); i < frusta.size(); ++i) {
-        auto new_cam_trans = scm::math::mat4d::identity();
-        // use optimized transform for current frustum and optimal difference for all subsequent others
-        if (i != current_frustum) {
-          auto new_transform = frusta[i].get_camera_transform() * scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0) * scm::math::mat4d(optimal_difference);
-          new_cam_trans = scm::math::mat4d(new_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
-        } else {
-          new_cam_trans = scm::math::mat4d(optimal_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
-        }
+      // for (int i(current_frustum); i < frusta.size(); ++i) {
+      //   auto new_cam_trans = scm::math::mat4d::identity();
+      //   // use optimized transform for current frustum and optimal difference for all subsequent others
+      //   if (i != current_frustum) {
+      //     auto new_transform = frusta[i].get_camera_transform() * scm::math::make_rotation(-90.0, 1.0, 0.0, 0.0) * scm::math::mat4d(optimal_difference);
+      //     new_cam_trans = scm::math::mat4d(new_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
+      //   } else {
+      //     new_cam_trans = scm::math::mat4d(optimal_transform) * scm::math::make_rotation(90.0, 1.0, 0.0, 0.0);
+      //   }
 
-        auto orig_screen_trans = scm::math::inverse(frusta[i].get_camera_transform()) * frusta[i].get_screen_transform();
-        auto new_frustum = texstr::Frustum::perspective(
-          new_cam_trans,
-          new_cam_trans * orig_screen_trans,
-          frusta[i].get_clip_near(),
-          frusta[i].get_clip_far()
-        );
+      //   auto orig_screen_trans = scm::math::inverse(frusta[i].get_camera_transform()) * frusta[i].get_screen_transform();
+      //   auto new_frustum = texstr::Frustum::perspective(
+      //     new_cam_trans,
+      //     new_cam_trans * orig_screen_trans,
+      //     frusta[i].get_clip_near(),
+      //     frusta[i].get_clip_far()
+      //   );
 
-        new_frustum.set_homography(frusta[i].get_homography());
-        new_frustum.set_image_file_name(frusta[i].get_image_file_name());
-        new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
-        new_frustum.set_capture_time(frusta[i].get_capture_time());
+      //   new_frustum.set_homography(frusta[i].get_homography());
+      //   new_frustum.set_image_file_name(frusta[i].get_image_file_name());
+      //   new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
+      //   new_frustum.set_capture_time(frusta[i].get_capture_time());
 
-        frusta[i] = new_frustum;
+      //   frusta[i] = new_frustum;
 
-        // save to file
+      //   // save to file
 
-        boost::filesystem::path frustum_path(new_frustum.get_image_file_name());
-        std::string out_file_name(optimization_output_path + "/" +
-                                  frustum_path.filename().string() + ".frustum");
+      //   boost::filesystem::path frustum_path(new_frustum.get_image_file_name());
+      //   std::string out_file_name(optimization_output_path + "/" +
+      //                             frustum_path.filename().string() + ".frustum");
 
-        new_cam_trans = scm::math::inverse(offset_transform) * new_cam_trans;
-        new_frustum = texstr::Frustum::perspective(
-          new_cam_trans,
-          new_cam_trans * orig_screen_trans,
-          frusta[i].get_clip_near(),
-          frusta[i].get_clip_far()
-        );
+      //   new_cam_trans = scm::math::inverse(offset_transform) * new_cam_trans;
+      //   new_frustum = texstr::Frustum::perspective(
+      //     new_cam_trans,
+      //     new_cam_trans * orig_screen_trans,
+      //     frusta[i].get_clip_near(),
+      //     frusta[i].get_clip_far()
+      //   );
 
-        new_frustum.set_homography(frusta[i].get_homography());
-        new_frustum.set_image_file_name(frusta[i].get_image_file_name());
-        new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
-        new_frustum.set_capture_time(frusta[i].get_capture_time());
+      //   new_frustum.set_homography(frusta[i].get_homography());
+      //   new_frustum.set_image_file_name(frusta[i].get_image_file_name());
+      //   new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
+      //   new_frustum.set_capture_time(frusta[i].get_capture_time());
 
-        std::fstream ofstr(out_file_name, std::ios::out);
-        if (ofstr.good()) {
-          ofstr << texstr::FrustumFactory::to_string(new_frustum) << std::endl;
+      //   std::fstream ofstr(out_file_name, std::ios::out);
+      //   if (ofstr.good()) {
+      //     ofstr << texstr::FrustumFactory::to_string(new_frustum) << std::endl;
 
-        } else {
-          std::cout << "Could not open output file " +  out_file_name + "!" << std::endl;
-        }
-        ofstr.close();
-      }
+      //   } else {
+      //     std::cout << "Could not open output file " +  out_file_name + "!" << std::endl;
+      //   }
+      //   ofstr.close();
+      // }
 
-      // register new frusta
-      texstr::FrustumManagement::instance()->reset();
-      texstr::FrustumManagement::instance()->register_frusta(frusta);
+      // // register new frusta
+      // texstr::FrustumManagement::instance()->reset();
+      // texstr::FrustumManagement::instance()->register_frusta(frusta);
     }
 
 

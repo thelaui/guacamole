@@ -25,6 +25,9 @@ class SteepestDescentOptimizer {
     std::function<double(cv::Mat const&, cv::Mat const&)> error_function =
                                 [](cv::Mat const&, cv::Mat const&){return 0.0;};
 
+    std::function<bool(cv::Mat const&, cv::Mat const&)> classification_function =
+                                [](cv::Mat const&, cv::Mat const&){return false;};
+
 
     void run(scm::math::mat4d& optimal_transform,
              scm::math::mat4d& optimal_difference);
