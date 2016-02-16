@@ -418,6 +418,9 @@ int main(int argc, char** argv) {
 
   auto plod_pass = std::make_shared<gua::PLODPassDescription>();
   plod_pass->set_clamping_radius(optimization_enabled ? 0.1f : 1.f);
+  plod_pass->set_render_method(optimization_enabled
+                               ? gua::PLODPassDescription::RenderMethod::BLENDED
+                               : gua::PLODPassDescription::RenderMethod::DIRECT);
 
   auto resolve_pass = std::make_shared<gua::ResolvePassDescription>();
 
@@ -1042,7 +1045,7 @@ int main(int argc, char** argv) {
         cv::cvtColor(screen_shot, screen_shot, CV_BGR2GRAY); //convert from bgr to rgb color space
         screen_shot.convertTo(screen_shot, CV_8UC1, 255.0);
         cv::GaussianBlur(screen_shot, screen_shot, blur_kernel, 0.0);
-        cv::equalizeHist(screen_shot, screen_shot);
+        // cv::equalizeHist(screen_shot, screen_shot);
         return screen_shot;
       };
 
