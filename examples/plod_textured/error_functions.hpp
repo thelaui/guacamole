@@ -8,6 +8,9 @@
 // zero mean normalized sum of squared differences
 float intensity_znssd(cv::Mat const& photo, cv::Mat const& screen_shot);
 
+
+float intensity_znssd_clustered(cv::Mat const& photo, cv::Mat const& screen_shot);
+
 //
 float blurred_gradient_znssd(cv::Mat const& photo, cv::Mat const& screen_shot);
 

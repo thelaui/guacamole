@@ -91,91 +91,92 @@ void SteepestDescentOptimizer::run_round_robin(
   auto screen_shot(retrieve_screen_shot(current_transform));
 
   if (classification_function(current_photo_, screen_shot)) {
-    std::cout << "accepted" << std::endl;
+    std::cout << "Pre-Classification: Image accepted." << std::endl;
+
+    auto initial_translation(gua::math::get_translation(initial_transform));
+
+    std::vector<std::vector<double>> positions_per_dimension(6);
+
+    const std::vector<std::string> dimension_names(
+      {"trans_x", "trans_y", "trans_z", "rot_x", "rot_y", "rot_z"}
+    );
+
+    while (!optimum_reached && ++iteration_count <= 50) {
+      int optimal_dimension_count(0);
+
+      for (int dimension(0); dimension < 6; ++dimension) {
+
+        double gradient(get_gradient_for_dimension(current_transform, dimension));
+        std::cout << "Gradient for " << dimension_names[dimension] << ": " << gradient << std::endl;
+
+        if (std::abs(gradient) <= 0.001) {
+          ++optimal_dimension_count;
+          std::cout << "Found optimum for " << dimension_names[dimension] << "." << std::endl;
+        } else {
+
+          update_step_length_for_dimension(current_transform, gradient, dimension);
+
+          if (current_step_length_ == 0.0) {
+            ++optimal_dimension_count;
+            std::cout << "Found smallest step length for " << dimension_names[dimension] << "." << std::endl;
+          } else {
+
+            scm::math::mat4d new_translation(scm::math::mat4d::identity());
+            scm::math::mat4d new_rotation(scm::math::mat4d::identity());
+
+            if (dimension < 3) {
+              // update translation
+              scm::math::vec3d translation_vector(0.0);
+              translation_vector[dimension] = -gradient * current_step_length_;
+
+              new_translation = scm::math::make_translation(translation_vector);
+            } else {
+              // update rotation
+              scm::math::vec3d rotation_axis_vector(0.0);
+              rotation_axis_vector[dimension - 3] = 1.0;
+
+              new_rotation = scm::math::make_rotation(-gradient * current_step_length_,
+                                                      rotation_axis_vector);
+            }
+
+
+            current_difference = new_translation * new_rotation;
+            current_transform = current_transform * current_difference;
+            optimal_difference *= current_difference;
+
+            // auto current_translation(gua::math::get_translation(current_transform));
+            // positions_per_dimension[dimension].push_back(
+            //   current_translation[dimension] - initial_translation[dimension]
+            // );
+
+          }
+        }
+
+      }
+
+      optimum_reached = optimal_dimension_count == 6;
+
+    }
+
+    if (!optimum_reached) {
+      std::cout << "Aborted optimization: Maximum iteration count reached. " << iteration_count << std::endl;
+    } else {
+      std::cout << "Reached optimum after " << iteration_count << " iterations." << std::endl;
+    }
+
+    // std::cout << "Travelled positions" << std::endl;
+    // for (int dimension(0); dimension < 6; ++dimension) {
+    //   std::cout << dimension_names[dimension] << std::endl;
+    //   for (int step(0); step < positions_per_dimension[dimension].size(); ++step) {
+    //     std::cout << step + 1 << " " << positions_per_dimension[dimension][step] << std::endl;
+    //   }
+    // }
+
   } else {
-    std::cout << "rejected" << std::endl;
+    std::cout << "Pre-Classification: Image rejected!" << std::endl;
   }
 
-  // auto initial_translation(gua::math::get_translation(initial_transform));
-
-  // std::vector<std::vector<double>> positions_per_dimension(6);
-
-  // const std::vector<std::string> dimension_names(
-  //   {"trans_x", "trans_y", "trans_z", "rot_x", "rot_y", "rot_z"}
-  // );
-
-  // while (!optimum_reached && ++iteration_count <= 50) {
-  //   int optimal_dimension_count(0);
-
-  //   for (int dimension(0); dimension < 6; ++dimension) {
-
-  //     double gradient(get_gradient_for_dimension(current_transform, dimension));
-  //     std::cout << "Gradient for " << dimension_names[dimension] << ": " << gradient << std::endl;
-
-  //     if (std::abs(gradient) <= 0.001) {
-  //       ++optimal_dimension_count;
-  //       std::cout << "Found optimum for " << dimension_names[dimension] << "." << std::endl;
-  //     } else {
-
-  //       update_step_length_for_dimension(current_transform, gradient, dimension);
-
-  //       if (current_step_length_ == 0.0) {
-  //         ++optimal_dimension_count;
-  //         std::cout << "Found smallest step length for " << dimension_names[dimension] << "." << std::endl;
-  //       } else {
-
-  //         scm::math::mat4d new_translation(scm::math::mat4d::identity());
-  //         scm::math::mat4d new_rotation(scm::math::mat4d::identity());
-
-  //         if (dimension < 3) {
-  //           // update translation
-  //           scm::math::vec3d translation_vector(0.0);
-  //           translation_vector[dimension] = -gradient * current_step_length_;
-
-  //           new_translation = scm::math::make_translation(translation_vector);
-  //         } else {
-  //           // update rotation
-  //           scm::math::vec3d rotation_axis_vector(0.0);
-  //           rotation_axis_vector[dimension - 3] = 1.0;
-
-  //           new_rotation = scm::math::make_rotation(-gradient * current_step_length_,
-  //                                                   rotation_axis_vector);
-  //         }
-
-
-  //         current_difference = new_translation * new_rotation;
-  //         current_transform = current_transform * current_difference;
-  //         optimal_difference *= current_difference;
-
-  //         // auto current_translation(gua::math::get_translation(current_transform));
-  //         // positions_per_dimension[dimension].push_back(
-  //         //   current_translation[dimension] - initial_translation[dimension]
-  //         // );
-
-  //       }
-  //     }
-
-  //   }
-
-  //   optimum_reached = optimal_dimension_count == 6;
-
-  // }
-
-  // if (!optimum_reached) {
-  //   std::cout << "Aborted optimization: Maximum iteration count reached. " << iteration_count << std::endl;
-  // } else {
-  //   std::cout << "Reached optimum after " << iteration_count << " iterations." << std::endl;
-  // }
-
-  // // std::cout << "Travelled positions" << std::endl;
-  // // for (int dimension(0); dimension < 6; ++dimension) {
-  // //   std::cout << dimension_names[dimension] << std::endl;
-  // //   for (int step(0); step < positions_per_dimension[dimension].size(); ++step) {
-  // //     std::cout << step + 1 << " " << positions_per_dimension[dimension][step] << std::endl;
-  // //   }
-  // // }
-
-  // optimal_transform = current_transform;
+  optimal_transform = current_transform;
 
 }
 

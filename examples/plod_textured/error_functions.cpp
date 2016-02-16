@@ -1,4 +1,5 @@
 #include "error_functions.hpp"
+#include "classification_functions.hpp"
 
 #include <gua/utils.hpp>
 
@@ -16,6 +17,7 @@ float intensity_znssd(cv::Mat const& photo, cv::Mat const& screen_shot_in) {
   photo.copyTo(masked_photo, mask);
   masked_photo.convertTo(masked_photo, CV_8UC1);
   cv::equalizeHist(masked_photo, masked_photo);
+  cv::equalizeHist(screen_shot, screen_shot);
 
   screen_shot.convertTo(screen_shot, CV_32FC1, 1.0/255.0);
   masked_photo.convertTo(masked_photo, CV_32FC1, 1.0/255.0);
@@ -31,6 +33,66 @@ float intensity_znssd(cv::Mat const& photo, cv::Mat const& screen_shot_in) {
 
   double total_error = cv::sum(diff)[0] / (screen_shot.size().width * screen_shot.size().height);
   // std::cout << "Time: " << timer.get_elapsed() << std::endl;
+  return total_error;
+}
+
+float intensity_znssd_clustered(cv::Mat const& photo, cv::Mat const& screen_shot_in) {
+  gua::Timer timer;
+
+  cv::Mat screen_shot;
+  screen_shot_in.copyTo(screen_shot);
+
+  cv::Mat mask;
+  cv::threshold(screen_shot, mask, 0, 255, cv::THRESH_BINARY);
+
+  cv::Mat masked_photo;
+  photo.copyTo(masked_photo, mask);
+
+  std::vector<float> photo_centers;
+  cv::Mat photo_cluster_labels(compute_cluster_labels(masked_photo, 3, photo_centers));
+
+
+  int highest_label(0);
+  for (int i(0); i < photo_centers.size(); ++i) {
+    if (photo_centers[i] > photo_centers[highest_label]) {
+      highest_label = i;
+    }
+  }
+
+  masked_photo.convertTo(masked_photo, CV_8UC1);
+  cv::equalizeHist(masked_photo, masked_photo);
+  cv::equalizeHist(screen_shot, screen_shot);
+
+  screen_shot.convertTo(screen_shot, CV_32FC1, 1.0/255.0);
+  masked_photo.convertTo(masked_photo, CV_32FC1, 1.0/255.0);
+
+  // calculate zero-mean normalized sum of squared differences
+
+  screen_shot = screen_shot - cv::mean(screen_shot);
+  masked_photo = masked_photo - cv::mean(masked_photo);
+
+  double total_error(1.0);
+  int    considered_pixels(0);
+
+  timer.start();
+  for (int y(0); y < photo_cluster_labels.rows; ++y) {
+    for (int x(0); x < photo_cluster_labels.cols; ++x) {
+      int label(photo_cluster_labels.at<int>(y, x));
+      if (label == highest_label) {
+        float diff(screen_shot.at<float>(y,x) - masked_photo.at<float>(y,x));
+        total_error += diff * diff;
+        ++considered_pixels;
+      }
+    }
+  }
+  // std::cout << "Summation time: " << timer.get_elapsed() << std::endl;
+  // screen_shot.convertTo(screen_shot, CV_8UC1, 255);
+  // masked_photo.convertTo(masked_photo, CV_8UC1, 255);
+
+  // cv::imwrite("/home/tosa2305/Desktop/plod-textured-out/masked_photo.png", masked_photo);
+  // cv::imwrite("/home/tosa2305/Desktop/plod-textured-out/screen_shot.png", screen_shot);
+
+  total_error /= 1.0 * considered_pixels;
   return total_error;
 }
 
