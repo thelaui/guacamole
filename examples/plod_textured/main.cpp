@@ -1070,10 +1070,10 @@ int main(int argc, char** argv) {
 
       scm::math::mat4d optimal_transform(scm::math::mat4d::identity());
       scm::math::mat4d optimal_difference(scm::math::mat4d::identity());
-      // steepest_descent_optimizer.run(optimal_transform, optimal_difference);
       // brute_force_optimizer.run(optimal_transform, optimal_difference);
       // steepest_descent_optimizer.initial_transform = optimal_transform;
-      steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
+      steepest_descent_optimizer.run(optimal_transform, optimal_difference);
+      // steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
       // error_function_sampler.initial_transform = optimal_transform;
       // error_function_sampler.sample_dimension(0, -0.1, 0.1, 10.01);
 

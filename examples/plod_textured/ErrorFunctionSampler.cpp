@@ -1,4 +1,5 @@
 #include "ErrorFunctionSampler.hpp"
+#include "ImageClusterGenerator.hpp"
 
 #include <iostream>
 
@@ -12,7 +13,9 @@ void ErrorFunctionSampler::sample_dimension(int dimension, double min, double ma
 
   current_photo_ = retrieve_photo();
 
-  cv::Mat screen_shot;
+  cv::Mat screen_shot(retrieve_screen_shot(initial_transform));
+
+  ImageClusterGenerator::instance()->init(current_photo_, screen_shot, 3);
 
   for (double step_value(min); step_value <= max; step_value += step_size) {
 

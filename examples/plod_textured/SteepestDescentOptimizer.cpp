@@ -10,6 +10,8 @@
 
 #include <texture_stream/texture_stream.hpp>
 
+#include "ImageClusterGenerator.hpp"
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform,
@@ -24,49 +26,64 @@ void SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform,
 
   current_photo_ = retrieve_photo();
 
-  while (!optimum_reached && ++iteration_count <= 100) { // && current_step_length_ != 0.0) {
-    auto gradient(get_gradient(current_transform));
+  auto screen_shot(retrieve_screen_shot(current_transform));
+  ImageClusterGenerator::instance()->init(current_photo_, screen_shot, 3);
 
-    optimum_reached = gradient == scm::math::mat<double, 6, 1>();
+  if (classification_function(current_photo_, screen_shot)) {
+    std::cout << "Pre-Classification: Image accepted." << std::endl;
+
+    while (!optimum_reached && ++iteration_count <= 50) { // && current_step_length_ != 0.0) {
+      auto gradient(get_gradient(current_transform));
+      std::cout << "Gradient: " << gradient << std::endl;
+      optimum_reached = gradient == scm::math::mat<double, 6, 1>();
+
+      if (!optimum_reached) {
+        // update step length
+        update_step_length(current_transform, gradient);
+
+        if (current_step_length_ == 0.0) {
+          optimum_reached = true;
+          std::cout << "Found smallest step length." << std::endl;
+
+        } else {
+          // negative gradient is always a descent direction
+
+          scm::math::mat4d new_translation(scm::math::make_translation(
+            -gradient.data_array[0] * current_step_length_,
+            -gradient.data_array[1] * current_step_length_,
+            -gradient.data_array[2] * current_step_length_
+          ));
+
+          scm::math::mat4d new_rot_x(scm::math::make_rotation(
+            -gradient.data_array[3] * current_step_length_,
+            1.0, 0.0, 0.0
+          ));
+
+          scm::math::mat4d new_rot_y(scm::math::make_rotation(
+            -gradient.data_array[4] * current_step_length_,
+            0.0, 1.0, 0.0
+          ));
+
+          scm::math::mat4d new_rot_z(scm::math::make_rotation(
+            -gradient.data_array[5] * current_step_length_,
+            0.0, 0.0, 1.0
+          ));
+
+          current_difference = new_translation * new_rot_z *  new_rot_x *  new_rot_y;
+          current_transform = current_transform * current_difference;
+          optimal_difference *= current_difference;
+        }
+      }
+    }
 
     if (!optimum_reached) {
-      // update step length
-      update_step_length(current_transform, gradient);
-      // current_step_length_ = 0.5;
-
-      // negative gradient is always a descent direction
-
-      scm::math::mat4d new_translation(scm::math::make_translation(
-        -gradient.data_array[0] * current_step_length_,
-        -gradient.data_array[1] * current_step_length_,
-        -gradient.data_array[2] * current_step_length_
-      ));
-
-      scm::math::mat4d new_rot_x(scm::math::make_rotation(
-        -gradient.data_array[3] * current_step_length_,
-        1.0, 0.0, 0.0
-      ));
-
-      scm::math::mat4d new_rot_y(scm::math::make_rotation(
-        -gradient.data_array[4] * current_step_length_,
-        0.0, 1.0, 0.0
-      ));
-
-      scm::math::mat4d new_rot_z(scm::math::make_rotation(
-        -gradient.data_array[5] * current_step_length_,
-        0.0, 0.0, 1.0
-      ));
-
-      current_difference = new_translation * new_rot_z *  new_rot_x *  new_rot_y;
-      current_transform = current_transform * current_difference;
-      optimal_difference *= current_difference;
+      std::cout << "Aborted optimization: Maximum iteration count reached. " << iteration_count << std::endl;
     } else {
       std::cout << "Reached optimum after " << iteration_count << " iterations." << std::endl;
     }
-  }
 
-  if (!optimum_reached) {
-    std::cout << "Aborted optimization: Maximum iteration count reached. " << iteration_count << std::endl;
+  } else {
+    std::cout << "Pre-Classification: Image rejected!" << std::endl;
   }
 
   optimal_transform = current_transform;
@@ -89,6 +106,8 @@ void SteepestDescentOptimizer::run_round_robin(
   current_photo_ = retrieve_photo();
 
   auto screen_shot(retrieve_screen_shot(current_transform));
+
+  ImageClusterGenerator::instance()->init(current_photo_, screen_shot, 3);
 
   if (classification_function(current_photo_, screen_shot)) {
     std::cout << "Pre-Classification: Image accepted." << std::endl;
@@ -266,10 +285,9 @@ void SteepestDescentOptimizer::update_step_length(
 
   // calculate optimal step length according to Armijo rule
 
-  int iteration_count(0);
   double beta(0.9);
   double epsilon(0.01);
-  double previous_step_length(current_step_length_);
+
   current_step_length_ = 1.0;
 
   auto current_transform(central_transform);
@@ -308,11 +326,21 @@ void SteepestDescentOptimizer::update_step_length(
       0.0, 0.0, 1.0
     ));
 
+    cv::Mat screen_shot_bak(retrieve_screen_shot(current_transform));
+
     current_transform = central_transform * new_translation * new_rot_z *  new_rot_x *  new_rot_y;
 
     // phi(t_k)
     screen_shot = retrieve_screen_shot(current_transform);
     auto current_error(error_function(current_photo_, screen_shot));
+
+    cv::absdiff(screen_shot, screen_shot_bak, screen_shot_bak);
+    auto screen_shot_error(cv::sum(screen_shot_bak)[0]);
+    if (screen_shot_error == 0.0) {
+
+      current_step_length_ = 0.0;
+      break;
+    }
 
     // std::cout << "phi_derivative: " << phi_derivative << std::endl;
     // std::cout << "central_error: " << central_error << std::endl;
@@ -324,10 +352,6 @@ void SteepestDescentOptimizer::update_step_length(
       current_step_length_ *= beta;
     }
   }
-
-  // if (current_step_length_ == previous_step_length && current_step_length_ != 1.0)  {
-  //   current_step_length_ = 0.0;
-  // }
 
   // std::cout << "optimal_step_length: " << current_step_length_ << std::endl;
 
@@ -343,7 +367,6 @@ void SteepestDescentOptimizer::update_step_length_for_dimension(
 
   double beta(0.9);
   double epsilon(0.01);
-  double previous_step_length(current_step_length_);
 
   if (dimension < 3) {
     // initial step length for translations
@@ -407,10 +430,6 @@ void SteepestDescentOptimizer::update_step_length_for_dimension(
       current_step_length_ *= beta;
     }
   }
-
-  // if (current_step_length_ == previous_step_length && current_step_length_ != 1.0)  {
-  //   current_step_length_ = 0.0;
-  // }
 
   // std::cout << "optimal_step_length: " << current_step_length_ << std::endl;
 

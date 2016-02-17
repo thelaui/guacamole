@@ -1,5 +1,5 @@
 #include "error_functions.hpp"
-#include "classification_functions.hpp"
+#include "ImageClusterGenerator.hpp"
 
 #include <gua/utils.hpp>
 
@@ -48,14 +48,12 @@ float intensity_znssd_clustered(cv::Mat const& photo, cv::Mat const& screen_shot
   cv::Mat masked_photo;
   photo.copyTo(masked_photo, mask);
 
-  std::vector<float> photo_centers;
-  cv::Mat photo_cluster_labels(compute_cluster_labels(masked_photo, 3, photo_centers));
+  auto photo_centers(ImageClusterGenerator::instance()->get_centers());
 
-
-  int highest_label(0);
+  int lightest_cluster_label(0);
   for (int i(0); i < photo_centers.size(); ++i) {
-    if (photo_centers[i] > photo_centers[highest_label]) {
-      highest_label = i;
+    if (photo_centers[i] > photo_centers[lightest_cluster_label]) {
+      lightest_cluster_label = i;
     }
   }
 
@@ -74,21 +72,29 @@ float intensity_znssd_clustered(cv::Mat const& photo, cv::Mat const& screen_shot
   double total_error(1.0);
   int    considered_pixels(0);
 
+  cv::Mat const& photo_cluster_labels(ImageClusterGenerator::instance()->get_cluster_labels());
   timer.start();
+
+
   for (int y(0); y < photo_cluster_labels.rows; ++y) {
     for (int x(0); x < photo_cluster_labels.cols; ++x) {
       int label(photo_cluster_labels.at<int>(y, x));
-      if (label == highest_label) {
-        float diff(screen_shot.at<float>(y,x) - masked_photo.at<float>(y,x));
+      // only consider pixel which are in the lightest cluster and not masked out
+      if (label == lightest_cluster_label && mask.at<unsigned char>(y, x) == 255) {
+        float diff(screen_shot.at<float>(y, x) - masked_photo.at<float>(y,x));
         total_error += diff * diff;
         ++considered_pixels;
+      } else {
+        masked_photo.at<float>(y, x) = 0.f;
+        screen_shot.at<float>(y, x) = 0.f;
       }
     }
   }
   // std::cout << "Summation time: " << timer.get_elapsed() << std::endl;
-  // screen_shot.convertTo(screen_shot, CV_8UC1, 255);
-  // masked_photo.convertTo(masked_photo, CV_8UC1, 255);
+  screen_shot.convertTo(screen_shot, CV_8UC1, 255);
+  masked_photo.convertTo(masked_photo, CV_8UC1, 255);
 
+  // cv::imwrite("/home/tosa2305/Desktop/plod-textured-out/mask.png", mask);
   // cv::imwrite("/home/tosa2305/Desktop/plod-textured-out/masked_photo.png", masked_photo);
   // cv::imwrite("/home/tosa2305/Desktop/plod-textured-out/screen_shot.png", screen_shot);
 
