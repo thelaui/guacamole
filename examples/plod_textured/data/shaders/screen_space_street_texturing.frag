@@ -10,7 +10,7 @@ layout(location=0) out vec3 gua_out_color;
 layout (binding=2) uniform projective_texure_block {
   mat4  projection_view_mats[64];
   vec4  frustum_positions[64];
-  vec4  projection_texture_resolutions[64];
+  uvec4 optimization_states[64];
   uvec2 projection_textures[64];
   int   frustum_count;
   int   pad;
@@ -23,6 +23,19 @@ uniform vec2 clipping_params; // x: depth, y: height
 uniform int lens_enabled;
 uniform vec4 pick_pos_and_radius;
 uniform vec3 pick_normal;
+uniform int show_optimized;
+
+vec3 get_color_by_optimization_status(float status) {
+  if (status == 0.0) {
+    // non-optimized
+    return vec3(170.f, 59.f, 56.f) / vec3(255.0, 255.0, 255.0);
+  } else if (status == 1.0) {
+    // optimized
+    return vec3(121.f, 158.f, 52.f) / vec3(255.0, 255.0, 255.0);
+  }
+
+  return vec3(1.0);
+}
 
 int get_id_smallest_distance(in vec4 position) {
   float minimal_distance = 99999.9;
@@ -70,8 +83,6 @@ vec3 get_projected_color(int frustum_id) {
 
   // check if texture is loaded
   if (projection_textures[frustum_id] != uvec2(0)) {
-    vec2 resolution = vec2(projection_texture_resolutions[frustum_id].x,
-                           projection_texture_resolutions[frustum_id].y);
 
     // project fragment position into the projective texture
     vec4 proj_tex_space_pos = projection_view_mats[frustum_id] * vec4(gua_get_position(), 1.0);
@@ -85,6 +96,8 @@ vec3 get_projected_color(int frustum_id) {
         abs(proj_tex_space_pos.y) <  1.0 &&
         depth                     >= 0.0) {
 
+
+
       result = texture(sampler2D(projection_textures[frustum_id]), proj_tex_space_pos.xy * 0.5 + 0.5).rgb;
     }
   }
@@ -97,8 +110,6 @@ vec3 get_projected_color_with_current_camera(int frustum_id) {
 
   // check if texture is loaded
   if (projection_textures[frustum_id] != uvec2(0)) {
-    vec2 resolution = vec2(projection_texture_resolutions[frustum_id].x,
-                           projection_texture_resolutions[frustum_id].y);
 
     // project fragment position into the projective texture
     vec4 proj_tex_space_pos = gua_projection_matrix * gua_view_matrix * vec4(gua_get_position(), 1.0);
@@ -269,9 +280,16 @@ void main() {
         }
 
         vec3 projected_color = get_projected_color(frustum_id);
+
         // vec3 projected_color = get_projected_color_with_current_camera(frustum_id);
         if (projected_color != vec3(0.0)) {
           gua_out_color = mix(gua_out_color, projected_color, blending_factor);
+
+          if (show_optimized == 1) {
+            float optimization_state = optimization_states[frustum_id].x;
+            vec3 optimization_color = get_color_by_optimization_status(optimization_state);
+            gua_out_color = mix(gua_out_color, optimization_color, 0.5);
+          }
         }
       }
 

@@ -14,27 +14,29 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform,
+bool SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform,
                                    scm::math::mat4d& optimal_difference) {
 
+  bool success(false);
   int iteration_count(0);
   bool optimum_reached(false);
   current_step_length_ = 1.0;
 
+  optimal_transform = initial_transform;
+
   auto current_transform = initial_transform;
   auto current_difference = scm::math::mat4d::identity();
-
   current_photo_ = retrieve_photo();
 
   auto screen_shot(retrieve_screen_shot(current_transform));
   ImageClusterGenerator::instance()->init(current_photo_, screen_shot, 3);
 
-  if (classification_function(current_photo_, screen_shot)) {
+  if (pre_classification(current_photo_, screen_shot)) {
     std::cout << "Pre-Classification: Image accepted." << std::endl;
 
-    while (!optimum_reached && ++iteration_count <= 50) { // && current_step_length_ != 0.0) {
+    while (!optimum_reached && ++iteration_count <= 100) { // && current_step_length_ != 0.0) {
       auto gradient(get_gradient(current_transform));
-      std::cout << "Gradient: " << gradient << std::endl;
+      // std::cout << "Gradient: " << gradient << std::endl;
       optimum_reached = gradient == scm::math::mat<double, 6, 1>();
 
       if (!optimum_reached) {
@@ -82,12 +84,21 @@ void SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform,
       std::cout << "Reached optimum after " << iteration_count << " iterations." << std::endl;
     }
 
+    if (post_classification(current_transform)) {
+      std::cout << "Post-Classification: Image accepted!" << std::endl;
+      optimal_transform = current_transform;
+      success = true;
+    } else {
+      std::cout << "Post-Classification: Image rejected!" << std::endl;
+      optimal_transform = initial_transform;
+      optimal_difference = scm::math::mat4d::identity();
+    }
+
   } else {
     std::cout << "Pre-Classification: Image rejected!" << std::endl;
   }
 
-  optimal_transform = current_transform;
-
+  return success;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +120,7 @@ void SteepestDescentOptimizer::run_round_robin(
 
   ImageClusterGenerator::instance()->init(current_photo_, screen_shot, 3);
 
-  if (classification_function(current_photo_, screen_shot)) {
+  if (pre_classification(current_photo_, screen_shot)) {
     std::cout << "Pre-Classification: Image accepted." << std::endl;
 
     auto initial_translation(gua::math::get_translation(initial_transform));
@@ -434,6 +445,99 @@ void SteepestDescentOptimizer::update_step_length_for_dimension(
   // std::cout << "optimal_step_length: " << current_step_length_ << std::endl;
 
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+bool SteepestDescentOptimizer::post_classification(scm::math::mat4d const& optimal_transform) const {
+
+  scm::math::mat4d optimization_offset(scm::math::inverse(initial_transform) * optimal_transform);
+
+  bool accepted(true);
+
+  // check if unreasonably large jump occured
+  for (int row(0); row < 3; ++row) {
+
+    if(std::abs(optimization_offset.column(3)[row]) > 0.5) {
+      accepted = false;
+      break;
+    }
+  }
+
+  if (accepted) {
+
+    float position_offset_range(0.05f);
+    int position_sampling_steps(2);
+    float rotation_offset_range(1.f);
+    int rotation_sampling_steps(2);
+
+    double position_step_size(position_offset_range / double(position_sampling_steps - 1));
+    if(position_step_size == 0.0) {
+      position_step_size = 1.0;
+    }
+
+    double rotation_step_size(rotation_offset_range / double(rotation_sampling_steps - 1));
+    if(rotation_step_size == 0.0) {
+      rotation_step_size = 1.0;
+    }
+
+    auto screen_shot(retrieve_screen_shot(optimal_transform));
+    auto optimal_error(error_function(current_photo_, screen_shot));
+
+    double lowest_error(optimal_error);
+    double highest_error(optimal_error);
+
+    for (double x(-position_offset_range * 0.5); x <= position_offset_range * 0.5; x+=position_step_size) {
+      for (double y(-position_offset_range * 0.5); y <= position_offset_range * 0.5; y+=position_step_size) {
+        for (double z(-position_offset_range * 0.5); z <= position_offset_range * 0.5; z+=position_step_size) {
+          for (double rot_x(-rotation_offset_range * 0.5); rot_x <= rotation_offset_range * 0.5; rot_x+=rotation_step_size) {
+            auto current_x_rot(scm::math::make_rotation(rot_x, 1.0, 0.0, 0.0));
+            for (double rot_y(-rotation_offset_range * 0.5); rot_y <= rotation_offset_range * 0.5; rot_y+=rotation_step_size) {
+              auto current_y_rot(scm::math::make_rotation(rot_y, 0.0, 1.0, 0.0));
+              for (double rot_z(-rotation_offset_range * 0.5); rot_z <= rotation_offset_range * 0.5; rot_z+=rotation_step_size) {
+                auto current_z_rot(scm::math::make_rotation(rot_z, 0.0, 0.0, 1.0));
+
+                auto current_difference(scm::math::make_translation(x, y, z) *
+                                        current_y_rot * current_x_rot * current_z_rot);
+                auto current_transform(optimal_transform * current_difference);
+
+                screen_shot = retrieve_screen_shot(current_transform);
+                auto current_error(error_function(current_photo_, screen_shot));
+                if (current_error < lowest_error) {
+                  lowest_error = current_error;
+                  accepted = false;
+                }
+
+                if (current_error > highest_error) {
+                  highest_error = current_error;
+                }
+
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // check if found lowest error is actually significantly smaller than optimal error
+    if (!accepted) {
+      std::cout << "lowest_error " << lowest_error << std::endl;
+      std::cout << "highest_error " << highest_error << std::endl;
+      std::cout << "optimal_error " << optimal_error << std::endl;
+
+      double error_ratio((optimal_error - lowest_error)/highest_error);
+      std::cout << "error_ratio " << error_ratio << std::endl;
+
+      if (error_ratio <= 0.1) {
+        accepted = true;
+      }
+    }
+  }
+
+
+  return accepted;
+
+}
+
 
 
 

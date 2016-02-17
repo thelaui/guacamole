@@ -59,7 +59,15 @@ float ImageClusterGenerator::calculate_center_ratio() const {
   float highest(sorted_centers[sorted_centers.size()-1]);
   float mid(sorted_centers[sorted_centers.size()-2]);
   float lowest(sorted_centers[0]);
-  float ratio((mid - lowest) / (highest - lowest));
+
+  float range(highest - lowest);
+
+  float ratio(1.f);
+
+  if (range != 0.f) {
+    ratio = (mid - lowest) / range;
+  }
+
   std::cout << "highest " << highest << std::endl;
   std::cout << "mid " << mid << std::endl;
   std::cout << "lowest " << lowest << std::endl;

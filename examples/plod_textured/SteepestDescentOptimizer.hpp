@@ -25,11 +25,11 @@ class SteepestDescentOptimizer {
     std::function<double(cv::Mat const&, cv::Mat const&)> error_function =
                                 [](cv::Mat const&, cv::Mat const&){return 0.0;};
 
-    std::function<bool(cv::Mat const&, cv::Mat const&)> classification_function =
+    std::function<bool(cv::Mat const&, cv::Mat const&)> pre_classification =
                                 [](cv::Mat const&, cv::Mat const&){return false;};
 
 
-    void run(scm::math::mat4d& optimal_transform,
+    bool run(scm::math::mat4d& optimal_transform,
              scm::math::mat4d& optimal_difference);
 
     void run_round_robin(scm::math::mat4d& optimal_transform,
@@ -49,6 +49,8 @@ class SteepestDescentOptimizer {
     void update_step_length_for_dimension(
                             scm::math::mat4d const& central_transform,
                             double gradient, int dimension);
+
+    bool post_classification(scm::math::mat4d const& optimal_transform) const;
 
     double current_step_length_ = 1.f;
 
