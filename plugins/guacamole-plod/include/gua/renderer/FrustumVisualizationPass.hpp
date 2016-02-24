@@ -40,12 +40,15 @@ class GUA_DLL FrustumVisualizationPassDescription : public PipelinePassDescripti
   void set_frustum_visualization_enabled(bool enabled);
   double get_query_radius() const { return query_radius_; }
   void set_query_radius(double query_radius);
+  double get_interpolation_range() const { return interpolation_range_; }
+  void set_interpolation_range(double interpolation_range);
 
  protected:
   PipelinePass make_pass(RenderContext const&, SubstitutionMap&) override;
   bool tree_visualization_enabled_;
   bool frustum_visualization_enabled_;
   double query_radius_;
+  double interpolation_range_;
 };
 
 }

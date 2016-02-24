@@ -28,10 +28,13 @@ uniform int show_optimized;
 vec3 get_color_by_optimization_status(float status) {
   if (status == 0.0) {
     // non-optimized
-    return vec3(170.f, 59.f, 56.f) / vec3(255.0, 255.0, 255.0);
+    return vec3(170.0, 59.0, 56.0) / vec3(255.0, 255.0, 255.0);
   } else if (status == 1.0) {
     // optimized
-    return vec3(121.f, 158.f, 52.f) / vec3(255.0, 255.0, 255.0);
+    return vec3(121.0, 158.0, 52.0) / vec3(255.0, 255.0, 255.0);
+  } else if (status == 2.0) {
+    // interpolated
+    return vec3(221.0, 190.0, 41.0) / vec3(255.0, 255.0, 255.0);
   }
 
   return vec3(1.0);

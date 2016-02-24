@@ -152,6 +152,7 @@
         init_slider("#control-panel .blending_range", "blending_range");
         init_slider("#control-panel .clamping_radius", "clamping_radius");
 
+        init_slider("#control-panel .interpolation_range", "interpolation_range");
         init_slider("#control-panel .position_range", "position_range");
         init_slider("#control-panel .position_samples", "position_samples");
         init_slider("#control-panel .rotation_range", "rotation_range");
@@ -330,6 +331,9 @@
             </div>
           </div>
 
+
+          <h4 class="highlight">Optimization</h4>
+
           <div class="row">
             <div class="col-xs-5">
             Show Optimized:
@@ -344,7 +348,14 @@
             </div>
           </div>
 
-          <h4 class="highlight">Optimization</h4>
+          <div class="row">
+            <div class="col-xs-5">
+              Interpolation Range:
+            </div>
+            <div class="col-xs-7">
+              <input class="slider interpolation_range" data-slider-tooltip="hide" data-slider-id="interpolation_range" type="text" data-slider-min="0" data-slider-max="2000.0" data-slider-step="1.0" handle="custom"/>
+            </div>
+          </div>
 
           <div class="row">
             <div class="col-xs-5">

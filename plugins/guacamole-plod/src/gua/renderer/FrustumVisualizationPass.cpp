@@ -36,7 +36,8 @@ FrustumVisualizationPassDescription::FrustumVisualizationPassDescription()
   : PipelinePassDescription()
   , tree_visualization_enabled_(true)
   , frustum_visualization_enabled_(true)
-  , query_radius_(0.0) {
+  , query_radius_(0.0)
+  , interpolation_range_(0.0) {
   vertex_shader_ = "resources/shaders/projective_texturing/frustum_visualization.vert";
   geometry_shader_ = "resources/shaders/projective_texturing/frustum_visualization.geom";
   fragment_shader_ = "resources/shaders/projective_texturing/frustum_visualization.frag";
@@ -85,6 +86,11 @@ void FrustumVisualizationPassDescription::set_query_radius(double query_radius) 
   touch();
 }
 
+void FrustumVisualizationPassDescription::set_interpolation_range(double interpolation_range) {
+  interpolation_range_ = interpolation_range;
+  touch();
+}
+
 PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const& ctx, SubstitutionMap& substitution_map)
 {
   PipelinePass pass(*this, ctx, substitution_map);
@@ -111,8 +117,9 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
 
   auto frustum_vao_ = ctx.render_device->create_vertex_array(format, {frustum_vbo_});
   auto query_radius = query_radius_;
+  auto interpolation_range = interpolation_range_;
 
-  pass.process_ = [frustum_vbo_, frustum_vao_, query_radius,
+  pass.process_ = [frustum_vbo_, frustum_vao_, query_radius, interpolation_range,
                    tree_visualization_enabled, frustum_visualization_enabled](
       PipelinePass &, PipelinePassDescription const&, Pipeline & pipe) {
 
@@ -123,6 +130,7 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
     texstr::QueryOptions options;
     options.mode = texstr::QueryOptions::RADIUS;
     options.radius = query_radius;
+    options.optimization_interpolation_range = interpolation_range;
 
     texstr::FrustumManagement::instance()->send_query(gua_frustum.get_camera_position(), options);
 
@@ -183,7 +191,7 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
                                           scm::gl::ACCESS_WRITE_INVALIDATE_BUFFER));
 
           for (int i(0); i < frusta.size(); ++i) {
-            auto corners(frusta[i]->get_corners());
+            auto corners(frusta[i].get_corners());
             for (int c(0); c < corners.size(); ++c) {
               vbo_mem[i * 9 + c] = corners[c];
             }

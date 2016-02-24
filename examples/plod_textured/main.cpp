@@ -348,10 +348,10 @@ int main(int argc, char** argv) {
         frustum.get_clip_far()
       );
 
-      new_frustum.set_homography(frustum.get_homography());
       new_frustum.set_image_file_name(frustum.get_image_file_name());
       new_frustum.set_image_dimensions(frustum.get_image_dimensions());
-      new_frustum.is_optimized(frustum.is_optimized());
+      new_frustum.set_optimization_state(frustum.get_optimization_state());
+      new_frustum.set_optimization_offset(frustum.get_optimization_offset());
       new_frustum.set_capture_time(frustum.get_capture_time());
 
       frusta.push_back(new_frustum);
@@ -474,6 +474,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_getter("get_blending_factor", [&](){ return gua::to_string(current_blending_factor);});
     gui->add_javascript_getter("get_blending_range", [&](){ return gua::to_string(current_blending_range);});
     gui->add_javascript_getter("get_clamping_radius", [&](){ return gua::to_string(plod_pass->get_clamping_radius());});
+    gui->add_javascript_getter("get_interpolation_range", [&](){ return gua::to_string(frustum_vis_pass->get_interpolation_range());});
     gui->add_javascript_getter("get_position_range", [&](){ return gua::to_string(brute_force_optimizer.position_offset_range);});
     gui->add_javascript_getter("get_position_samples", [&](){ return gua::to_string(brute_force_optimizer.position_sampling_steps);});
     gui->add_javascript_getter("get_rotation_range", [&](){ return gua::to_string(brute_force_optimizer.rotation_offset_range);});
@@ -496,6 +497,7 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_blending_range");
     gui->add_javascript_callback("set_lens_radius");
     gui->add_javascript_callback("set_clamping_radius");
+    gui->add_javascript_callback("set_interpolation_range");
     gui->add_javascript_callback("set_position_range");
     gui->add_javascript_callback("set_position_samples");
     gui->add_javascript_callback("set_rotation_range");
@@ -577,6 +579,11 @@ int main(int argc, char** argv) {
     } else if (callback == "set_lens_radius") {
       std::stringstream str(params[0]);
       str >> current_lens_radius;
+    } else if (callback == "set_interpolation_range") {
+      std::stringstream str(params[0]);
+      double interpolation_range(0.0);
+      str >> interpolation_range;
+      frustum_vis_pass->set_interpolation_range(interpolation_range);
     } else if (callback == "set_position_range") {
       std::stringstream str(params[0]);
       str >> brute_force_optimizer.position_offset_range;
@@ -826,7 +833,7 @@ int main(int argc, char** argv) {
 
             for (auto frustum : current_frusta) {
               scm::math::vec4d proj_tex_space_pos(
-                frustum->get_projection_view() *
+                frustum.get_projection_view() *
                 scm::math::vec4d(current_pick_pos.x, current_pick_pos.y, current_pick_pos.z, 1.0)
               );
 
@@ -839,7 +846,7 @@ int main(int argc, char** argv) {
                   depth                          >= 0.0) {
 
 
-                auto image_dim(frustum->get_image_dimensions());
+                auto image_dim(frustum.get_image_dimensions());
                 int display_width(gallery_height*image_dim.x / image_dim.y);
 
                 int offset_x((gallery_width - display_width) / 2);
@@ -852,7 +859,7 @@ int main(int argc, char** argv) {
 
                 gallery->call_javascript_async(
                   "addImage",
-                  frustum->get_image_file_name(),
+                  frustum.get_image_file_name(),
                   gua::to_string(display_width),
                   crosshair_pos.x,
                   crosshair_pos.y
@@ -1115,10 +1122,14 @@ int main(int argc, char** argv) {
               frusta[i].get_clip_far()
             );
 
-            new_frustum.set_homography(frusta[i].get_homography());
             new_frustum.set_image_file_name(frusta[i].get_image_file_name());
             new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
-            new_frustum.is_optimized(success);
+
+            if (success && i == current_frustum) {
+              new_frustum.set_optimization_state(texstr::Frustum::OptimizationState::OPTIMIZED);
+              new_frustum.set_optimization_offset(optimal_difference);
+            }
+
             new_frustum.set_capture_time(frusta[i].get_capture_time());
 
             frusta[i] = new_frustum;
@@ -1137,10 +1148,14 @@ int main(int argc, char** argv) {
               frusta[i].get_clip_far()
             );
 
-            new_frustum.set_homography(frusta[i].get_homography());
             new_frustum.set_image_file_name(frusta[i].get_image_file_name());
             new_frustum.set_image_dimensions(frusta[i].get_image_dimensions());
-            new_frustum.is_optimized(success);
+
+            if (success && i == current_frustum) {
+              new_frustum.set_optimization_state(texstr::Frustum::OptimizationState::OPTIMIZED);
+              new_frustum.set_optimization_offset(optimal_difference);
+            }
+
             new_frustum.set_capture_time(frusta[i].get_capture_time());
 
             std::fstream ofstr(out_file_name, std::ios::out);
