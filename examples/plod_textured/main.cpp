@@ -476,10 +476,6 @@ int main(int argc, char** argv) {
     gui->add_javascript_getter("get_blending_range", [&](){ return gua::to_string(current_blending_range);});
     gui->add_javascript_getter("get_clamping_radius", [&](){ return gua::to_string(plod_pass->get_clamping_radius());});
     gui->add_javascript_getter("get_interpolation_range", [&](){ return gua::to_string(frustum_vis_pass->get_interpolation_range());});
-    gui->add_javascript_getter("get_position_range", [&](){ return gua::to_string(brute_force_optimizer.position_offset_range);});
-    gui->add_javascript_getter("get_position_samples", [&](){ return gua::to_string(brute_force_optimizer.position_sampling_steps);});
-    gui->add_javascript_getter("get_rotation_range", [&](){ return gua::to_string(brute_force_optimizer.rotation_offset_range);});
-    gui->add_javascript_getter("get_rotation_samples", [&](){ return gua::to_string(brute_force_optimizer.rotation_sampling_steps);});
 
     gui->add_javascript_callback("set_selection_mode_camera");
     gui->add_javascript_callback("set_selection_mode_fragment");
@@ -499,10 +495,9 @@ int main(int argc, char** argv) {
     gui->add_javascript_callback("set_lens_radius");
     gui->add_javascript_callback("set_clamping_radius");
     gui->add_javascript_callback("set_interpolation_range");
-    gui->add_javascript_callback("set_position_range");
-    gui->add_javascript_callback("set_position_samples");
-    gui->add_javascript_callback("set_rotation_range");
-    gui->add_javascript_callback("set_rotation_samples");
+    gui->add_javascript_callback("set_interpolation_none");
+    gui->add_javascript_callback("set_interpolation_linear");
+    gui->add_javascript_callback("set_interpolation_nearest_neighbor");
 
     gui->call_javascript("init");
   });
@@ -519,6 +514,9 @@ int main(int argc, char** argv) {
      || callback == "set_tree_vis_enable"
      || callback == "set_frustum_vis_enable"
      || callback == "set_show_optimized_enable"
+     || callback == "set_interpolation_none"
+     || callback == "set_interpolation_linear"
+     || callback == "set_interpolation_nearest_neighbor"
     ) {
       std::stringstream str(params[0]);
       bool checked;
@@ -556,6 +554,9 @@ int main(int argc, char** argv) {
       if (callback == "set_tree_vis_enable") frustum_vis_pass->set_tree_visualization_enabled(checked);
       if (callback == "set_frustum_vis_enable") frustum_vis_pass->set_frustum_visualization_enabled(checked);
       if (callback == "set_show_optimized_enable") show_optimized = checked;
+      if (callback == "set_interpolation_none") frustum_vis_pass->set_interpolation_mode(texstr::QueryOptions::InterpolationMode::NONE);
+      if (callback == "set_interpolation_linear") frustum_vis_pass->set_interpolation_mode(texstr::QueryOptions::InterpolationMode::LINEAR);
+      if (callback == "set_interpolation_nearest_neighbor") frustum_vis_pass->set_interpolation_mode(texstr::QueryOptions::InterpolationMode::NEAREST_NEIGHBOR);
     } else if (callback == "set_query_radius") {
       std::stringstream str(params[0]);
       str >> query_radius;
@@ -585,18 +586,6 @@ int main(int argc, char** argv) {
       double interpolation_range(0.0);
       str >> interpolation_range;
       frustum_vis_pass->set_interpolation_range(interpolation_range);
-    } else if (callback == "set_position_range") {
-      std::stringstream str(params[0]);
-      str >> brute_force_optimizer.position_offset_range;
-    } else if (callback == "set_position_samples") {
-      std::stringstream str(params[0]);
-      str >> brute_force_optimizer.position_sampling_steps;
-    } else if (callback == "set_rotation_range") {
-      std::stringstream str(params[0]);
-      str >> brute_force_optimizer.rotation_offset_range;
-    } else if (callback == "set_rotation_samples") {
-      std::stringstream str(params[0]);
-      str >> brute_force_optimizer.rotation_sampling_steps;
     }
   });
 

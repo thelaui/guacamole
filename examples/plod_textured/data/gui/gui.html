@@ -142,6 +142,10 @@
         init_radio("#tool_measurement", "tool_measurement");
         init_radio("#tool_provenance", "tool_provenance");
 
+        init_radio("#interpolation_none", "interpolation_none");
+        init_radio("#interpolation_linear", "interpolation_linear");
+        init_radio("#interpolation_nearest_neighbor", "interpolation_nearest_neighbor");
+
         init_checkbox("#enableTreeVis", "tree_vis_enable");
         init_checkbox("#enableFrustumVis", "frustum_vis_enable");
         init_checkbox("#enableShowOptimized", "show_optimized_enable");
@@ -153,11 +157,6 @@
         init_slider("#control-panel .clamping_radius", "clamping_radius");
 
         init_slider("#control-panel .interpolation_range", "interpolation_range");
-        init_slider("#control-panel .position_range", "position_range");
-        init_slider("#control-panel .position_samples", "position_samples");
-        init_slider("#control-panel .rotation_range", "rotation_range");
-        init_slider("#control-panel .rotation_samples", "rotation_samples");
-
 
         $("body").addClass("on");
       }
@@ -331,9 +330,6 @@
             </div>
           </div>
 
-
-          <h4 class="highlight">Optimization</h4>
-
           <div class="row">
             <div class="col-xs-5">
             Show Optimized:
@@ -348,48 +344,40 @@
             </div>
           </div>
 
+          <h4 class="highlight">Interpolation</h4>
+
           <div class="row">
             <div class="col-xs-5">
-              Interpolation Range:
+              Mode:
             </div>
             <div class="col-xs-7">
-              <input class="slider interpolation_range" data-slider-tooltip="hide" data-slider-id="interpolation_range" type="text" data-slider-min="0" data-slider-max="2000.0" data-slider-step="1.0" handle="custom"/>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="interpolationRadios" id="interpolation_none" value="" checked>
+                  <span>None</span>
+                </label>
+              </div>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="interpolationRadios" id="interpolation_linear" value="">
+                  <span>Linear</span>
+                </label>
+              </div>
+              <div class="radio">
+                <label>
+                  <input type="radio" name="interpolationRadios" id="interpolation_nearest_neighbor" value="">
+                  <span>Nearest Neighbor</span>
+                </label>
+              </div>
             </div>
           </div>
 
           <div class="row">
             <div class="col-xs-5">
-              Position Range:
+              Range:
             </div>
             <div class="col-xs-7">
-              <input class="slider position_range" data-slider-tooltip="hide" data-slider-id="position_range" type="text" data-slider-min="0" data-slider-max="2.0" data-slider-step="0.01" handle="custom"/>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-xs-5">
-              Position Samples:
-            </div>
-            <div class="col-xs-7">
-              <input class="slider position_samples" data-slider-tooltip="hide" data-slider-id="position_samples" type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" handle="custom"/>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-xs-5">
-              Rotation Range:
-            </div>
-            <div class="col-xs-7">
-              <input class="slider rotation_range" data-slider-tooltip="hide" data-slider-id="rotation_range" type="text" data-slider-min="0" data-slider-max="20.0" data-slider-step="0.01" handle="custom"/>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-xs-5">
-              Rotation Samples:
-            </div>
-            <div class="col-xs-7">
-              <input class="slider rotation_samples" data-slider-tooltip="hide" data-slider-id="rotation_samples" type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" handle="custom"/>
+              <input class="slider interpolation_range" data-slider-tooltip="hide" data-slider-id="interpolation_range" type="text" data-slider-min="0" data-slider-max="100.0" data-slider-step="1.0" handle="custom"/>
             </div>
           </div>
 

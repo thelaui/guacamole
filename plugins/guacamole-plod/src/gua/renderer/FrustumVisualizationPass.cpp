@@ -37,7 +37,8 @@ FrustumVisualizationPassDescription::FrustumVisualizationPassDescription()
   , tree_visualization_enabled_(true)
   , frustum_visualization_enabled_(true)
   , query_radius_(0.0)
-  , interpolation_range_(0.0) {
+  , interpolation_range_(0.0)
+  , interpolation_mode_(texstr::QueryOptions::InterpolationMode::NONE) {
   vertex_shader_ = "resources/shaders/projective_texturing/frustum_visualization.vert";
   geometry_shader_ = "resources/shaders/projective_texturing/frustum_visualization.geom";
   fragment_shader_ = "resources/shaders/projective_texturing/frustum_visualization.frag";
@@ -91,6 +92,11 @@ void FrustumVisualizationPassDescription::set_interpolation_range(double interpo
   touch();
 }
 
+void FrustumVisualizationPassDescription::set_interpolation_mode(texstr::QueryOptions::InterpolationMode interpolation_mode) {
+  interpolation_mode_ = interpolation_mode;
+  touch();
+}
+
 PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const& ctx, SubstitutionMap& substitution_map)
 {
   PipelinePass pass(*this, ctx, substitution_map);
@@ -118,8 +124,10 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
   auto frustum_vao_ = ctx.render_device->create_vertex_array(format, {frustum_vbo_});
   auto query_radius = query_radius_;
   auto interpolation_range = interpolation_range_;
+  auto interpolation_mode = interpolation_mode_;
 
-  pass.process_ = [frustum_vbo_, frustum_vao_, query_radius, interpolation_range,
+  pass.process_ = [frustum_vbo_, frustum_vao_, query_radius,
+                   interpolation_range, interpolation_mode,
                    tree_visualization_enabled, frustum_visualization_enabled](
       PipelinePass &, PipelinePassDescription const&, Pipeline & pipe) {
 
@@ -131,8 +139,10 @@ PipelinePass FrustumVisualizationPassDescription::make_pass(RenderContext const&
     options.mode = texstr::QueryOptions::RADIUS;
     options.radius = query_radius;
     options.optimization_interpolation_range = interpolation_range;
+    options.optimization_interpolation_mode = interpolation_mode;
 
     texstr::FrustumManagement::instance()->send_query(gua_frustum.get_camera_position(), options);
+
 
     std::vector<texstr::FrustumTree::FrustumNode*> nodes;
 
