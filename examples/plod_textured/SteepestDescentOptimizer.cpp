@@ -74,12 +74,30 @@ bool SteepestDescentOptimizer::run(scm::math::mat4d& optimal_transform,
           current_difference = new_translation * new_rot_z *  new_rot_x *  new_rot_y;
           current_transform = current_transform * current_difference;
           optimal_difference *= current_difference;
+
+          scm::math::mat4d optimization_offset(scm::math::inverse(initial_transform) * current_transform);
+
+          bool accepted(true);
+
+          // check if unreasonably large jump occured
+          for (int row(0); row < 3; ++row) {
+
+            if(std::abs(optimization_offset.column(3)[row]) > 0.5) {
+              accepted = false;
+              break;
+            }
+          }
+
+          if (!accepted) {
+            std::cout << "Detected large jump during optimization. Aborting!" << std::endl;
+            break;
+          }
         }
       }
     }
 
     if (!optimum_reached) {
-      std::cout << "Aborted optimization: Maximum iteration count reached. " << iteration_count << std::endl;
+      std::cout << "Aborted optimization. Iterations: " << iteration_count << std::endl;
     } else {
       std::cout << "Reached optimum after " << iteration_count << " iterations." << std::endl;
     }

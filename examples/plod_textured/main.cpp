@@ -176,7 +176,8 @@ int main(int argc, char** argv) {
   bool measurement_dragging(false);
   bool provenance_enabled(false);
   gua::math::vec2 current_mouse_pos(0.0);
-  gua::math::vec3 current_pick_pos(0.0);
+  gua::math::vec3 current_mouse_pick_pos(0.0);
+  gua::math::vec3 current_ground_pick_pos(0.0);
   gua::math::vec3 current_pick_normal(0.0);
   float query_radius(20.f);
   float current_lens_radius(5.f);
@@ -808,8 +809,8 @@ int main(int argc, char** argv) {
         if (button == 0) {
           if (action == 1) {
             if (!measurement_dragging) {
-              measurement_marker_1->translate(current_pick_pos - measurement_marker_1->get_world_position());
-              measurement_marker_2->translate(current_pick_pos - measurement_marker_2->get_world_position());
+              measurement_marker_1->translate(current_mouse_pick_pos - measurement_marker_1->get_world_position());
+              measurement_marker_2->translate(current_mouse_pick_pos - measurement_marker_2->get_world_position());
             }
             measurement_dragging = true;
           } else if (action == 0) {
@@ -818,13 +819,13 @@ int main(int argc, char** argv) {
         }
       } else if (provenance_enabled) {
         if (action == 1 && button == 0) {
-          provenance_marker->translate(current_pick_pos - provenance_marker->get_world_position() + gua::math::vec3(0.0, 0.1, 0.0));
+          provenance_marker->translate(current_mouse_pick_pos - provenance_marker->get_world_position() + gua::math::vec3(0.0, 0.1, 0.0));
 
           texstr::QueryOptions options;
           options.mode = texstr::QueryOptions::RADIUS;
           options.radius = query_radius;
 
-          texstr::FrustumManagement::instance()->send_query(current_pick_pos, options);
+          texstr::FrustumManagement::instance()->send_query(current_mouse_pick_pos, options);
 
           auto current_frusta = texstr::FrustumManagement::instance()->fetch_frusta();
 
@@ -834,7 +835,7 @@ int main(int argc, char** argv) {
             for (auto frustum : current_frusta) {
               scm::math::vec4d proj_tex_space_pos(
                 frustum.get_projection_view() *
-                scm::math::vec4d(current_pick_pos.x, current_pick_pos.y, current_pick_pos.z, 1.0)
+                scm::math::vec4d(current_mouse_pick_pos.x, current_mouse_pick_pos.y, current_mouse_pick_pos.z, 1.0)
               );
 
               double depth = proj_tex_space_pos.z;
@@ -971,6 +972,26 @@ int main(int argc, char** argv) {
     }
   });
 
+
+  auto update_ground_pick_pos = [&]() {
+    // ground distance
+
+    auto direction = gua::math::vec4(0.0, -100.0, 0.0, 1.0);
+
+    auto picks = graph.ray_test(gua::Ray(camera->get_world_position(), direction, 1.0),
+                                gua::PickResult::PICK_ONLY_FIRST_OBJECT |
+                                gua::PickResult::PICK_ONLY_FIRST_FACE |
+                                gua::PickResult::GET_WORLD_POSITIONS |
+                                gua::PickResult::GET_POSITIONS |
+                                gua::PickResult::GET_WORLD_NORMALS,
+                                gua::Mask({}, {"no_pick"}));
+
+    if (!picks.empty()) {
+      current_ground_pick_pos = picks.begin()->world_position;
+      texturing_pass->uniform("clipping_params", scm::math::vec2f(7.f, current_ground_pick_pos.y + 0.3));
+    }
+  };
+
   window->open();
 
   gua::Renderer renderer;
@@ -1012,7 +1033,7 @@ int main(int argc, char** argv) {
     }
 
     if (measurement_dragging) {
-      measurement_marker_2->translate(current_pick_pos - measurement_marker_2->get_world_position());
+      measurement_marker_2->translate(current_mouse_pick_pos - measurement_marker_2->get_world_position());
       auto marker_to_marker(measurement_marker_2->get_world_position() - measurement_marker_1->get_world_position());
       auto distance(scm::math::length(marker_to_marker));
 
@@ -1059,6 +1080,9 @@ int main(int argc, char** argv) {
 
         auto retrieve_screen_shot= [&](scm::math::mat4d const& new_transform) {
           camera->set_transform(new_transform);
+
+          update_ground_pick_pos();
+
           window->take_screen_shot();
           renderer.draw_single_threaded({&graph});
 
@@ -1097,6 +1121,7 @@ int main(int argc, char** argv) {
         // brute_force_optimizer.run(optimal_transform, optimal_difference);
         // steepest_descent_optimizer.initial_transform = optimal_transform;
         bool success(steepest_descent_optimizer.run(optimal_transform, optimal_difference));
+        std::cout << std::endl;
         // steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
         // error_function_sampler.initial_transform = optimal_transform;
         // error_function_sampler.sample_dimension(0, -0.1, 0.1, 10.01);
@@ -1185,6 +1210,8 @@ int main(int argc, char** argv) {
       }
     }
 
+    update_ground_pick_pos();
+
 
     picking_enabled = lens_enabled || measurement_enabled || provenance_enabled;
 
@@ -1208,7 +1235,7 @@ int main(int argc, char** argv) {
                                   gua::Mask({}, {"no_pick"}));
 
       if (!picks.empty()) {
-        current_pick_pos = picks.begin()->world_position;
+        current_mouse_pick_pos = picks.begin()->world_position;
         current_pick_normal = picks.begin()->world_normal;
       }
     }
@@ -1237,16 +1264,15 @@ int main(int argc, char** argv) {
     }
 
     texturing_pass->uniform("pick_pos_and_radius",
-                                  scm::math::vec4f(current_pick_pos.x,
-                                                   current_pick_pos.y,
-                                                   current_pick_pos.z,
+                                  scm::math::vec4f(current_mouse_pick_pos.x,
+                                                   current_mouse_pick_pos.y,
+                                                   current_mouse_pick_pos.z,
                                                    current_lens_radius));
     texturing_pass->uniform("pick_normal", scm::math::vec3f(current_pick_normal));
     texturing_pass->uniform("lens_enabled", lens_enabled ? 1 : 0);
 
     texturing_pass->uniform("selection_mode",  current_selection_mode);
     texturing_pass->uniform("blending_factor", current_blending_factor);
-    texturing_pass->uniform("clipping_params", scm::math::vec2f(7.f, float(camera->get_world_position().y - 2.65f)));
     texturing_pass->uniform("clipping_enabled", optimization_enabled ? 1 : 0);
     texturing_pass->uniform("show_optimized", show_optimized ? 1 : 0);
 
