@@ -1051,6 +1051,9 @@ int main(int argc, char** argv) {
     if (optimziation_triggered) {
       optimziation_triggered = false;
 
+      gua::Timer optimization_timer;
+      optimization_timer.start();
+
       for (int optimization_id(0); optimization_id < frusta_to_optimize; ++optimization_id) {
 
         std::cout << "Processing image " << optimization_id + 1 << " of " << frusta_to_optimize << " ..." << std::endl;
@@ -1111,13 +1114,21 @@ int main(int argc, char** argv) {
         // brute_force_optimizer.run(optimal_transform, optimal_difference);
         // steepest_descent_optimizer.initial_transform = optimal_transform;
         bool success(steepest_descent_optimizer.run(optimal_transform, optimal_difference));
+
         if (success) {
           ++total_optimized_frusta;
         }
+
         std::cout << total_optimized_frusta << " out of "
+                  << optimization_id + 1 << " processed frusta have been optimized by now. ("
+                  << total_optimized_frusta / float(optimization_id + 1) * 100.f << "\%)"
+                  << std::endl;
+
+        std::cout << total_optimized_frusta << " out of a total of "
                   << frusta_to_optimize << " frusta have been optimized by now. ("
                   << total_optimized_frusta / float(frusta_to_optimize) * 100.f << "\%)"
                   << std::endl;
+
         std::cout << std::endl;
         // steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
         // error_function_sampler.initial_transform = optimal_transform;
@@ -1205,6 +1216,14 @@ int main(int argc, char** argv) {
           );
         }
       }
+
+      int duration_seconds(optimization_timer.get_elapsed());
+      int duration_minutes(duration_seconds / 60);
+      int seconds_left(duration_seconds % 60);
+
+      std::cout << "The optimization took "
+                << duration_minutes << " minutes and "
+                << seconds_left << " seconds." << std::endl;
     }
 
     update_ground_pick_pos();
