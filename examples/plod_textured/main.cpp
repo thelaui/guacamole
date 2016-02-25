@@ -186,6 +186,7 @@ int main(int argc, char** argv) {
   bool optimziation_triggered(false);
   bool show_optimized(false);
   int frusta_to_optimize(1);
+  int total_optimized_frusta(0);
 
   BruteForceOptimizer brute_force_optimizer;
 
@@ -1110,6 +1111,13 @@ int main(int argc, char** argv) {
         // brute_force_optimizer.run(optimal_transform, optimal_difference);
         // steepest_descent_optimizer.initial_transform = optimal_transform;
         bool success(steepest_descent_optimizer.run(optimal_transform, optimal_difference));
+        if (success) {
+          ++total_optimized_frusta;
+        }
+        std::cout << total_optimized_frusta << " out of "
+                  << frusta_to_optimize << " frusta have been optimized by now. ("
+                  << total_optimized_frusta / float(frusta_to_optimize) * 100.f << "\%)"
+                  << std::endl;
         std::cout << std::endl;
         // steepest_descent_optimizer.run_round_robin(optimal_transform, optimal_difference);
         // error_function_sampler.initial_transform = optimal_transform;
