@@ -1051,8 +1051,8 @@ int main(int argc, char** argv) {
     if (optimziation_triggered) {
       optimziation_triggered = false;
 
-      gua::Timer optimization_timer;
-      optimization_timer.start();
+      gua::Timer optimization_total_timer;
+      optimization_total_timer.start();
 
       for (int optimization_id(0); optimization_id < frusta_to_optimize; ++optimization_id) {
 
@@ -1113,10 +1113,21 @@ int main(int argc, char** argv) {
         scm::math::mat4d optimal_difference(scm::math::mat4d::identity());
         // brute_force_optimizer.run(optimal_transform, optimal_difference);
         // steepest_descent_optimizer.initial_transform = optimal_transform;
+        gua::Timer optimization_timer;
+        optimization_timer.start();
+
         bool success(steepest_descent_optimizer.run(optimal_transform, optimal_difference));
+
+        int duration_seconds(optimization_timer.get_elapsed());
+        int duration_minutes(duration_seconds / 60);
+        int seconds_left(duration_seconds % 60);
 
         if (success) {
           ++total_optimized_frusta;
+
+          std::cout << "The optimization took "
+                    << duration_minutes << " minutes and "
+                    << seconds_left << " seconds." << std::endl;
         }
 
         std::cout << total_optimized_frusta << " out of "
@@ -1217,11 +1228,11 @@ int main(int argc, char** argv) {
         }
       }
 
-      int duration_seconds(optimization_timer.get_elapsed());
+      int duration_seconds(optimization_total_timer.get_elapsed());
       int duration_minutes(duration_seconds / 60);
       int seconds_left(duration_seconds % 60);
 
-      std::cout << "The optimization took "
+      std::cout << "The optimization took a total time of "
                 << duration_minutes << " minutes and "
                 << seconds_left << " seconds." << std::endl;
     }
